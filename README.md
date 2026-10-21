@@ -4,6 +4,14 @@ Prototype falsifiable du §14 du [design doc](docs/design-doc.md) : un seul écr
 
 Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `python3 -m http.server` puis http://localhost:8000). Le son est synthétisé en WebAudio, il n'y a aucun fichier audio.
 
+## En ligne
+
+Le jeu est publié sur GitHub Pages à chaque push sur `main` : https://davidgiangiacomo.github.io/decroissance/
+
+Le workflow `.github/workflows/pages.yml` lance `node tools/build-site.js`, qui copie les fichiers du jeu dans `_site/` et y inscrit la version jouée : le hash court et la date du commit. Le pied de page du jeu l'affiche, pour savoir quelle version chaque testeur a jouée. En local, il affiche « version dev ».
+
+Prérequis, une seule fois : dans les réglages du dépôt, *Pages → Build and deployment → Source* doit être sur **GitHub Actions**.
+
 ## Ce que le MVP contient
 
 - **L'Empreinte en chiffres pleins, en hausse au lancement** (+2,4 %/min). Elle a son propre taux de croissance `g`, somme des contributions des sites encore actifs. L'objectif de l'acte I est de la faire *s'arrêter*, pas de la faire baisser.
@@ -28,6 +36,8 @@ Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `pyt
 | `main.js` | rendu, carte SVG, sauvegarde, boucle |
 | `index.html`, `style.css` | l'écran unique |
 | `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur |
+| `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
+| `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
 
 ```
 node tools/simulate.js prudent 10     # bot prudent, 10 s de réaction par action
