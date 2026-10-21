@@ -1,6 +1,6 @@
 # Décroissance — MVP (acte I)
 
-Prototype falsifiable du §14 du design doc : un seul écran, l'acte I, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud).
+Prototype falsifiable du §14 du [design doc](docs/design-doc.md) : un seul écran, l'acte I, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud).
 
 Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `python3 -m http.server` puis http://localhost:8000). Le son est synthétisé en WebAudio, il n'y a aucun fichier audio.
 
@@ -21,6 +21,7 @@ Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `pyt
 
 | Fichier | Rôle |
 |---|---|
+| `docs/design-doc.md` | le design doc complet, référence des sections citées ici et dans les issues |
 | `data.js` | toutes les valeurs de réglage : sites, graphe, constantes |
 | `engine.js` | moteur pur (création, tick, engagement, coupures, relance, hors-ligne, formats) |
 | `audio.js` | couches sonores synthétisées et sons ponctuels |
