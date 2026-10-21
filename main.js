@@ -3,6 +3,8 @@
   const E = window.Engine, D = E.D;
   const CLE = 'decroissance.mvp.v1';
   const $ = (id) => document.getElementById(id);
+  // Version jouée : « dev » en local ; hash court et date du commit une fois publiée (tools/build-site.js).
+  const VERSION = (document.querySelector('meta[name="version"]') || {}).content || 'dev';
 
   let s = null;            // état du jeu (objet plat, sérialisable)
   let son = new Son();
@@ -262,6 +264,7 @@
 
   // ---------- init ----------
   function init() {
+    $('version').textContent = `version ${VERSION}`;
     const sauvegarde = charger();
     if (sauvegarde && sauvegarde.v === 1 && sauvegarde.started) {
       const r = E.applyOffline(sauvegarde, (Date.now() - sauvegarde.savedAt) / 1000);
@@ -283,7 +286,7 @@
   window.Jeu = {
     get etat() { return s; },
     avancer(sec) { const n = Math.round(sec / D.TICK); for (let i = 0; i < n; i++) { const evs = E.tick(s, D.TICK); if (evs.length) traiter(evs); } rendre(); },
-    engager, reconvertir, relancer, sauver, gel: false,
+    engager, reconvertir, relancer, sauver, gel: false, version: VERSION,
   };
 
   init();
