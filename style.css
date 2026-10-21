@@ -192,6 +192,14 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .carton h1 { margin: 0; font-weight: 500; letter-spacing: .06em; }
 .carton-boutons { display: flex; gap: 10px; margin-top: 18px; }
 
+/* rapport de session */
+.voile { padding: 16px; }
+.carton { max-height: 100%; overflow: auto; }
+.carton-rapport { width: 100%; max-width: 720px; padding: 24px 22px; }
+.carton-rapport h2 { font-size: 18px; font-weight: 500; text-transform: none; letter-spacing: .02em; color: var(--texte); margin: 0 0 4px; }
+#rapport-texte { display: block; width: 100%; margin-top: 10px; padding: 10px 12px; font-family: var(--mono); font-size: 12px; line-height: 1.45; color: var(--texte); background: #141619; border: 1px solid var(--bord); border-radius: 5px; resize: vertical; }
+#rapport-etat:empty { display: none; }
+
 /* pause (stabilisation) */
 .app.pause .compteur { color: var(--texte); }
 .app.pause .corps { filter: saturate(.7); transition: filter .5s; }

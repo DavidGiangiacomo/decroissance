@@ -23,7 +23,8 @@ Prérequis, une seule fois : dans les réglages du dépôt, *Pages → Build and
 - **Bouton Relancer** visible dès la première seconde, fonctionnel : 90 s de croissance +4 %/min, Capacité ×4, chantiers ×2, et un peu de Consentement. Chaque relance rehausse le plancher irréductible de 6 %. **Sous 20 % de Consentement, le Conseil relance sans vous.**
 - **Deux couches sonores retirées, deux ajoutées** : la rumeur de trafic s'éteint quand le nombre cesse de monter, et le vent arrive ; les turbines s'éteignent au premier chiffre perdu, et les oiseaux arrivent. Une relance ramène l'industrie à plein volume.
 - **Les deux moments testés** : la stabilisation (le jeu s'arrête 3 s, le son baisse) et la perte du premier chiffre (le chiffre de tête tombe, l'écran se resserre d'un cran, coup sourd). Un panneau affiche ensuite les données du test : temps jusqu'à l'arrêt, temps jusqu'au chiffre, nombre de relances, Casse, plancher.
-- Sauvegarde JSON en `localStorage`, tick à 10 Hz, état en objet plat (`engine.js` est pur et tourne aussi en node).
+- Sauvegarde JSON en `localStorage`, tick à 10 Hz, état en objet plat (`engine.js` est pur et tourne aussi en node). Une partie enregistrée avec une autre liste de sites se reprend quand même ; une sauvegarde illisible mène à une nouvelle partie, avec une copie gardée de côté. Un onglet caché compte comme du temps hors ligne.
+- **Rapport de session** : le bouton « rapport » du pied de page copie les temps des deux moments, les relances des 20 premières minutes, le Consentement minimum, la version jouée et toute la chronologie de la partie, en texte suivi d'un bloc JSON.
 
 ## Fichiers
 
@@ -37,6 +38,7 @@ Prérequis, une seule fois : dans les réglages du dépôt, *Pages → Build and
 | `index.html`, `style.css` | l'écran unique |
 | `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur |
 | `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
+| `tools/test.js` | tests du moteur : reprise des sauvegardes, rapport de session |
 | `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
 
 ```
@@ -44,6 +46,7 @@ node tools/simulate.js prudent 10     # bot prudent, 10 s de réaction par actio
 node tools/simulate.js pressé 10      # ignore les avertissements de coupure
 node tools/simulate.js relance-1 10   # une relance à 2 min
 node tools/simulate.js croissance     # relance en continu
+node tools/test.js                    # tests du moteur
 ```
 
 Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min. Un humain sera plus lent d'un facteur 1,5 environ, soit une session de 15 à 20 min.
@@ -52,9 +55,10 @@ Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.enga
 
 ## Protocole de test (§14)
 
-1. Faire jouer 20 min sans rien expliquer, son allumé.
+1. Envoyer le lien du jeu en ligne et faire jouer 20 min sans rien expliquer, son allumé.
 2. Noter la réaction à deux instants : quand le compteur cesse de monter, et quand il perd son premier chiffre. Si aucun des deux ne fait rien au testeur, le concept ne tient pas.
-3. Compter les appuis sur **Relancer** (affiché dans le panneau de fin d'acte). Zéro = bouton pas assez tentant ; dix = pas d'autre stratégie viable.
+3. Récupérer le rapport de session : bouton « rapport » en pied de page, puis « Copier le rapport ». Il compte les appuis sur **Relancer** des 20 premières minutes. Zéro = bouton pas assez tentant ; dix = pas d'autre stratégie viable.
+4. Coller le rapport en commentaire de [l'issue des playtests](https://github.com/DavidGiangiacomo/decroissance/issues/8).
 
 ## Écarts avec le design doc, et pourquoi
 

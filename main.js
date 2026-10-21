@@ -10,11 +10,26 @@
   let son = new Son();
   let last = 0, timer = null, selection = null, dernierSave = 0;
   let animPerte = 0;       // fin d'animation de perte de chiffre (t réel)
+  let cacheDepuis = null;  // instant (ms) où l'onglet a été caché, ou null
   const el = {};
 
   // ---------- sauvegarde ----------
-  function sauver() { if (!s || window.Jeu.gel) return; s.savedAt = Date.now(); try { localStorage.setItem(CLE, JSON.stringify(s)); } catch (e) { /* stockage indisponible */ } }
-  function charger() { try { const j = localStorage.getItem(CLE); return j ? JSON.parse(j) : null; } catch (e) { return null; } }
+  function sauver() {
+    if (!s || window.Jeu.gel) return;
+    s.savedAt = cacheDepuis !== null ? cacheDepuis : Date.now();   // onglet caché : l'absence court depuis qu'il l'est
+    try { localStorage.setItem(CLE, JSON.stringify(s)); } catch (e) { /* stockage indisponible */ }
+  }
+  // Partie enregistrée : { etat, texte } si elle se reprend, { illisible, texte } si elle ne se relit pas, {} sinon.
+  function lireSauvegarde() {
+    let texte = null;
+    try { texte = localStorage.getItem(CLE); } catch (e) { return {}; }
+    if (!texte) return {};
+    try {
+      const etat = E.migrer(JSON.parse(texte));
+      if (!etat) return { illisible: true, texte };
+      return etat.started ? { etat, texte } : {};
+    } catch (e) { return { illisible: true, texte }; }
+  }
   function effacer() { try { localStorage.removeItem(CLE); } catch (e) {} }
 
   // ---------- carte ----------
@@ -217,7 +232,8 @@
     const lignes = [
       ['Le nombre a cessé de monter', s.ms.stabilise !== null ? E.fmtDur(s.ms.stabilise) : 'jamais'],
       ['Premier chiffre perdu', s.ms.chiffre !== null ? E.fmtDur(s.ms.chiffre) : 'jamais'],
-      ['Relances', `${s.relances}${s.relancesAuto ? ` (+${s.relancesAuto} sans vous)` : ''}`],
+      ['Relances, 20 premières minutes', String(E.rapport(s, VERSION).relances20min)],
+      ['Relances au total', `${s.relances}${s.relancesAuto ? ` (+${s.relancesAuto} sans vous)` : ''}`],
       ['Casse', `${E.fmt(s.X)} personnes`],
       ['Plancher irréductible', E.fmt(s.plancher)],
     ];
@@ -225,9 +241,39 @@
     j.innerHTML = `<h3>${kind === 'fin' ? 'Fin de la carte — le prototype s\'arrête là' : 'Acte I — premier chiffre perdu'}</h3>
       <table>${lignes.map(l => `<tr><td>${l[0]}</td><td>${l[1]}</td></tr>`).join('')}</table>
       <p class="muted">${kind === 'fin' ? 'Le reste de ce qui est écrit ne se démantèle pas : il se garde. Ce sera l\'acte IV.' : 'Le reste de la carte est là. Rien ne vous oblige à continuer.'}</p>
-      <div class="carton-boutons"><button class="btn" id="jalon-fermer">${kind === 'fin' ? 'Fermer' : 'Continuer'}</button></div>`;
+      <div class="carton-boutons"><button class="btn" id="jalon-fermer">${kind === 'fin' ? 'Fermer' : 'Continuer'}</button><button class="btn" id="jalon-rapport">Rapport de session</button></div>`;
     j.hidden = false;
     $('jalon-fermer').addEventListener('click', () => { j.hidden = true; });
+    $('jalon-rapport').addEventListener('click', ouvrirRapport);
+  }
+
+  // ---------- rapport de session ----------
+  let focusAvantRapport = null;   // le focus revient au bouton qui a ouvert le rapport
+  function ouvrirRapport() {
+    if (!s) return;
+    focusAvantRapport = document.activeElement;
+    $('rapport-texte').value = E.rapportTexte(s, VERSION);
+    $('rapport-etat').textContent = '';
+    $('rapport').hidden = false;
+    $('btn-copier').focus();
+  }
+  function fermerRapport() {
+    $('rapport').hidden = true;
+    if (focusAvantRapport && document.contains(focusAvantRapport)) focusAvantRapport.focus();
+  }
+  async function copierRapport() {
+    const zone = $('rapport-texte');
+    let ok = false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(zone.value); ok = true; }
+    } catch (e) { ok = false; }
+    if (!ok) {
+      zone.focus(); zone.select(); zone.setSelectionRange(0, zone.value.length);
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    }
+    $('rapport-etat').textContent = ok
+      ? 'Copié. Il ne reste qu\'à le coller dans un message.'
+      : 'La copie automatique n\'a pas marché : le texte est sélectionné, copiez-le à la main.';
   }
 
   // ---------- actions ----------
@@ -237,6 +283,7 @@
 
   // ---------- boucle 10 Hz ----------
   function boucle() {
+    if (document.hidden) { last = performance.now(); return; }   // onglet caché : compté comme du hors-ligne au retour
     const now = performance.now();
     const dt = Math.min(1, (now - last) / 1000); last = now;
     if (dt <= 0) return;
@@ -250,6 +297,7 @@
 
   function demarrer(etat) {
     s = etat; s.started = true;
+    if (!s.versions.includes(VERSION)) s.versions.push(VERSION);
     document.documentElement.style.setProperty('--resserre', (8 * (10 - s.digitsMin)) + 'px');
     construireCarte(); construireChantiers();
     dernierNb = ''; rendre(); rendreJournal();
@@ -262,24 +310,57 @@
     sauver();
   }
 
+  // Onglet caché : la partie s'arrête, et le temps passé compte comme du hors-ligne (§9) au retour.
+  function changementVisibilite() {
+    if (document.hidden) { cacheDepuis = Date.now(); sauver(); return; }
+    if (s && cacheDepuis !== null) {
+      const absence = E.applyOffline(s, (Date.now() - cacheDepuis) / 1000);
+      cacheDepuis = null;
+      if (absence) { rendreJournal(); rendre(); }
+      sauver();
+    }
+    cacheDepuis = null;
+    last = performance.now();
+  }
+
   // ---------- init ----------
   function init() {
     $('version').textContent = `version ${VERSION}`;
-    const sauvegarde = charger();
-    if (sauvegarde && sauvegarde.v === 1 && sauvegarde.started) {
-      const r = E.applyOffline(sauvegarde, (Date.now() - sauvegarde.savedAt) / 1000);
-      $('btn-reprendre').hidden = false; $('btn-neuf').hidden = false; $('btn-commencer').hidden = true;
-      if (r) { $('intro-absence').hidden = false; $('intro-absence').textContent = `Vous avez été absent ${E.fmtDur(r.elapsed)}. Rien n'a été démantelé pendant ce temps ; la terre a regagné ${r.dT.toFixed(1).replace('.', ',')} point${r.dT >= 2 ? 's' : ''}.`; }
-      $('btn-reprendre').addEventListener('click', () => demarrer(sauvegarde));
-      $('btn-neuf').addEventListener('click', () => { if (confirm('Effacer la partie en cours ?')) { effacer(); demarrer(E.create()); } });
-    }
+    // Les actions d'abord : une sauvegarde abîmée ne doit jamais laisser l'écran d'accueil inerte.
     $('btn-commencer').addEventListener('click', () => demarrer(E.create()));
     $('btn-relancer').addEventListener('click', relancer);
     $('btn-reconv').addEventListener('click', reconvertir);
     $('btn-son').addEventListener('click', () => { s.son = !s.son; son.setMute(!s.son); $('btn-son').textContent = `son : ${s.son ? 'oui' : 'non'}`; sauver(); });
     $('btn-reset').addEventListener('click', () => { if (confirm('Recommencer depuis le début ? La partie en cours sera effacée.')) { effacer(); demarrer(E.create()); } });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) sauver(); else last = performance.now(); });
+    $('btn-rapport').addEventListener('click', ouvrirRapport);
+    $('btn-copier').addEventListener('click', copierRapport);
+    $('btn-rapport-fermer').addEventListener('click', fermerRapport);
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('rapport').hidden) fermerRapport(); });
+    document.addEventListener('visibilitychange', changementVisibilite);
+    window.addEventListener('pagehide', sauver);
     window.addEventListener('beforeunload', sauver);
+
+    const lu = lireSauvegarde();
+    let sauvegarde = lu.etat || null, absence = null;
+    if (sauvegarde) {
+      try { absence = E.applyOffline(sauvegarde, (Date.now() - sauvegarde.savedAt) / 1000); }
+      catch (e) { sauvegarde = null; lu.illisible = true; }
+    }
+    if (sauvegarde) {
+      $('btn-reprendre').hidden = false; $('btn-neuf').hidden = false; $('btn-commencer').hidden = true;
+      if (absence) {
+        const terre = absence.dT >= 0.05 ? ` ; la terre a regagné ${absence.dT.toFixed(1).replace('.', ',')} point${absence.dT >= 2 ? 's' : ''}` : '';
+        $('intro-absence').hidden = false;
+        $('intro-absence').textContent = `Vous avez été absent ${E.fmtDur(absence.elapsed)}. Rien n'a été démantelé pendant ce temps${terre}.`;
+      }
+      $('btn-reprendre').addEventListener('click', () => demarrer(sauvegarde));
+      $('btn-neuf').addEventListener('click', () => { if (confirm('Effacer la partie en cours ?')) { effacer(); demarrer(E.create()); } });
+    } else if (lu.illisible) {
+      // On garde une copie pour comprendre ce qui s'est passé, et on libère la place pour une nouvelle partie.
+      try { localStorage.setItem(CLE + '.illisible', lu.texte); localStorage.removeItem(CLE); } catch (e) {}
+      $('intro-absence').hidden = false;
+      $('intro-absence').textContent = "La partie précédente n'a pas pu être relue. Une copie en a été gardée de côté ; vous commencez une nouvelle partie.";
+    }
   }
 
   // Accès de débogage / test (pas d'interface) : window.Jeu.avancer(secondes)
@@ -287,6 +368,7 @@
     get etat() { return s; },
     avancer(sec) { const n = Math.round(sec / D.TICK); for (let i = 0; i < n; i++) { const evs = E.tick(s, D.TICK); if (evs.length) traiter(evs); } rendre(); },
     engager, reconvertir, relancer, sauver, gel: false, version: VERSION,
+    rapport: () => E.rapportTexte(s, VERSION),
   };
 
   init();
