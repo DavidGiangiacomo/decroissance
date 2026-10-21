@@ -113,6 +113,7 @@
         <span id="horloge" class="muted">0 s</span>
         <button id="btn-son" class="lien">son : oui</button>
         <button id="btn-reset" class="lien">recommencer</button>
+        <button id="btn-rapport" class="lien">rapport</button>
         <span id="version" class="muted version"></span>
       </footer>
     </aside>
@@ -131,6 +132,19 @@
         <button id="btn-neuf" class="btn" hidden>Nouvelle partie</button>
       </div>
       <p id="intro-absence" class="petit muted" hidden></p>
+    </div>
+  </div>
+
+  <div id="rapport" class="voile" hidden>
+    <div class="carton carton-rapport" role="dialog" aria-modal="true" aria-labelledby="rapport-titre">
+      <h2 id="rapport-titre">Rapport de session</h2>
+      <p class="petit muted">À copier et à renvoyer tel quel : il contient les temps, les relances et toute la chronologie de la partie.</p>
+      <textarea id="rapport-texte" readonly rows="14" aria-label="Texte du rapport"></textarea>
+      <div class="carton-boutons">
+        <button id="btn-copier" class="btn primaire">Copier le rapport</button>
+        <button id="btn-rapport-fermer" class="btn">Fermer</button>
+      </div>
+      <p id="rapport-etat" class="petit muted" aria-live="polite"></p>
     </div>
   </div>
 

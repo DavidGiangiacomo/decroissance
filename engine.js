@@ -34,6 +34,11 @@
       savedAt: Date.now(),
       started: false,
       son: true,
+      debut: Date.now(),    // début réel de la partie (null : inconnu, partie antérieure au rapport)
+      chrono: [],           // chronologie complète des actions et jalons, sans limite (rapport, épilogue)
+      coMin: 100,           // Consentement le plus bas atteint
+      horsLigne: 0,         // secondes passées hors ligne ou onglet caché
+      versions: [],         // versions du jeu sur lesquelles la partie a été jouée
     };
     for (const d of D.sites) s.sites[d.id] = { state: 'actif', progress: 0, regen: 0 };
     return s;
@@ -88,6 +93,11 @@
     if (s.log.length > 200) s.log.shift();
   }
 
+  // Chronologie complète pour le rapport de session et l'épilogue : pas de limite, contrairement au journal.
+  function trace(s, type, data) {
+    s.chrono.push(Object.assign({ t: Math.round(s.t * 10) / 10, type }, data));
+  }
+
   function canEngage(s, id) {
     const d = defs[id], st = s.sites[id];
     const raisons = [];
@@ -108,6 +118,7 @@
     s.M -= d.M; s.Meng += d.M;
     st.state = 'chantier'; st.progress = 0;
     log(s, `Chantier ouvert : ${d.nom}.`, 'chantier');
+    trace(s, 'engage', { id });
     ev.push({ type: 'engage', id });
     // Le site s'arrête à l'ouverture du chantier : ce qu'il alimentait est coupé si rien d'autre ne l'alimente.
     for (const dep of c.coupures) ev.push(...coupure(s, id, dep));
@@ -122,6 +133,7 @@
       s.X += n.casse;
       s.Co -= n.co;
       log(s, `COUPURE — ${n.nom} sans électricité. ${n.casse} personnes.`, 'casse');
+      trace(s, 'coupure', { id: dep, casse: n.casse });
       ev.push({ type: 'coupure', dep, casse: n.casse });
     } else {
       const d = defs[dep], st = s.sites[dep];
@@ -130,6 +142,7 @@
       s.X += d.deplaces;
       s.Co -= D.COUPURE_SITE_CO;
       log(s, `COUPURE — ${d.nom} à l'arrêt brutal. ${d.deplaces} personnes sans reclassement.`, 'casse');
+      trace(s, 'coupure', { id: dep, casse: d.deplaces });
       ev.push({ type: 'coupure', dep, casse: d.deplaces });
     }
     if (s.ms.coupure === null) s.ms.coupure = s.t;
@@ -151,6 +164,7 @@
     } else {
       log(s, `Fermé : ${d.nom}. Empreinte −${fmt(d.E)}${d.deplaces ? `, ${d.deplaces} personnes à reconvertir` : ''}.`, 'ok');
     }
+    trace(s, 'ferme', { id });
     return [{ type: 'ferme', id }];
   }
 
@@ -160,6 +174,7 @@
     s.deplaces -= n;
     s.reconv = { n, progress: 0 };
     s.Co -= D.RECONV.co;
+    trace(s, 'reconversion', { n });
     return true;
   }
 
@@ -170,6 +185,7 @@
     else { s.relances++; log(s, 'Relance.', 'relance'); }
     s.plancher = Math.round(s.plancher * D.RELANCE.plancherMul);
     s.Co = Math.min(100, s.Co + D.RELANCE.co);
+    trace(s, 'relance', { auto: !!auto });
     return { type: 'relance', auto: !!auto };
   }
 
@@ -206,6 +222,7 @@
     if (n > 1) s.Co -= D.CO_HATE * (n - 1) * dt;
     s.Co += Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * dt);
     s.Co = Math.max(0, Math.min(100, s.Co));
+    if (s.Co < s.coMin) s.coMin = s.Co;
 
     // Quelqu'un d'autre appuie sur le bouton
     if (s.Co < D.RELANCE.autoSeuil && !rel && s.t - s.autoRelanceAt > D.RELANCE.autoCooldown) {
@@ -217,6 +234,7 @@
       s.ms.stabilise = s.t;
       s.paused = D.PAUSE_STABILISE;
       log(s, 'Le nombre a cessé de monter.', 'jalon');
+      trace(s, 'stabilise');
       ev.push({ type: 'stabilise' });
     }
     // Perte d'un chiffre : floor(log10(E)) comparé d'un tick à l'autre
@@ -226,6 +244,7 @@
       if (s.ms.chiffre === null) s.ms.chiffre = s.t;
       s.paused = D.PAUSE_CHIFFRE;
       log(s, `Un chiffre perdu. ${dg} chiffres restent.`, 'jalon');
+      trace(s, 'chiffre', { digits: dg });
       ev.push({ type: 'chiffre', digits: dg });
     }
     s.digits = dg;
@@ -233,14 +252,19 @@
     if (s.ms.fin === null && D.sites.every(d => d.mesure || s.sites[d.id].state === 'eteint' || s.sites[d.id].state === 'coupe')) {
       s.ms.fin = s.t;
       log(s, 'Plus rien à démanteler sur cette carte.', 'jalon');
+      trace(s, 'fin');
       ev.push({ type: 'fin' });
     }
     return ev;
   }
 
   // Hors-ligne : seule la régénération avance (plafond 12 h), et le Consentement dérive.
+  // Sert aussi au temps passé onglet caché : la partie ne tourne pas pendant ce temps.
   function applyOffline(s, elapsed) {
-    elapsed = Math.max(0, Math.min(elapsed, D.OFFLINE_CAP));
+    elapsed = Math.max(0, elapsed || 0);
+    s.horsLigne = (s.horsLigne || 0) + elapsed;
+    if (elapsed >= 30) trace(s, 'absence', { duree: Math.round(elapsed) });
+    elapsed = Math.min(elapsed, D.OFFLINE_CAP);
     if (elapsed < 5) return null;
     const T0 = T(s);
     for (const d of D.sites) {
@@ -249,8 +273,122 @@
     }
     s.Co += Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * elapsed);
     const dT = T(s) - T0;
-    if (dT > 0.005) log(s, `Pendant votre absence (${fmtDur(elapsed)}), la terre a regagné ${dT.toFixed(1).replace('.', ',')} point${dT >= 2 ? 's' : ''}.`, 'ok');
+    if (dT >= 0.05) log(s, `Pendant votre absence (${fmtDur(elapsed)}), la terre a regagné ${dT.toFixed(1).replace('.', ',')} point${dT >= 2 ? 's' : ''}.`, 'ok');
     return { elapsed, dT };
+  }
+
+  // --- sauvegarde ---
+  // Réconcilie un état enregistré avec les données actuelles : les sites ajoutés depuis la sauvegarde
+  // partent de leur état initial, les sites retirés sont ignorés, les champs nouveaux prennent leur
+  // valeur par défaut. Renvoie null si la sauvegarde est illisible.
+  const ETATS_SITE = ['actif', 'chantier', 'eteint', 'coupe', 'fait'];
+  const ETATS_HOPITAL = ['alimente', 'coupe', 'autonome'];
+  function migrer(save) {
+    if (!save || typeof save !== 'object' || save.v !== 1) return null;
+    if (!save.sites || typeof save.sites !== 'object' || !(Number.isFinite(save.E) && save.E > 0)) return null;
+    const s = create();
+    for (const k of Object.keys(s)) {
+      if (k === 'sites' || k === 'ms' || !(k in save)) continue;
+      const attendu = s[k] === null ? 'object' : typeof s[k];
+      if (save[k] !== null && typeof save[k] !== attendu) continue;   // type inattendu : valeur par défaut
+      if (Array.isArray(s[k]) && !Array.isArray(save[k])) continue;
+      s[k] = save[k];
+    }
+    if (save.ms && typeof save.ms === 'object') {
+      for (const k of Object.keys(s.ms)) if (Number.isFinite(save.ms[k])) s.ms[k] = save.ms[k];
+    }
+    for (const id of Object.keys(s.sites)) {
+      const st = save.sites[id];
+      if (st && ETATS_SITE.includes(st.state)) {
+        s.sites[id] = { state: st.state, progress: Number(st.progress) || 0, regen: Number(st.regen) || 0 };
+      }
+    }
+    if (!ETATS_HOPITAL.includes(s.hopital)) s.hopital = 'alimente';
+    // Mains engagées : recalculées d'après les chantiers en cours et leurs coûts actuels.
+    s.Meng = D.sites.reduce((a, d) => a + (s.sites[d.id].state === 'chantier' ? d.M : 0), 0);
+    if (!('coMin' in save)) s.coMin = s.Co;
+    if (!('debut' in save)) s.debut = null;
+    return s;
+  }
+
+  // --- rapport de session (playtests) ---
+  const LIMITE_RELANCES = 20 * 60;   // le test secondaire du §14 compte les relances des 20 premières minutes
+  function nomDe(id) { return (defs[id] || noeuds[id] || { nom: id }).nom; }
+
+  function rapport(s, version) {
+    const relancesJoueur = s.chrono.filter(e => e.type === 'relance' && !e.auto);
+    return {
+      version: version || null,
+      versions: s.versions,
+      debut: s.debut ? new Date(s.debut).toISOString() : null,
+      chronologieComplete: s.debut !== null,
+      tempsJeu: Math.round(s.t),
+      horsLigne: Math.round(s.horsLigne || 0),
+      stabilisation: s.ms.stabilise,
+      premierChiffre: s.ms.chiffre,
+      carteVidee: s.ms.fin,
+      relances20min: relancesJoueur.filter(e => e.t <= LIMITE_RELANCES).length,
+      relances: s.relances,
+      relancesConseil: s.relancesAuto,
+      coupures: s.chrono.filter(e => e.type === 'coupure').length,
+      casse: s.X,
+      consentementMin: Math.round(s.coMin),
+      empreinte: Math.round(s.E),
+      chiffres: s.digits,
+      terreRendue: Math.round(T(s) * 10) / 10,
+      plancher: s.plancher,
+      chrono: s.chrono,
+    };
+  }
+
+  function ligneChrono(e) {
+    switch (e.type) {
+      case 'engage': return `Chantier ouvert : ${nomDe(e.id)}`;
+      case 'ferme': return `${defs[e.id] && defs[e.id].mesure ? 'Fait' : 'Fermé'} : ${nomDe(e.id)}`;
+      case 'coupure': return `Coupure : ${nomDe(e.id)}, ${fmt(e.casse)} personnes`;
+      case 'reconversion': return `Reconversion de ${fmt(e.n)} personnes`;
+      case 'relance': return e.auto ? 'Relance par le Conseil, sans le joueur' : 'Relance';
+      case 'stabilise': return 'Le nombre a cessé de monter';
+      case 'chiffre': return `Chiffre perdu, ${e.digits} chiffres restent`;
+      case 'fin': return 'Plus rien à démanteler sur cette carte';
+      case 'absence': return `Absence de ${fmtDur(e.duree)}`;
+      default: return e.type;
+    }
+  }
+
+  // Texte à copier : un résumé lisible, la chronologie, puis les données brutes en JSON.
+  function rapportTexte(s, version) {
+    const r = rapport(s, version);
+    const quand = (sec) => sec === null ? 'pas encore' : fmtDur(sec);
+    const pad = (n) => String(n).padStart(2, '0');
+    let debut = 'date inconnue';
+    if (s.debut) { const d = new Date(s.debut); debut = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} à ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+    const autres = r.versions.filter(v => v !== r.version);
+    const lignes = [
+      'Décroissance, rapport de session',
+      `Version ${r.version || 'inconnue'}${autres.length ? `, partie commencée en ${autres[0]}` : ''}`,
+      `Partie commencée le ${debut}, temps de jeu ${fmtDur(r.tempsJeu)}, hors ligne ${fmtDur(r.horsLigne)}`,
+      '',
+      `- Le nombre a cessé de monter : ${quand(r.stabilisation)}`,
+      `- Premier chiffre perdu : ${quand(r.premierChiffre)}`,
+      `- Relances dans les 20 premières minutes : ${r.relances20min}`,
+      `- Relances au total : ${r.relances}, plus ${r.relancesConseil} par le Conseil`,
+      `- Coupures : ${r.coupures}, Casse : ${fmt(r.casse)} personne${r.casse > 1 ? 's' : ''}`,
+      `- Consentement minimum : ${r.consentementMin} %`,
+      `- Empreinte : ${fmt(r.empreinte)}`,
+      `- Terre rendue : ${String(r.terreRendue).replace('.', ',')} %`,
+      `- Plancher irréductible : ${fmt(r.plancher)}`,
+      `- Carte vidée : ${quand(r.carteVidee)}`,
+    ];
+    if (!r.chronologieComplete) lignes.push('- Partie commencée avant le rapport : chronologie incomplète');
+    lignes.push('', 'Chronologie', '```');
+    for (const e of r.chrono) lignes.push(`${fmtDur(e.t).padStart(11)}  ${ligneChrono(e)}`);
+    if (!r.chrono.length) lignes.push('(vide)');
+    lignes.push('```', '', '```json');
+    const champs = Object.entries(r).filter(([k]) => k !== 'chrono').map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)}`);
+    champs.push(`  "chrono": [${r.chrono.length ? '\n' + r.chrono.map(e => '    ' + JSON.stringify(e)).join(',\n') + '\n  ' : ''}]`);
+    lignes.push(`{\n${champs.join(',\n')}\n}`, '```');
+    return lignes.join('\n');
   }
 
   // --- formats ---
@@ -280,7 +418,7 @@
   const Engine = {
     D, defs, noeuds, create, tick, engage, canEngage, coupuresSi, reconvertir, relancer, applyOffline,
     gSites, gEff, kRate, relanceActive, T, Tmax, chantiersActifs, digitsOf, alimentants, dependants, estAlimente,
-    fmt, fmtDur, fmtSci,
+    fmt, fmtDur, fmtSci, migrer, rapport, rapportTexte,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Engine;
   else root.Engine = Engine;
