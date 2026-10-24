@@ -89,6 +89,16 @@ test('seules les relances du joueur dans les 20 premières minutes comptent pour
   assert.strictEqual(r.relancesConseil, 1);
 });
 
+test('le plancher double à chaque relance et se recalcule au chargement', () => {
+  const s = E.create();
+  for (let i = 0; i < 3; i++) { s.t += 100; E.relancer(s, false); }
+  assert.ok(Math.abs(s.plancher - 19.2) < 1e-9, String(s.plancher));
+  assert.strictEqual(E.digitsOf(s.plancher), 2);          // trois relances : un chiffre de moins à perdre
+  const ancienne = allerRetour(E.create());
+  Object.assign(ancienne, { plancher: 2544000, relances: 1, relancesAuto: 0 });   // barème d'avant la décision
+  assert.ok(Math.abs(E.migrer(ancienne).plancher - 4.8) < 1e-9);
+});
+
 test('le temps hors ligne s\'additionne et les longues absences sont tracées', () => {
   const s = E.create();
   E.applyOffline(s, 100);

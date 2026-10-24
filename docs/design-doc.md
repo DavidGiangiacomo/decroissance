@@ -61,7 +61,7 @@ Choisir un site sur la carte
 
 | Ressource | Rôle | Trajectoire sur la partie | Affichage |
 |---|---|---|---|
-| **Empreinte** (E) | ce qui reste à démanteler | 1,0·10⁹ → plancher ≈ 2,4·10⁶ | toujours en chiffres pleins, jamais en notation scientifique |
+| **Empreinte** (E) | ce qui reste à démanteler | 1,0·10⁹ → plancher ≈ 2,4, un seul chiffre | toujours en chiffres pleins, jamais en notation scientifique |
 | **Capacité** (K) | énergie, machines, capitaux mobilisables | dérivée de E : décroît avec elle | flux + stock |
 | **Mains** (M) | travail humain qualifié disponible | 0 → ~40 000, plafond dur | entier, à échelle humaine |
 | **Terre rendue** (T) | hectares, cours d'eau, air | 0 → 100 %, linéaire | pourcentage + carte |
@@ -149,7 +149,7 @@ En haut de l'écran, dès la première seconde, un bouton lisible : **Relancer**
 
 - Il fonctionne. Vraiment. Il rend `g` positif, K explose, les chantiers deviennent triviaux, les compteurs montent, la notation scientifique apparaît, la musique reprend.
 - Il est **optimal à court terme** dans à peu près toutes les situations. Relancer 4 minutes pour financer trois chantiers difficiles est un bon calcul, et le jeu ne le punit pas immédiatement.
-- Chaque relance rehausse le plancher irréductible de façon permanente.
+- Chaque relance rehausse le plancher irréductible de façon permanente : il double. Trois relances le font passer à deux chiffres, et coûtent donc un chiffre perdu sur la partie.
 
 Trois usages, trois lectures :
 
@@ -165,19 +165,21 @@ Trois usages, trois lectures :
 
 ### Rythme cible
 
-| Acte | Temps cumulé | Empreinte | Chiffres perdus | Terre rendue | Ce qu'on perd |
+| Acte | Temps cumulé | Empreinte | Chiffres perdus dans l'acte | Terre rendue | Ce qu'on perd |
 |---|---|---|---|---|---|
-| I — L'inventaire | 0–20 min | 1,0·10⁹ → 6·10⁸ | 0 | 4 % | l'illusion que c'est simple |
-| II — Le réseau | 20–55 min | 6·10⁸ → 8·10⁷ | 1 | 22 % | l'électricité abondante |
-| III — Les gens | 55–110 min | 8·10⁷ → 6·10⁶ | 2 | 55 % | la main-d'œuvre disponible |
-| IV — Le legs | 110–170 min | 6·10⁶ → 3·10⁵ | 2 | 82 % | l'idée de terminer |
-| V — Rendre | 170–205 min | 3·10⁵ → plancher | 2 | 100 % | le reste |
+| I — L'inventaire | 0–20 min | 1,0·10⁹ → 6·10⁸ | 1 | 4 % | l'illusion que c'est simple |
+| II — Le réseau | 20–55 min | 6·10⁸ → 1,1·10⁷ | 1 | 22 % | l'électricité abondante |
+| III — Les gens | 55–110 min | 1,1·10⁷ → 6·10⁴ | 3 | 55 % | la main-d'œuvre disponible |
+| IV — Le legs | 110–170 min | 6·10⁴ → 60 | 3 | 82 % | l'idée de terminer |
+| V — Rendre | 170–205 min | 60 → plancher ≈ 2,4 | 1 | 100 % | le reste |
+
+Neuf chiffres perdus au total, un toutes les 22 min environ : vers 12, 34, 56, 78, 100, 122, 144, 166 et 188 min. Les relances en retirent un, environ toutes les trois.
 
 ### Invariants d'équilibrage
 
 À ne jamais casser au retuning :
 
-- **I1** — Un chiffre perdu toutes les 15 à 20 min en moyenne, **jamais plus de 25 min sans**. C'est l'événement de récompense principal, il doit être rythmé comme un déblocage d'upgrade.
+- **I1** — Un chiffre perdu toutes les 20 à 25 min en moyenne, **jamais plus de 25 min sans**. Depuis 1,0·10⁹, on ne peut perdre que neuf chiffres : sur 205 min, la moyenne ne descend pas sous 20 min. C'est l'événement de récompense principal, il doit être rythmé comme un déblocage d'upgrade.
 - **I2** — Aucun multiplicateur permanent ne dépasse ×2, cumul compris. Le joueur ne devient jamais puissant.
 - **I3** — Le coût marginal d'un point d'Empreinte croît de façon monotone du début à la fin. **La courbe de difficulté du jeu monte quand la courbe du genre descend.**
 - **I4** — La Casse est irréversible, toujours affichée, jamais rattrapable. Aucune décision ne l'efface.
@@ -202,13 +204,13 @@ Le message est mécanique, jamais énoncé : *ce qui répare marche mieux quand 
 
 **Acte I — L'inventaire.** L'écran affiche 1,0·10⁹ et **le nombre monte**. Le joueur ferme des sites et le nombre continue de monter. Premier vrai objectif du jeu : amener `g` à zéro. Quand le compteur se stabilise pour la première fois — pas quand il baisse, quand il *s'arrête* — le jeu marque un temps d'arrêt de trois secondes. C'est la première récompense, et elle est en creux.
 
-**Acte II — Le réseau.** Le graphe de dépendances s'ouvre. Première coupure quasi certaine, première Casse, premier compteur qui ne redescendra jamais. Le jeu ne commente pas. Premier chiffre perdu à l'Empreinte, vers la 40ᵉ minute : la carte s'éteint sur toute une région et une couche sonore disparaît.
+**Acte II — Le réseau.** Le graphe de dépendances s'ouvre. Première coupure quasi certaine, première Casse, premier compteur qui ne redescendra jamais. Le jeu ne commente pas. Deuxième chiffre perdu à l'Empreinte, vers la 35ᵉ minute : la carte s'éteint sur toute une région et une couche sonore disparaît.
 
 **Acte III — Les gens.** Les Mains deviennent le goulot. Le panneau de reconversion s'ouvre, avec des durées en semaines fictives et des noms. Le Consentement devient volatil. C'est l'acte où le bouton Croissance cesse d'être une curiosité et devient une solution raisonnable.
 
-**Acte IV — Le legs.** Le compteur ralentit brutalement, et le joueur comprend pourquoi : sous 6·10⁶, l'essentiel de ce qui reste ne se démantèle pas. La Garde s'ouvre. Le verbe change. On passe des chantiers aux siècles, et le jeu affiche pour la première fois des durées qui dépassent celles de toute civilisation connue.
+**Acte IV — Le legs.** Le compteur ralentit brutalement, et le joueur comprend pourquoi : sous 6·10⁴, l'essentiel de ce qui reste ne se démantèle pas. La Garde s'ouvre. Le verbe change. On passe des chantiers aux siècles, et le jeu affiche pour la première fois des durées qui dépassent celles de toute civilisation connue.
 
-**Acte V — Rendre.** Capacité résiduelle quasi nulle, chaque geste compte, tout est manuel. La carte est presque verte. Le compteur descend par centaines. Et il s'arrête sur le plancher, qui n'est pas zéro et ne le sera jamais.
+**Acte V — Rendre.** Capacité résiduelle quasi nulle, chaque geste compte, tout est manuel. La carte est presque verte. Le compteur descend par dizaines, puis par unités. Et il s'arrête sur le plancher, qui n'est pas zéro et ne le sera jamais.
 
 ---
 
@@ -229,7 +231,7 @@ Sur l'écran final, l'Empreinte est bloquée au plancher. Trois issues, aucune p
 **Écran unique**, trois zones :
 
 - **Gauche (60 %) — la carte.** Sites en trois états : *actif* (chaud, animé), *éteint* (gris, inerte, encore là), *rendu* (vert, la végétation revient par étapes visibles). Les liens du graphe sont dessinés et s'éteignent avec les sites.
-- **Haut — le compteur.** L'Empreinte en très grand, en chiffres pleins. **La perte d'un chiffre est une animation dédiée** : le nombre se recentre, l'écran se resserre d'un cran. C'est le seul moment spectaculaire du jeu, et il arrive neuf fois.
+- **Haut — le compteur.** L'Empreinte en très grand, en chiffres pleins. **La perte d'un chiffre est une animation dédiée** : le nombre se recentre, l'écran se resserre d'un cran. C'est le seul moment spectaculaire du jeu, et il arrive neuf fois au plus, une fois de moins environ toutes les trois relances.
 - **Droite (40 %) — chantiers, décisions, Mains, Garde, Casse.** La Casse est en permanence à l'écran, en haut, sans possibilité de la masquer.
 
 **Le son est la vraie barre de progression.** Une nappe composée de couches — trafic, turbines, alarmes, ventilation, fret — et chaque chiffre perdu **retire une couche** et en ajoute une autre : vent, oiseaux, eau, voix. En fin de partie, il ne reste que l'ambiant. Un joueur qui coupe le son perd la moitié du jeu ; c'est assumé.
@@ -279,7 +281,7 @@ Test secondaire, presque aussi important : **combien de fois le testeur appuie s
 
 ## À trancher ensuite
 
-1. **Géographie fictive ou réelle ?** Nommer de vraies centrales ancre le propos mais expose le jeu à la lecture pamphlétaire (R1) et à des ennuis. Recommandation : pays fictif, sites plausibles, aucune référence nommée.
-2. **Valeur du plancher irréductible** et son barème de rehaussement par relance. C'est le paramètre qui décide de tout l'équilibrage de l'acte V.
+1. **Géographie fictive ou réelle ?** Nommer de vraies centrales ancre le propos mais expose le jeu à la lecture pamphlétaire (R1) et à des ennuis. Recommandation : pays fictif, sites plausibles, aucune référence nommée. **Tranché** : pays fictif, l'Ostrane.
+2. **Valeur du plancher irréductible** et son barème de rehaussement par relance. C'est le paramètre qui décide de tout l'équilibrage de l'acte V. **Tranché** (issue #4) : plancher ≈ 2,4, doublé à chaque relance.
 3. **Le bouton Croissance : visible dès t=0 ou débloqué à l'acte II ?** Dès t=0 est plus fort thématiquement, plus risqué en tutoriel.
-4. **Prototyper le MVP §14 avant toute autre chose** — et le tester à côté du MVP *Langue morte* pour choisir lequel des deux concepts va au bout.
+4. **Prototyper le MVP §14 avant toute autre chose** — et le tester à côté du MVP *Langue morte* pour choisir lequel des deux concepts va au bout. **Fait** : MVP joué, go pour Décroissance le 2026-10-24 (issue #13).

@@ -7,12 +7,12 @@
     K0: 6,              // Capacité/s à E = E0
     KEXP: 0.6,           // K/s = K0 × (E/E0)^KEXP
     KCAP: 900,           // stock de Capacité maximal
-    PLANCHER0: 2_400_000,
+    PLANCHER0: 2.4,         // plancher irréductible : un seul chiffre (issue #4), doublé à chaque relance
     TICK: 0.1,           // 10 Hz
     OFFLINE_CAP: 12 * 3600,
 
     // Bouton Croissance
-    RELANCE: { dur: 90, g: 4.0, kMul: 4, speedMul: 2, co: 3, plancherMul: 1.06, autoSeuil: 20, autoCooldown: 240 },
+    RELANCE: { dur: 90, g: 4.0, kMul: 4, speedMul: 2, co: 3, plancherMul: 2, autoSeuil: 20, autoCooldown: 240 },
 
     // Reconversion des déplacés en Mains
     RECONV: { batch: 300, dur: 45, co: 2 },
