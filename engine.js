@@ -183,7 +183,7 @@
     s.relanceUntil = s.t + D.RELANCE.dur;
     if (auto) { s.relancesAuto++; s.autoRelanceAt = s.t; log(s, 'Le Conseil a relancé la croissance sans vous.', 'casse'); }
     else { s.relances++; log(s, 'Relance.', 'relance'); }
-    s.plancher = Math.round(s.plancher * D.RELANCE.plancherMul);
+    s.plancher = s.plancher * D.RELANCE.plancherMul;
     s.Co = Math.min(100, s.Co + D.RELANCE.co);
     trace(s, 'relance', { auto: !!auto });
     return { type: 'relance', auto: !!auto };
@@ -307,6 +307,8 @@
     // Mains engagées : recalculées d'après les chantiers en cours et leurs coûts actuels.
     s.Meng = D.sites.reduce((a, d) => a + (s.sites[d.id].state === 'chantier' ? d.M : 0), 0);
     if (!('coMin' in save)) s.coMin = s.Co;
+    // Le plancher se déduit des relances : une partie enregistrée avec un autre barème reprend le barème actuel.
+    s.plancher = D.PLANCHER0 * Math.pow(D.RELANCE.plancherMul, s.relances + s.relancesAuto);
     if (!('debut' in save)) s.debut = null;
     return s;
   }
