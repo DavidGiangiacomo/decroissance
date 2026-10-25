@@ -206,6 +206,8 @@ Le message est mécanique, jamais énoncé : *ce qui répare marche mieux quand 
 
 **Acte II — Le réseau.** Le graphe de dépendances s'ouvre. Première coupure quasi certaine, première Casse, premier compteur qui ne redescendra jamais. Le jeu ne commente pas. Deuxième chiffre perdu à l'Empreinte, vers la 35ᵉ minute : la carte s'éteint sur toute une région et une couche sonore disparaît.
 
+*Prototype : l'acte II tel que validé et réglé est décrit dans [acte-2.md](acte-2.md).*
+
 **Acte III — Les gens.** Les Mains deviennent le goulot. Le panneau de reconversion s'ouvre, avec des durées en semaines fictives et des noms. Le Consentement devient volatil. C'est l'acte où le bouton Croissance cesse d'être une curiosité et devient une solution raisonnable.
 
 **Acte IV — Le legs.** Le compteur ralentit brutalement, et le joueur comprend pourquoi : sous 6·10⁴, l'essentiel de ce qui reste ne se démantèle pas. La Garde s'ouvre. Le verbe change. On passe des chantiers aux siècles, et le jeu affiche pour la première fois des durées qui dépassent celles de toute civilisation connue.

@@ -41,6 +41,11 @@
           <marker id="fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" class="fleche"/>
           </marker>
+          <radialGradient id="ombre-region">
+            <stop offset="0" stop-color="#05060a" stop-opacity=".82"/>
+            <stop offset=".7" stop-color="#05060a" stop-opacity=".5"/>
+            <stop offset="1" stop-color="#05060a" stop-opacity="0"/>
+          </radialGradient>
         </defs>
         <rect class="mer" x="0" y="0" width="600" height="520"/>
         <path class="terre" d="M70,50 L200,32 L350,46 L520,34 L572,120 L556,262 L578,402 L522,490 L422,506 C400,486 380,474 360,470 C330,462 290,456 260,452 C230,449 200,448 180,445 C150,440 120,432 100,418 C80,400 66,386 60,370 C50,346 44,322 46,300 C50,260 60,220 70,190 Z"/>
@@ -51,9 +56,11 @@
         <text class="nom-eau nom-mer" x="120" y="480">mer d'Ostrane</text>
         <text class="nom-region" x="470" y="190">bassin de Cherbaix</text>
         <g class="ville"><rect x="276" y="136" width="8" height="8"/><text x="270" y="144" text-anchor="end">Valdrance</text></g>
-        <g class="ville"><rect x="246" y="446" width="8" height="8"/><text x="238" y="452" text-anchor="end">Orvenne</text></g>
+        <g class="ville"><rect x="246" y="446" width="8" height="8"/><text x="246" y="472" text-anchor="middle">Orvenne</text></g>
         <g class="ville"><rect x="98" y="412" width="8" height="8"/><text x="112" y="420">Méraud</text></g>
         <g class="ville"><rect x="452" y="248" width="8" height="8"/><text x="446" y="256" text-anchor="end">Cherbaix</text></g>
+        <g id="regions"></g>
+        <g id="reseau-lignes"></g>
         <g id="liens"></g>
         <g id="sites"></g>
       </svg>
@@ -63,6 +70,8 @@
         <span><i class="pastille eteint"></i> éteint</span>
         <span><i class="pastille rendu"></i> rendu</span>
         <span><i class="pastille coupe"></i> coupé</span>
+        <span class="leg-acte2" hidden><i class="pastille deleste"></i> délesté</span>
+        <span class="leg-acte2" hidden><i class="pastille pollue"></i> sol pollué</span>
       </div>
     </section>
 
@@ -88,6 +97,22 @@
           <div class="res-val"><span id="co">100</span><small> %</small></div>
           <div class="barre"><i id="co-barre" style="width:100%"></i></div>
         </div>
+      </section>
+
+      <section id="reseau" class="reseau" hidden>
+        <div class="reseau-tete">
+          <h2>Réseau</h2>
+          <span id="reseau-etat" class="reseau-etat"></span>
+        </div>
+        <div class="reseau-chiffres">
+          <span>Production <b id="reseau-prod">0</b> MW</span>
+          <span>Demande <b id="reseau-dem">0</b> MW</span>
+          <span>Marge <b id="reseau-marge">0</b> MW</span>
+        </div>
+        <div class="jauge" title="La barre pleine est la demande ; la partie hachurée, l'électricité en trop, qui relance la croissance.">
+          <i id="reseau-barre"></i>
+        </div>
+        <p class="reseau-ordre">Sous zéro, le réseau déleste dans cet ordre : industrie, commerces, villes, puis eau et santé.</p>
       </section>
 
       <section class="mains">
@@ -122,7 +147,7 @@
   <div id="intro" class="voile">
     <div class="carton">
       <h1>Décroissance</h1>
-      <p class="petit muted">Prototype — acte I, l'inventaire</p>
+      <p class="petit muted">Prototype — actes I et II, l'inventaire et le réseau</p>
       <p>Vous héritez. Pas d'une conquête, d'une passation : l'Ostrane, pays industriel de taille moyenne — une côte, un fleuve, un bassin minier, deux métropoles — et un mandat, de durée non précisée, pour le démanteler proprement.</p>
       <p>Vous n'avez ni nom ni parti. Vous avez un inventaire, une carte, et le droit d'arbitrer. Personne ne vous demandera si c'est une bonne idée. La question est la manière.</p>
       <p class="petit">L'Empreinte est en haut. Elle monte. Chaque site fermé libère des gens à reconvertir, et la carte indique ce qu'un site alimente. Le son fait partie du jeu.</p>
@@ -133,6 +158,11 @@
       </div>
       <p id="intro-absence" class="petit muted" hidden></p>
     </div>
+  </div>
+
+  <div id="carton-acte" class="carton-acte" hidden aria-live="polite">
+    <div class="carton-acte-num" id="carton-acte-num">Acte II</div>
+    <div class="carton-acte-titre" id="carton-acte-titre">Le réseau</div>
   </div>
 
   <div id="rapport" class="voile" hidden>
