@@ -19,6 +19,7 @@
   --resserre: 0px;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; background: var(--fond); color: var(--texte); font-family: var(--sans); font-size: 14px; }
 button { font: inherit; color: inherit; }
 .muted { color: var(--muted); }
@@ -209,6 +210,67 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .toasts { position: fixed; left: 50%; top: 120px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 5; pointer-events: none; }
 .toast { background: #3b1f1b; color: #f6d9d3; border: 1px solid var(--rouge); padding: 10px 16px; border-radius: 6px; font-size: 13px; animation: toast 6s forwards; }
 @keyframes toast { 0% { opacity: 0; transform: translateY(-8px); } 8% { opacity: 1; transform: translateY(0); } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ---- acte II : le réseau ---- */
+.futur { display: none; }
+.pastille.deleste { background: transparent; border: 1.5px solid var(--rouge); }
+.pastille.pollue { background: #8a5a2b; }
+
+/* carte : régions éteintes, lignes du réseau, nœuds */
+.ombre { opacity: 0; transition: opacity 4s ease; pointer-events: none; }
+.ombre.eteinte { opacity: 1; }
+.ligne { stroke: #6b737d; stroke-width: 1; opacity: .45; fill: none; transition: opacity .8s, stroke .8s; }
+.ligne.prod { stroke: var(--chaud); opacity: .6; }
+.ligne.morte { opacity: .07; }
+.ligne.coupee { stroke: var(--rouge); stroke-dasharray: 3 3; opacity: .8; }
+.ligne.menace { stroke: var(--rouge); opacity: 1; stroke-width: 1.6; stroke-dasharray: 6 3; animation: menace 1s linear infinite; }
+.poste rect { fill: #2a2f36; stroke: #7d8791; stroke-width: 1.2; }
+.poste text { fill: #8d9199; font-size: 9.5px; letter-spacing: .06em; }
+.noeud .lumiere { fill: #f3d58a; transition: fill 1s, opacity 1s; }
+.noeud.ville .halo-ville { fill: #f3d58a; opacity: .08; }
+.noeud.ville.deleste .lumiere { fill: #3b3e44; }
+.noeud.ville.deleste .halo-ville { fill: var(--rouge); opacity: .14; }
+.noeud.deleste .fond, .noeud.prive .fond { fill: #5a1f19; stroke: var(--rouge); }
+.noeud .glyphe { fill: #d8d3c8; }
+.noeud.barrage .fond { fill: #23303a; stroke: #6a8fb0; }
+.noeud.barrage .glyphe { fill: #9cc3e0; }
+.noeud.menace .fond, .noeud.ville.menace .halo-ville { stroke: var(--rouge); stroke-width: 2; fill: #5a1f19; opacity: 1; }
+.site.pollue .disque { fill: #6b4a2a; stroke: #a0703c; }
+.site.pollue .vegetal { opacity: 0 !important; }
+.site.sans-apport .disque { fill: #2b2620; stroke: #b08a50; }
+.site.sans-apport .halo { opacity: 0; animation: none; }
+.site.menace .disque { stroke: var(--rouge); stroke-width: 3; }
+
+/* panneau : la jauge du réseau */
+.reseau { border: 1px solid var(--bord); border-radius: 6px; padding: 10px 12px; background: var(--panneau-2); display: flex; flex-direction: column; gap: 6px; }
+.reseau-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.reseau-tete h2 { margin: 0; }
+.reseau-etat { font-size: 12px; color: var(--muted); }
+.reseau-etat.rebond { color: var(--chaud-2); }
+.reseau-etat.tendu { color: var(--texte); }
+.reseau-chiffres { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); }
+.reseau-chiffres b { font-family: var(--mono); font-weight: 500; color: var(--texte); font-variant-numeric: tabular-nums; }
+.jauge { height: 10px; border-radius: 3px; overflow: hidden; background: repeating-linear-gradient(135deg, rgba(224,164,88,.45) 0 4px, rgba(224,164,88,.12) 4px 8px); }
+.jauge i { display: block; height: 100%; background: #9aa3ad; transition: width .5s ease; }
+.jauge.deficit i { background: var(--rouge); }
+.reseau-ordre { margin: 0; font-size: 11.5px; color: var(--muted); }
+
+/* cartes de chantier de l'acte II */
+.chantier .mw { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.chantier .mw b { color: var(--texte); font-weight: 500; }
+.chantier .apercu { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.chantier .apercu.danger { color: #f0a49c; }
+.chantier .apercu.danger::before { content: "⚠ "; }
+.chantier .action { flex-wrap: wrap; }
+.btn.vite { border-color: #8a6a3a; color: var(--chaud-2); }
+.chantier .vite-note { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); }
+
+/* carton d'ouverture d'un acte */
+.carton-acte { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(10,11,14,.78); pointer-events: none; animation: carton-acte 4s ease forwards; }
+.carton-acte[hidden] { display: none; }
+.carton-acte-num { font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+.carton-acte-titre { font-size: clamp(28px, 5vw, 46px); letter-spacing: .06em; color: var(--texte); }
+@keyframes carton-acte { 0% { opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
 
 @media (max-width: 900px) {
   .app { height: auto; }

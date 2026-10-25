@@ -1,6 +1,6 @@
-# Décroissance — MVP (acte I)
+# Décroissance — prototype (actes I et II)
 
-Prototype falsifiable du §14 du [design doc](docs/design-doc.md) : un seul écran, l'acte I, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud).
+Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md).
 
 Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `python3 -m http.server` puis http://localhost:8000). Le son est synthétisé en WebAudio, il n'y a aucun fichier audio.
 
@@ -12,7 +12,7 @@ Le workflow `.github/workflows/pages.yml` lance `node tools/build-site.js`, qui 
 
 Prérequis, une seule fois : dans les réglages du dépôt, *Pages → Build and deployment → Source* doit être sur **GitHub Actions**.
 
-## Ce que le MVP contient
+## L'acte I : ce que le MVP contient
 
 - **L'Empreinte en chiffres pleins, en hausse au lancement** (+2,4 %/min). Elle a son propre taux de croissance `g`, somme des contributions des sites encore actifs. L'objectif de l'acte I est de la faire *s'arrêter*, pas de la faire baisser.
 - **8 sites** démantelables une fois chacun, plus une **mesure** (autonomie de l'hôpital) qui ne retire rien et ajoute même un peu d'Empreinte.
@@ -26,30 +26,44 @@ Prérequis, une seule fois : dans les réglages du dépôt, *Pages → Build and
 - Sauvegarde JSON en `localStorage`, tick à 10 Hz, état en objet plat (`engine.js` est pur et tourne aussi en node). Une partie enregistrée avec une autre liste de sites se reprend quand même ; une sauvegarde illisible mène à une nouvelle partie, avec une copie gardée de côté. Un onglet caché compte comme du temps hors ligne.
 - **Rapport de session** : le bouton « rapport » du pied de page copie les temps des deux moments, les relances des 20 premières minutes, le Consentement minimum, la version jouée et toute la chronologie de la partie, en texte suivi d'un bloc JSON.
 
+## L'acte II : le réseau
+
+Détail, contenu et réglages dans [docs/acte-2.md](docs/acte-2.md).
+
+- **Le réseau électrique devient une jauge** : production, demande et marge, sous les ressources. Sept nouveaux sites, deux mesures, et des nœuds qui ne se démantèlent pas (le barrage, les deux villes, l'eau, le pompage, l'hôpital d'Orvenne), tous reliés au poste de la Sère sur la même carte.
+- **Marge positive : rebond.** L'électricité en trop relance la croissance, jusqu'à 1 %/min quand toute la production est en trop. Le compteur remonte dès l'ouverture de l'acte.
+- **Marge négative : délestage**, dans un ordre fixe et affiché : industrie, commerces, villes, puis eau et santé. Un site délesté perd la moitié de son Empreinte, ses employés passent dans la Casse, et ses restes se démantèlent ensuite au coût normal.
+- **Approvisionnements** : la raffinerie fournit le fioul de la centrale thermique, la chimie le chlore de l'eau potable d'Orvenne, sauf si la filtration UV est faite. Chaque carte dit, avant le lancement, ce qu'il ferait au réseau.
+- **Démolir vite** : l'aciérie et la chimie peuvent se démolir en deux fois moins de temps, de Capacité et de Mains, au prix d'une pollution (de la Casse et un sol qui ne se régénère pas).
+- **Deuxième chiffre perdu** : la région la plus démantelée s'éteint sur la carte, le bourdonnement du réseau s'arrête, la rivière arrive. Chaque chiffre suivant éteint une autre région.
+- Un panneau de fin d'acte et le rapport de session reprennent les données de l'acte : deuxième chiffre, coupures et délestages, démolitions qui ont pollué, régions éteintes.
+
 ## Fichiers
 
 | Fichier | Rôle |
 |---|---|
 | `docs/design-doc.md` | le design doc complet, référence des sections citées ici et dans les issues |
-| `data.js` | toutes les valeurs de réglage : sites, graphe, constantes |
-| `engine.js` | moteur pur (création, tick, engagement, coupures, relance, hors-ligne, formats) |
+| `docs/acte-2.md` | l'acte II tel que validé et réglé : règles, contenu, écarts, rythme mesuré |
+| `data.js` | toutes les valeurs de réglage : sites, graphe, réseau, régions, constantes |
+| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, relance, hors-ligne, formats) |
 | `audio.js` | couches sonores synthétisées et sons ponctuels |
 | `main.js` | rendu, carte SVG, sauvegarde, boucle |
 | `index.html`, `style.css` | l'écran unique |
 | `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur |
 | `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
-| `tools/test.js` | tests du moteur : reprise des sauvegardes, rapport de session |
+| `tools/test.js` | tests du moteur : acte II, reprise des sauvegardes, rapport de session |
 | `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
 
 ```
 node tools/simulate.js prudent 10     # bot prudent, 10 s de réaction par action
-node tools/simulate.js pressé 10      # ignore les avertissements de coupure
+node tools/simulate.js pressé 10      # ignore les avertissements de coupure et la jauge du réseau
+node tools/simulate.js vite 10        # prudent, mais démolit vite à l'acte II
 node tools/simulate.js relance-1 10   # une relance à 2 min
 node tools/simulate.js croissance     # relance en continu
 node tools/test.js                    # tests du moteur
 ```
 
-Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min. Un humain sera plus lent d'un facteur 1,5 environ, soit une session de 15 à 20 min.
+Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre et réseau démantelé vers 28 min. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux actes.
 
 Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`.
 
@@ -59,6 +73,7 @@ Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.enga
 2. Noter la réaction à deux instants : quand le compteur cesse de monter, et quand il perd son premier chiffre. Si aucun des deux ne fait rien au testeur, le concept ne tient pas.
 3. Récupérer le rapport de session : bouton « rapport » en pied de page, puis « Copier le rapport ». Il compte les appuis sur **Relancer** des 20 premières minutes. Zéro = bouton pas assez tentant ; dix = pas d'autre stratégie viable.
 4. Coller le rapport en commentaire de [l'issue des playtests](https://github.com/DavidGiangiacomo/decroissance/issues/8).
+5. Pour l'acte II, laisser jouer jusqu'au panneau de fin d'acte, et noter la réaction à la première coupure et au deuxième chiffre perdu, quand une région s'éteint.
 
 ## Écarts avec le design doc, et pourquoi
 
@@ -66,3 +81,4 @@ Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.enga
 - **Le site s'arrête à l'ouverture du chantier**, pas à sa clôture : sa contribution à la croissance cesse et les coupures sont évaluées immédiatement (la centrale est éteinte pour être démontée). L'Empreinte, la récupération de Capacité et les déplacés restent appliqués à la clôture.
 - **Une mesure** (autonomie de l'hôpital) a été ajoutée pour qu'il existe une bonne séquence, plus lente que la séquence intuitive, permettant de fermer les deux centrales sans coupure.
 - Le plancher irréductible est affiché dans le panneau de fin d'acte, pas dans l'interface courante (il n'est révélé qu'à l'acte IV).
+- Pour l'acte II, les écarts avec la proposition validée et le rythme mesuré sont dans [docs/acte-2.md](docs/acte-2.md).
