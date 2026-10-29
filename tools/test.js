@@ -203,12 +203,23 @@ test('un site délesté se démantèle encore, sans compter deux fois ses gens',
 
 test('au deuxième chiffre perdu, la région la plus démantelée s\'éteint', () => {
   const s = etatActe2();
-  s.E = 1.02e8;
+  s.E = 1.9e8;
   E.engage(s, 'acierie');
   let ev = [];
   for (let i = 0; i < E.defs.acierie.dur * 10 + 5; i++) ev = ev.concat(E.tick(s, 0.1));
   assert.ok(types(ev).includes('chiffre'));
   assert.deepStrictEqual(s.regionsEteintes, ['Cherbaix']);
+});
+
+test('une fermeture ne fait jamais passer l\'Empreinte sous zéro, et deux chiffres perdus d\'un coup comptent deux fois', () => {
+  const s = etatActe2();
+  s.E = 1.02e8;                                    // moins que l'aciérie elle-même
+  E.engage(s, 'acierie');
+  let ev = [];
+  for (let i = 0; i < E.defs.acierie.dur * 10 + 5; i++) ev = ev.concat(E.tick(s, 0.1));
+  assert.ok(s.E > 0 && s.E >= 1.02e8 * (1 - E.D.RETRAIT_MAX) * 0.99);
+  assert.deepStrictEqual(ev.filter(e => e.type === 'chiffre').map(e => e.digits), [8, 7]);
+  assert.strictEqual(s.regionsEteintes.length, 2);
 });
 
 test('les sauvegardes de l\'acte I et de l\'acte II se reprennent', () => {
@@ -232,6 +243,177 @@ test('le rapport décrit l\'acte II', () => {
   assert.ok(texte.includes('Acte II ouvert') && texte.includes('Délestage : Aciérie de Cherbaix'));
   const json = JSON.parse(texte.split('```json\n')[1].split('\n```')[0]);
   assert.ok(json.delestages >= 1 && json.acte === 2);
+});
+
+// Un état de début d'acte III : les cartes des actes I et II sont vides, la sobriété faite.
+function etatActe3(extra) {
+  const s = Object.assign(E.create(), { started: true });
+  for (const d of E.D.sites) if (E.acteDe(d) <= 2) s.sites[d.id].state = d.mesure ? 'fait' : 'eteint';
+  s.hopital = 'autonome';
+  Object.assign(s, { acte: 2, E: 1.36e7, digits: 8, digitsMin: 8 });
+  Object.assign(s.ms, { stabilise: 1, chiffre: 2, fin: 3, acte2: 3 });
+  E.tick(s, 0.1);          // l'acte II est fini, l'acte III s'ouvre
+  Object.assign(s, { paused: 0, K: 900, M: 20000, Co: 60 }, extra || {});
+  return s;
+}
+const finir = (s, id) => { for (let i = 0; i < E.defs[id].dur * 10 + 5 && s.sites[id].state === 'chantier'; i++) E.tick(s, 0.1); };
+
+test('l\'acte III s\'ouvre quand la carte de l\'acte II est vidée', () => {
+  const s = etatActe3();
+  assert.strictEqual(s.acte, 3);
+  assert.ok(s.ms.fin2 !== null && s.ms.acte3 !== null);
+  assert.ok(s.chrono.some(e => e.type === 'acte' && e.n === 3));
+  assert.ok(E.canEngage(s, 'port').ok);
+});
+
+test('une fermeture de l\'acte III retire sa part de l\'Empreinte qui reste', () => {
+  const s = etatActe3();
+  E.engage(s, 'autoroute');
+  const avant = s.E;
+  const ev = [];
+  for (let i = 0; i < E.defs.autoroute.dur * 10 + 5 && s.sites.autoroute.state === 'chantier'; i++) {
+    const E0 = s.E; ev.push(...E.tick(s, 0.1));
+    if (s.sites.autoroute.state === 'eteint') assert.ok(Math.abs(s.sites.autoroute.Eretire - E0 * E.defs.autoroute.part) / s.sites.autoroute.Eretire < 0.01);
+  }
+  assert.strictEqual(s.sites.autoroute.state, 'eteint');
+  assert.ok(s.E < avant * (1 - E.defs.autoroute.part) * 1.01);
+  assert.ok(types(ev).includes('chiffre'), 'sous 10 millions, un chiffre tombe');
+});
+
+test('démanteler le port isole ce qu\'il dessert, et leurs chantiers demandent deux fois plus de Mains', () => {
+  const s = etatActe3();
+  assert.deepStrictEqual(E.canEngage(s, 'port').apercu.isoles, ['cereales', 'elevages', 'peche']);
+  const avant = E.canEngage(s, 'peche').cout.M;
+  const ev = E.engage(s, 'port');
+  assert.deepStrictEqual(ev.find(e => e.type === 'isolement').ids, ['cereales', 'elevages', 'peche']);
+  const c = E.canEngage(s, 'peche');
+  assert.ok(c.isole && c.cout.M === avant * 2);
+  const M0 = s.M;
+  E.engage(s, 'peche');
+  assert.strictEqual(M0 - s.M, avant * 2);
+  assert.ok(s.chrono.some(e => e.type === 'engage' && e.id === 'peche' && e.isole));
+  finir(s, 'peche');
+  assert.strictEqual(s.M, M0, 'les Mains reviennent à la fermeture');
+});
+
+test('deux exploitations fermées à la fois font une pénurie ; la relève et les ceintures la résorbent', () => {
+  const s = etatActe3();
+  assert.strictEqual(E.vivres(s).prod, 110);
+  const a = E.canEngage(s, 'serres').apercu.vivres;
+  assert.ok(a.bas >= 100 && a.duree === 0, 'une petite exploitation seule ne fait pas de pénurie');
+  assert.ok(E.canEngage(s, 'cereales').apercu.vivres.duree > 0);
+  const X0 = s.X, Co0 = s.Co;
+  E.engage(s, 'cereales'); E.engage(s, 'elevages');
+  let ev = [];
+  for (let i = 0; i < 600; i++) ev = ev.concat(E.tick(s, 0.1));
+  assert.ok(types(ev).includes('penurie') && s.penurie);
+  assert.ok(s.X > X0 && s.penurieX === s.X - X0 && s.Co < Co0);
+  for (let i = 0; i < E.D.VIVRES.releveDur * 10; i++) ev = ev.concat(E.tick(s, 0.1));
+  assert.ok(types(ev).includes('penurie-fin') && !s.penurie, 'la terre convertie nourrit à nouveau');
+  const s2 = etatActe3();
+  s2.sites.ceintures.state = 'fait';
+  assert.strictEqual(E.vivres(s2).prod, 110 + E.D.VIVRES.ceintures);
+  assert.strictEqual(E.canEngage(s2, 'cereales').apercu.vivres.duree, 0, 'avec les ceintures, les céréales se ferment sans pénurie');
+});
+
+test('à l\'acte III, la relance importe et réembauche les gens en attente', () => {
+  const s = etatActe3();
+  s.attente = [{ de: 'acierie', n: 2000, t0: s.t }]; s.deplaces = 2000;
+  E.engage(s, 'cereales'); E.engage(s, 'elevages');
+  E.tick(s, 0.1);
+  assert.ok(s.penurie);
+  const r = E.relancer(s);
+  assert.strictEqual(r.reembauche, 2000);
+  assert.strictEqual(s.deplaces, 0); assert.deepStrictEqual(s.attente, []); assert.strictEqual(s.reembauches, 2000);
+  const ev = E.tick(s, 0.1);
+  assert.ok(ev.some(e => e.type === 'penurie-fin' && e.import) && !s.penurie);
+  const X = s.X;
+  for (let i = 0; i < 300; i++) E.tick(s, 0.1);
+  assert.strictEqual(s.X, X, 'pas de Casse de pénurie pendant la relance');
+  const s2 = etatActe2();
+  s2.attente = [{ de: 'acierie', n: 500, t0: s2.t }]; s2.deplaces = 500;
+  assert.strictEqual(E.relancer(s2).reembauche, 0, 'avant l\'acte III, la relance ne réembauche personne');
+});
+
+test('à l\'acte III, attendre use le Consentement et une formation finie le rend', () => {
+  const s = etatActe3({ Co: 50 });
+  s.attente = [{ de: 'port', n: 5000, t0: s.t }]; s.deplaces = 5000;
+  const Co0 = s.Co;
+  for (let i = 0; i < 600; i++) E.tick(s, 0.1);   // une minute
+  const attendu = Co0 + E.D.CO_DRIFT * 60 - E.D.CO_ATTENTE * 60 * 5;
+  assert.ok(Math.abs(s.Co - attendu) < 0.05, `${s.Co} ≠ ${attendu}`);
+  const Co1 = s.Co;
+  assert.ok(E.reconvertir(s));
+  for (let i = 0; i < E.D.RECONV.dur * 10 + 5; i++) E.tick(s, 0.1);
+  const derive = (E.D.CO_DRIFT - E.D.CO_ATTENTE * 4.85) * E.D.RECONV.dur;
+  assert.ok(Math.abs(s.Co - (Co1 - E.D.RECONV.co + E.D.CO_FORMES + derive)) < 0.2);
+  const s2 = etatActe2();
+  s2.Co = 50; s2.attente = [{ de: 'acierie', n: 5000, t0: s2.t }]; s2.deplaces = 5000;
+  for (let i = 0; i < 600; i++) E.tick(s2, 0.1);
+  assert.ok(s2.Co > 50, 'avant l\'acte III, l\'attente ne coûte rien');
+});
+
+test('les centres de formation ouvrent une deuxième place ; le plafond humain borne les Mains', () => {
+  const s = etatActe3();
+  s.attente = [{ de: 'port', n: 1200, t0: s.t }]; s.deplaces = 1200;
+  assert.ok(E.reconvertir(s) && !E.reconvertir(s));
+  s.sites.centres.state = 'fait';
+  assert.ok(E.reconvertir(s) && !E.reconvertir(s));
+  assert.strictEqual(s.formations.length, 2);
+  assert.strictEqual(s.deplaces, 600);
+  const s2 = etatActe3({ M: E.D.MAINS_MAX - 100 });
+  s2.attente = [{ de: 'port', n: 1200, t0: s2.t }]; s2.deplaces = 1200;
+  assert.ok(E.reconvertir(s2));
+  assert.strictEqual(s2.formations[0].n, 100);
+  assert.ok(!E.reconvertir(s2));
+});
+
+test('chaque lot montre trois noms stables, aux métiers de son site d\'origine', () => {
+  const f = { n: 300, lot: 12, progress: 0, compo: [{ de: 'port', n: 300 }] };
+  const a = E.personnes(f, 3), b = E.personnes(f, 3);
+  assert.deepStrictEqual(a, b);
+  assert.strictEqual(a.length, 3);
+  const metiers = E.D.METIERS.port.flat();
+  for (const p of a) { assert.ok(/^\S+ \S+$/.test(p.nom), p.nom); assert.ok(metiers.includes(p.metier), p.metier); }
+  assert.notDeepStrictEqual(E.personnes({ ...f, lot: 13 }, 3), a);
+  assert.ok(E.personnes({ n: 300, lot: 1, compo: [{ de: null, n: 300 }] }, 1)[0].metier);
+});
+
+test('l\'acte III finit quand ses sites sont démantelés, et le rapport le décrit', () => {
+  const s = etatActe3({ M: 40000, Co: 90 });
+  s.sites.ceintures.state = 'fait';
+  let ev = [];
+  for (const id of ['cereales', 'elevages', 'peche', 'serres', 'entrepots', 'centrales', 'port', 'autoroute']) {
+    s.K = 900; s.Co = 90;
+    E.engage(s, id);
+    for (let i = 0; i < E.defs[id].dur * 10 + 5 && s.sites[id].state === 'chantier'; i++) ev = ev.concat(E.tick(s, 0.1));
+    for (let i = 0; i < E.D.VIVRES.releveDur * 10; i++) ev = ev.concat(E.tick(s, 0.1));
+  }
+  assert.ok(ev.some(e => e.type === 'fin' && e.acte === 3) && s.ms.fin3 !== null);
+  assert.ok(s.E < 1e5 && s.E > 0, `Empreinte ${s.E}`);
+  assert.strictEqual(s.penurieX, 0, 'un ordre propre existe : aucune pénurie');
+  const texte = E.rapportTexte(s, 'test');
+  assert.ok(texte.includes('Acte III ouvert') && texte.includes('Pénuries : 0') && texte.includes('Carte de l\'acte III vidée'));
+  const json = JSON.parse(texte.split('```json\n')[1].split('\n```')[0]);
+  assert.ok(json.acte === 3 && json.finActe3 !== null && json.chiffresPerdus.length >= 3);
+});
+
+test('une sauvegarde d\'avant l\'acte III reprend sa formation et ses gens en attente', () => {
+  const ancienne = allerRetour(etatActe2());
+  delete ancienne.formations; delete ancienne.attente; delete ancienne.lots;
+  ancienne.reconv = { n: 300, progress: 0.5 };
+  ancienne.deplaces = 900;
+  const s = E.migrer(ancienne);
+  assert.deepStrictEqual(s.formations.map(f => [f.n, f.progress]), [[300, 0.5]]);
+  assert.deepStrictEqual(s.attente.map(c => [c.de, c.n]), [[null, 900]]);
+  const s3 = etatActe3();
+  E.engage(s3, 'port');
+  s3.attente = [{ de: 'port', n: 400, t0: 1 }, { de: 'inconnu', n: 100, t0: 2 }]; s3.deplaces = 450;
+  const r = E.migrer(allerRetour(s3));
+  assert.strictEqual(r.attente.reduce((a, c) => a + c.n, 0), 450, 'le total des gens en attente fait foi');
+  assert.ok(r.attente.every(c => c.de === null || c.de in E.defs));
+  assert.strictEqual(r.acte, 3);
+  assert.strictEqual(r.Meng, s3.Meng);
 });
 
 console.log(`\n${passes} tests passés`);

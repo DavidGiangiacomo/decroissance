@@ -210,6 +210,8 @@ Le message est mécanique, jamais énoncé : *ce qui répare marche mieux quand 
 
 **Acte III — Les gens.** Les Mains deviennent le goulot. Le panneau de reconversion s'ouvre, avec des durées en semaines fictives et des noms. Le Consentement devient volatil. C'est l'acte où le bouton Croissance cesse d'être une curiosité et devient une solution raisonnable.
 
+*Prototype : l'acte III, proposé et réglé, est décrit dans [acte-3.md](acte-3.md).*
+
 **Acte IV — Le legs.** Le compteur ralentit brutalement, et le joueur comprend pourquoi : sous 6·10⁴, l'essentiel de ce qui reste ne se démantèle pas. La Garde s'ouvre. Le verbe change. On passe des chantiers aux siècles, et le jeu affiche pour la première fois des durées qui dépassent celles de toute civilisation connue.
 
 **Acte V — Rendre.** Capacité résiduelle quasi nulle, chaque geste compte, tout est manuel. La carte est presque verte. Le compteur descend par dizaines, puis par unités. Et il s'arrête sur le plancher, qui n'est pas zéro et ne le sera jamais.

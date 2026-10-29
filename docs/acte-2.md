@@ -28,7 +28,7 @@ Les quatre points validés :
 - L'acte II s'ouvre quand la carte de l'acte I est vidée. Le jeu s'arrête 4 s sur un carton « Acte II — Le réseau », puis les nouveaux sites, le poste et les lignes apparaissent sur la même carte. La jauge du réseau s'affiche sous les ressources.
 - Le compteur remonte dès l'ouverture, à cause du rebond : la stabilisation de l'acte I n'était pas acquise.
 - Au deuxième chiffre perdu, la région la plus démantelée, mesurée à l'Empreinte retirée, s'éteint sur la carte. Le bourdonnement du réseau disparaît et la rivière arrive. Chaque chiffre perdu ensuite éteint une autre région.
-- L'acte finit quand tous ses sites sont démantelés, restes compris. Un panneau affiche alors les données de l'acte : ouverture, deuxième chiffre, coupures et délestages, démolitions qui ont pollué, Casse, relances.
+- L'acte finit quand tous ses sites sont démantelés, restes compris. L'acte III s'ouvre alors ([acte-3.md](acte-3.md)) ; les données de l'acte II restent dans le rapport de session : ouverture, deuxième chiffre, coupures et délestages, démolitions qui ont pollué, Casse, relances.
 
 ## Contenu
 
@@ -88,6 +88,6 @@ Démolir vite ne fait pas toujours gagner de temps : fermer les gros consommateu
 ## Points ouverts
 
 - **Les joueurs très lents dépassent le plafond d'I1.** À 45 s de réaction, la lenteur nourrit le rebond : le prudent perd son deuxième chiffre après 27 min 33, et ni le pressé ni le rapide ne le perdent avant la fin de l'acte. C'est voulu, mais il faudra que l'acte III rattrape le rythme.
-- **L'acte finit vers 1,4·10⁷** pour le bot prudent, au lieu de 1,1·10⁷ au §9. L'acte III portera la différence.
+- **L'acte finit vers 1,4·10⁷** pour le bot prudent, au lieu de 1,1·10⁷ au §9. L'acte III porte la différence : ses sites retirent une part de ce qui reste ([acte-3.md](acte-3.md)).
 - **Un rebond minime subsiste à la fin** : avec la sobriété, il reste 25 MW de marge, soit +0,04 %/min. L'acte III pourra s'en servir ou le fermer.
 - **Hors de cet acte** : la décision Énergie, Rationnement ou Marché, qui change les règles du délestage, viendra avec les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)) ; les gens comme goulot, c'est l'acte III ([#15](https://github.com/DavidGiangiacomo/decroissance/issues/15)).

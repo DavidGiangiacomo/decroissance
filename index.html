@@ -72,6 +72,7 @@
         <span><i class="pastille coupe"></i> coupé</span>
         <span class="leg-acte2" hidden><i class="pastille deleste"></i> délesté</span>
         <span class="leg-acte2" hidden><i class="pastille pollue"></i> sol pollué</span>
+        <span class="leg-acte3" hidden><i class="pastille isole"></i> isolé</span>
       </div>
     </section>
 
@@ -94,7 +95,7 @@
         </div>
         <div class="res">
           <div class="res-label">Consentement</div>
-          <div class="res-val"><span id="co">100</span><small> %</small></div>
+          <div class="res-val"><span id="co">100</span><small> %</small><small id="co-tendance" class="co-tendance" hidden></small></div>
           <div class="barre"><i id="co-barre" style="width:100%"></i></div>
         </div>
       </section>
@@ -115,13 +116,33 @@
         <p class="reseau-ordre">Sous zéro, le réseau déleste dans cet ordre : industrie, commerces, villes, puis eau et santé.</p>
       </section>
 
-      <section class="mains">
+      <section id="vivres" class="reseau vivres" hidden>
+        <div class="reseau-tete">
+          <h2>Vivres</h2>
+          <span id="vivres-etat" class="reseau-etat"></span>
+        </div>
+        <div class="reseau-chiffres">
+          <span>Production <b id="vivres-prod">0</b></span>
+          <span>Besoins <b id="vivres-besoin">100</b></span>
+          <span>Marge <b id="vivres-marge">0</b></span>
+        </div>
+        <div id="vivres-jauge" class="jauge" title="La barre pleine, ce que mangent les deux villes ; la partie hachurée, ce qui est produit en plus.">
+          <i id="vivres-barre"></i>
+        </div>
+        <p class="reseau-ordre">Une exploitation qu'on démantèle cesse de produire dès l'ouverture du chantier. Sa terre, convertie, rend les neuf dixièmes de ses vivres en cinq minutes. Sous 100 : pénurie.</p>
+      </section>
+
+      <section id="gens" class="mains">
+        <h2 id="gens-titre" hidden>Les gens</h2>
         <div class="mains-ligne">
           <div><span class="res-label">À reconvertir</span> <b id="deplaces">0</b> <span class="muted">personnes</span></div>
           <button id="btn-reconv" class="btn" disabled>Reconvertir</button>
         </div>
         <div id="reconv-etat" class="reconv-etat muted">Personne à reconvertir pour l'instant. Les gens viennent des sites fermés.</div>
-        <div class="barre fine"><i id="reconv-barre" style="width:0%"></i></div>
+        <div id="reconv-barre-zone" class="barre fine"><i id="reconv-barre" style="width:0%"></i></div>
+        <ol id="formations" class="formations" hidden></ol>
+        <ul id="attente" class="attente" hidden></ul>
+        <p id="gens-note" class="gens-note" hidden></p>
       </section>
 
       <section class="chantiers">
@@ -147,7 +168,7 @@
   <div id="intro" class="voile">
     <div class="carton">
       <h1>Décroissance</h1>
-      <p class="petit muted">Prototype — actes I et II, l'inventaire et le réseau</p>
+      <p class="petit muted">Prototype — actes I à III : l'inventaire, le réseau, les gens</p>
       <p>Vous héritez. Pas d'une conquête, d'une passation : l'Ostrane, pays industriel de taille moyenne — une côte, un fleuve, un bassin minier, deux métropoles — et un mandat, de durée non précisée, pour le démanteler proprement.</p>
       <p>Vous n'avez ni nom ni parti. Vous avez un inventaire, une carte, et le droit d'arbitrer. Personne ne vous demandera si c'est une bonne idée. La question est la manière.</p>
       <p class="petit">L'Empreinte est en haut. Elle monte. Chaque site fermé libère des gens à reconvertir, et la carte indique ce qu'un site alimente. Le son fait partie du jeu.</p>
