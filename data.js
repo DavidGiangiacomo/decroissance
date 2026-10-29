@@ -1,4 +1,5 @@
-// Décroissance — données (géographie fictive : l'Ostrane). Acte I : le MVP ; acte II : le réseau (issue #14).
+// Décroissance — données (géographie fictive : l'Ostrane). Acte I : le MVP ; acte II : le réseau (issue #14) ;
+// acte III : les gens (issue #15).
 // Valeurs de réglage. Toutes les durées sont en secondes de jeu réelles.
 (function (root) {
   const DATA = {
@@ -34,6 +35,15 @@
     SOBRIETE: 0.7,       // part de la demande des villes qui reste après la mesure de sobriété
     POSTE: { x: 270, y: 296 },   // poste électrique où convergent les lignes du réseau, sur la carte
 
+    // Acte III : les gens. Les Mains deviennent le goulot, le Consentement devient volatil.
+    SEMAINE: 5,              // secondes réelles par semaine fictive (formations, attente)
+    MAINS_MAX: 40000,        // plafond humain : Mains disponibles, engagées et en formation
+    CO_ATTENTE: 0.4 / 60,    // points / s perdus par millier de personnes qui attendent une formation
+    CO_FORMES: 2,            // points rendus quand un lot finit sa formation
+    // Vivres, en points : 100 couvre les besoins du pays. Une exploitation qu'on démantèle cesse de produire à
+    // l'ouverture du chantier, et sa terre, convertie, en rend `releve` en `releveDur` s. Sous 100 : pénurie.
+    VIVRES: { besoin: 100, base: 30, ceintures: 30, releve: 0.9, releveDur: 300, casse: 15 / 60, co: 0.1 / 60 },
+
     // Régions de la carte. Au deuxième chiffre perdu, la plus démantelée s'éteint.
     regions: {
       'Valdrance': { nom: 'Valdrance', x: 250, y: 150, r: 125 },
@@ -41,6 +51,7 @@
       'Méraud': { nom: 'Méraud', x: 120, y: 375, r: 85 },
       'Orvenne': { nom: 'Orvenne', x: 265, y: 425, r: 90 },
       'Vallée de la Sère': { nom: 'La vallée de la Sère', x: 345, y: 300, r: 85 },
+      'Plaine': { nom: 'La plaine de Valdrance', x: 140, y: 270, r: 80 },
     },
 
     // Sites (E = Empreinte retirée à la clôture ; g = contribution à la croissance, %/min)
@@ -128,6 +139,50 @@
         E: 0, K: 400, M: 600, dur: 270, g: 0, deplaces: 0, co: 5, T: 0, regen: 0, kBack: 0,
         court: 'Sobriété', x: 280, y: 140,
         desc: "Chauffage, éclairage, horaires : la demande de Valdrance et d'Orvenne baisse de 30 %. Ne fait rien baisser." },
+
+      // ---- Acte III : les gens. part = part de l'Empreinte restante que le site retire en fermant ;
+      //      desservi = ce qui l'approvisionne (sans lui, le chantier se fait à bras) ; vivres = points de vivres produits. ----
+      { id: 'port', acte: 3, nom: 'Port de Méraud', region: 'Méraud', categorie: 'logistique',
+        part: 0.55, K: 70, M: 5400, dur: 390, g: 0, deplaces: 3200, co: 6, T: 3, regen: 900, kBack: 150,
+        court: 'Port', x: 66, y: 400,
+        desc: 'Terminaux à conteneurs, silos et quais vraquiers. Les céréales partent par ici, le soja des élevages arrive par ici.' },
+      { id: 'autoroute', acte: 3, nom: 'Autoroute de la Sère', region: 'Vallée de la Sère', categorie: 'logistique',
+        part: 0.45, K: 60, M: 4200, dur: 345, g: 0, deplaces: 1200, co: 5, T: 3, regen: 900, kBack: 100,
+        court: 'Autoroute', x: 398, y: 292,
+        desc: "Deux fois trois voies le long de la Sère. Les entrepôts, les serres et les centrales d'achat vivent de ses camions." },
+      { id: 'entrepots', acte: 3, nom: 'Plateforme logistique de Valdrance', region: 'Valdrance', categorie: 'logistique',
+        desservi: ['autoroute'], part: 0.45, K: 50, M: 4800, dur: 315, g: 0, deplaces: 2600, co: 4, T: 2, regen: 720, kBack: 60,
+        court: 'Entrepôts', x: 392, y: 206,
+        desc: 'Six cent mille mètres carrés sous tôle. Livré en deux heures, renvoyé le lendemain.' },
+      { id: 'centrales', acte: 3, nom: "Centrales d'achat de Cherbaix", region: 'Cherbaix', categorie: 'logistique',
+        desservi: ['autoroute'], part: 0.45, K: 50, M: 4200, dur: 315, g: 0, deplaces: 2400, co: 4, T: 2, regen: 720, kBack: 40,
+        court: "Centrales d'achat", x: 470, y: 380,
+        desc: 'Trois enseignes, un seul fichier de fournisseurs. Tout ce qui se vend dans le pays passe par leurs quais.' },
+      { id: 'cereales', acte: 3, nom: 'Céréales irriguées de la plaine', region: 'Plaine', categorie: 'agro',
+        desservi: ['port'], vivres: 35, part: 0.6, K: 40, M: 7800, dur: 465, g: 0, deplaces: 1500, co: 4, T: 9, regen: 900, kBack: 20,
+        court: 'Céréales', x: 118, y: 250,
+        desc: "Douze mille hectares de maïs arrosé tout l'été, pour l'export. Il faut y remettre des haies, des rotations et des gens." },
+      { id: 'elevages', acte: 3, nom: 'Élevages hors-sol de la plaine', region: 'Plaine', categorie: 'agro',
+        desservi: ['port'], vivres: 25, part: 0.5, K: 40, M: 6000, dur: 390, g: 0, deplaces: 2200, co: 5, T: 5, regen: 720, kBack: 20,
+        court: 'Élevages', x: 186, y: 300,
+        desc: 'Porcs et volailles par centaines de milliers, nourris au soja débarqué à Méraud.' },
+      { id: 'serres', acte: 3, nom: "Serres chauffées d'Orvenne", region: 'Orvenne', categorie: 'agro',
+        desservi: ['autoroute'], vivres: 10, part: 0.35, K: 30, M: 3000, dur: 270, g: 0, deplaces: 900, co: 3, T: 3, regen: 600, kBack: 30,
+        court: 'Serres', x: 432, y: 452,
+        desc: 'Tomates et fraises en janvier, sous quarante hectares de verre chauffé.' },
+      { id: 'peche', acte: 3, nom: 'Pêche industrielle de Méraud', region: 'Méraud', categorie: 'agro',
+        desservi: ['port'], vivres: 10, part: 0.4, K: 30, M: 3000, dur: 315, g: 0, deplaces: 1400, co: 4, T: 4, regen: 900, kBack: 40,
+        court: 'Pêche', x: 34, y: 452,
+        desc: "Chalutiers-usines et criée automatisée. La mer d'Ostrane se vide plus vite qu'elle ne se remplit." },
+      // Mesures de l'acte III
+      { id: 'ceintures', acte: 3, mesure: true, effet: 'ceintures', nom: 'Ceintures maraîchères', region: 'Orvenne',
+        E: 0, K: 100, M: 2400, dur: 390, g: 0, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
+        court: 'Ceintures maraîchères', x: 0, y: 0,
+        desc: "Du maraîchage autour de Valdrance et d'Orvenne : 30 points de vivres de plus. Ne fait rien baisser." },
+      { id: 'centres', acte: 3, mesure: true, effet: 'centres', nom: 'Centres de formation', region: 'Valdrance',
+        E: 0, K: 150, M: 1800, dur: 315, g: 0, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
+        court: 'Centres de formation', x: 0, y: 0,
+        desc: 'Des formateurs, des ateliers, des places : deux lots en formation à la fois. Ne fait rien baisser.' },
     ],
 
     // Nœuds qui ne sont pas des chantiers mais dépendent de sites
@@ -150,9 +205,48 @@
       { from: 'gaz', to: 'hopital', quoi: 'secours' },
     ],
 
+    // Acte III : des noms. Chaque lot en formation en montre trois, tirés de ces listes et des métiers du site d'origine.
+    PRENOMS: {
+      f: ['Mireille', 'Joëlle', 'Nadia', 'Sandrine', 'Fatou', 'Inès', 'Leïla', 'Ana', 'Samia', 'Chloé', 'Amina', 'Josiane',
+        'Malika', 'Sylvie', 'Nathalie', 'Agnès', 'Aïcha', 'Lucie', 'Rachida', 'Élodie', 'Céline', 'Monique', 'Yasmina', 'Martine'],
+      m: ['Karim', 'Thierry', 'Sébastien', 'Grégoire', 'Marek', 'Yannick', 'Hervé', 'Bruno', 'Patrice', 'Didier', 'Rémi', 'Kevin',
+        'Pascal', 'Mehdi', 'Jordan', 'Olivier', 'Franck', 'Antoine', 'Gilles', 'Tomasz', 'Mamadou', 'Ludovic', 'Farid', 'Jean-Luc'],
+    },
+    NOMS: ['Aubrac', 'Benali', 'Tissier', 'Morvan', 'Lefèvre', 'Diallo', 'Kowalski', 'Garnier', 'Haddad', 'Roux', 'Marchetti',
+      'Nguyen', 'Perrin', 'Ferreira', 'Lambert', 'Mercier', 'Bouaziz', 'Caron', 'Duval', 'Fontaine', 'Girard', 'Hamon', 'Jacquet',
+      'Leroux', 'Masson', 'Ndiaye', 'Picard', 'Renaud', 'Sanchez', 'Texier', 'Vidal', 'Weber', 'Barbier', 'Colin', 'Dumont', 'Faure'],
+    // Métiers par site d'origine : [masculin, féminin]
+    METIERS: {
+      pub: [['commercial', 'commerciale'], ['afficheur', 'afficheuse']],
+      credit: [['conseiller clientèle', 'conseillère clientèle'], ['télévendeur', 'télévendeuse']],
+      aero: [['agent de piste', 'agente de piste'], ['pilote', 'pilote']],
+      suv: [['monteur', 'monteuse'], ['peintre carrossier', 'peintre carrossière']],
+      dc: [['technicien de salle', 'technicienne de salle'], ['administrateur réseau', 'administratrice réseau']],
+      ciment: [['opérateur de four', 'opératrice de four'], ['conducteur de broyeur', 'conductrice de broyeur']],
+      charbon: [['chauffeur de chaudière', 'chauffeuse de chaudière'], ['mécanicien', 'mécanicienne']],
+      gaz: [['technicien de turbine', 'technicienne de turbine'], ['électricien', 'électricienne']],
+      thermique: [['conducteur de chaudière', 'conductrice de chaudière'], ['électricien', 'électricienne']],
+      raffinerie: [['opérateur de raffinage', 'opératrice de raffinage'], ['chaudronnier', 'chaudronnière']],
+      acierie: [['fondeur', 'fondeuse'], ['lamineur', 'lamineuse']],
+      chimie: [['opérateur de synthèse', 'opératrice de synthèse'], ['laborantin', 'laborantine']],
+      commerce: [['vendeur', 'vendeuse'], ['caissier', 'caissière']],
+      ski: [['perchiste', 'perchiste'], ['moniteur', 'monitrice']],
+      ecrans: [['électricien', 'électricienne'], ["poseur d'enseignes", "poseuse d'enseignes"]],
+      port: [['docker', 'docker'], ['grutier', 'grutière'], ['agent de quai', 'agente de quai']],
+      autoroute: [["agent d'exploitation", "agente d'exploitation"], ['péagiste', 'péagiste']],
+      entrepots: [['préparateur de commandes', 'préparatrice de commandes'], ['cariste', 'cariste']],
+      centrales: [['acheteur', 'acheteuse'], ['chauffeur poids lourd', 'chauffeuse poids lourd']],
+      cereales: [["conducteur d'engins agricoles", "conductrice d'engins agricoles"], ['irrigant', 'irrigante']],
+      elevages: [['éleveur', 'éleveuse'], ['technicien sanitaire', 'technicienne sanitaire']],
+      serres: [['ouvrier de serre', 'ouvrière de serre'], ['chauffagiste', 'chauffagiste']],
+      peche: [['marin pêcheur', 'marin pêcheuse'], ['mareyeur', 'mareyeuse']],
+    },
+    METIERS_COMMUNS: [['ouvrier', 'ouvrière'], ['technicien', 'technicienne'], ['opérateur', 'opératrice'], ['magasinier', 'magasinière']],
+
     // Casse quand un site (chantier) est coupé : ses gens sont perdus, sans reclassement
     COUPURE_SITE_CO: 15,
     COUPURE_SITE_E: 0.5, // fraction de l'Empreinte du site tout de même retirée (il s'arrête, il n'est pas démantelé)
+    RETRAIT_MAX: 0.95,   // une fermeture ne retire jamais plus que cette part de ce qui reste : l'Empreinte ne passe pas sous zéro
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DATA;

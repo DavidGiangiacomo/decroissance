@@ -1,11 +1,12 @@
 // Décroissance — son en couches, synthétisé (aucun asset).
 // Acte I : deux couches industrielles (trafic, turbines), deux naturelles (vent, oiseaux).
 // Acte II : le bourdonnement du réseau, puis la rivière au deuxième chiffre perdu.
+// Acte III : le fret (camions, port), puis les insectes au troisième chiffre perdu et les voix au quatrième.
 // Le volume de chaque couche est piloté par l'état du jeu, crossfade lent.
 (function (root) {
   const FADE = 3.5;
   class Son {
-    constructor() { this.ctx = null; this.couches = {}; this.master = null; this.mute = false; this.niveaux = {}; this._oiseauxTimer = null; }
+    constructor() { this.ctx = null; this.couches = {}; this.master = null; this.mute = false; this.niveaux = {}; this._oiseauxTimer = null; this._fretTimer = null; }
 
     init() {
       if (this.ctx) return;
@@ -19,6 +20,9 @@
       this.couches.oiseaux = this._oiseaux();
       this.couches.reseau = this._reseau();
       this.couches.eau = this._eau();
+      this.couches.fret = this._fret();
+      this.couches.insectes = this._insectes();
+      this.couches.voix = this._voix();
       for (const k in this.couches) this.couches[k].gain.gain.value = 0;
       if (ctx.state === 'suspended') ctx.resume();
     }
@@ -115,6 +119,71 @@
       const lfo2 = ctx.createOscillator(); lfo2.frequency.value = 0.05;
       const lg2 = ctx.createGain(); lg2.gain.value = 300; lfo2.connect(lg2); lg2.connect(bp.frequency); lfo2.start();
       src.connect(hp); hp.connect(bp); bp.connect(amp); amp.connect(gain); gain.connect(this.master);
+      return { gain };
+    }
+
+    _fret() { // fret : grondement de poids lourds, avertisseur de recul, corne de navire au loin
+      const ctx = this.ctx, gain = ctx.createGain(); gain.connect(this.master);
+      const src = this._bruit(4, true);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 140;
+      const amp = ctx.createGain(); amp.gain.value = 0.5;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.045;
+      const lg = ctx.createGain(); lg.gain.value = 0.25; lfo.connect(lg); lg.connect(amp.gain); lfo.start();
+      src.connect(lp); lp.connect(amp); amp.connect(gain);
+      const signal = () => {
+        if (!this.ctx) return;
+        const t0 = ctx.currentTime;
+        if (Math.random() < 0.35) {   // corne de navire : deux notes graves, longues
+          for (const f of [98, 123.5]) {
+            const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+            const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 400;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(0.035, t0 + 0.3); g.gain.setValueAtTime(0.035, t0 + 1.6); g.gain.linearRampToValueAtTime(0, t0 + 2.2);
+            o.connect(flt); flt.connect(g); g.connect(gain); o.start(t0); o.stop(t0 + 2.3);
+          }
+        } else {   // avertisseur de recul : trois bips
+          for (let i = 0; i < 3; i++) {
+            const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 1150;
+            const g = ctx.createGain(), a = t0 + i * 0.9;
+            g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(0.012, a + 0.02); g.gain.setValueAtTime(0.012, a + 0.4); g.gain.linearRampToValueAtTime(0, a + 0.45);
+            o.connect(g); g.connect(gain); o.start(a); o.stop(a + 0.5);
+          }
+        }
+        this._fretTimer = setTimeout(signal, 7000 + Math.random() * 12000);
+      };
+      this._fretTimer = setTimeout(signal, 3000);
+      return { gain };
+    }
+
+    _insectes() { // grillons : des notes aiguës hachées en trilles, par bouffées
+      const ctx = this.ctx, gain = ctx.createGain(); gain.connect(this.master);
+      for (const [f, rythme, decalage] of [[4300, 2.1, 0], [4720, 2.6, 0.3], [3950, 1.7, 0.6]]) {
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+        const trille = ctx.createGain(); trille.gain.value = 0.5;   // 0,5 ± 0,5 : la note s'allume et s'éteint
+        const tr = ctx.createOscillator(); tr.type = 'square'; tr.frequency.value = 28 + Math.random() * 6;
+        const trg = ctx.createGain(); trg.gain.value = 0.5; tr.connect(trg); trg.connect(trille.gain);
+        const bouffee = ctx.createGain(); bouffee.gain.value = 0.5;
+        const b = ctx.createOscillator(); b.type = 'square'; b.frequency.value = rythme;
+        const bg = ctx.createGain(); bg.gain.value = 0.5; b.connect(bg); bg.connect(bouffee.gain);
+        const out = ctx.createGain(); out.gain.value = 0.012;
+        o.connect(trille); trille.connect(bouffee); bouffee.connect(out); out.connect(gain);
+        o.start(); tr.start(); b.start(ctx.currentTime + decalage);
+      }
+      return { gain };
+    }
+
+    _voix() { // voix au loin : un murmure de marché, des formants qui vont et viennent
+      const ctx = this.ctx, gain = ctx.createGain(); gain.connect(this.master);
+      const src = this._bruit(6, false);
+      for (const [f, q, rythme, a] of [[420, 6, 0.9, 0.5], [800, 5, 1.3, 0.35], [1350, 7, 1.7, 0.25], [2500, 8, 2.3, 0.15]]) {
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+        const amp = ctx.createGain(); amp.gain.value = a * 0.05;
+        const lfo = ctx.createOscillator(); lfo.frequency.value = rythme;
+        const lg = ctx.createGain(); lg.gain.value = a * 0.04; lfo.connect(lg); lg.connect(amp.gain); lfo.start();
+        const lfo2 = ctx.createOscillator(); lfo2.frequency.value = rythme * 0.37;
+        const lg2 = ctx.createGain(); lg2.gain.value = f * 0.12; lfo2.connect(lg2); lg2.connect(bp.frequency); lfo2.start();
+        src.connect(bp); bp.connect(amp); amp.connect(gain);
+      }
       return { gain };
     }
 
