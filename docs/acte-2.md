@@ -25,7 +25,7 @@ Les quatre points validés :
 
 ## Entrée, chiffres perdus, fin
 
-- L'acte II s'ouvre quand la carte de l'acte I est vidée. Le jeu s'arrête 4 s sur un carton « Acte II — Le réseau », puis les nouveaux sites, le poste et les lignes apparaissent sur la même carte. La jauge du réseau s'affiche sous les ressources.
+- L'acte II s'ouvre quand la carte de l'acte I est vidée. Le jeu s'arrête 4 s sur un carton « Acte II — Le réseau », puis les nouveaux sites, le poste et les lignes apparaissent sur la même carte. La jauge du réseau s'affiche sous les ressources. À côté du Consentement s'affiche désormais ce qu'il a gagné ou perdu pendant la dernière minute de jeu, tout compris : au deuxième playtest, c'est à l'acte II qu'il s'était effondré, sans que rien le montre.
 - Le compteur remonte dès l'ouverture, à cause du rebond : la stabilisation de l'acte I n'était pas acquise.
 - Au deuxième chiffre perdu, la région la plus démantelée, mesurée à l'Empreinte retirée, s'éteint sur la carte. Le bourdonnement du réseau disparaît et la rivière arrive. Chaque chiffre perdu ensuite éteint une autre région.
 - L'acte finit quand tous ses sites sont démantelés, restes compris. L'acte III s'ouvre alors ([acte-3.md](acte-3.md)) ; les données de l'acte II restent dans le rapport de session : ouverture, deuxième chiffre, coupures et délestages, démolitions qui ont pollué, Casse, relances.

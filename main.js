@@ -438,7 +438,7 @@
     const T = E.T(s); $('t').textContent = T.toFixed(1).replace('.', ','); $('t-barre').style.width = Math.min(100, T) + '%';
     $('co').textContent = Math.round(s.Co); $('co-barre').style.width = s.Co + '%'; $('co-barre').className = s.Co < 30 ? 'bas' : '';
     const ct = $('co-tendance'), dv = evolutionCo();
-    ct.hidden = s.acte < 3 || dv === null;   // acte III : le Consentement devient volatil, son évolution s'affiche
+    ct.hidden = s.acte < 2 || dv === null;   // dès l'acte II, où les coupures et le Conseil entrent en jeu
     if (!ct.hidden) {
       ct.className = 'co-tendance' + (dv <= -0.5 ? ' baisse' : dv >= 0.5 ? ' hausse' : '');
       ct.textContent = Math.abs(dv) < 0.5 ? ' stable en 1 min' : ` ${dv < 0 ? '▼' : '▲'} ${Math.abs(dv).toFixed(1).replace('.', ',')} en 1 min`;

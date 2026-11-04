@@ -25,7 +25,7 @@ Suite de l'acte II ([#14](https://github.com/DavidGiangiacomo/decroissance/issue
 
 ## Entrée, carte, son, fin
 
-- **L'ouverture.** L'acte s'ouvre quand le réseau est démantelé. Le jeu s'arrête 4 s sur un carton « Acte III — Les gens ». Les huit sites apparaissent sur la même carte, avec la jauge des vivres et le panneau des gens. À côté du Consentement s'affiche ce qu'il a gagné ou perdu pendant la dernière minute de jeu, tout compris : formations, fermetures, attente, chantiers simultanés, relances.
+- **L'ouverture.** L'acte s'ouvre quand le réseau est démantelé. Le jeu s'arrête 4 s sur un carton « Acte III — Les gens ». Les huit sites apparaissent sur la même carte, avec la jauge des vivres et le panneau des gens. Comme depuis l'acte II, à côté du Consentement s'affiche ce qu'il a gagné ou perdu pendant la dernière minute de jeu, tout compris : formations, fermetures, attente, chantiers simultanés, relances.
 - **La carte.** Les liens de desserte sont en pointillés serrés. Un site isolé porte un anneau pointillé. Chaque chiffre perdu éteint encore une région, comme depuis l'acte II. Une fermeture qui fait perdre deux chiffres d'un coup compte deux pertes et éteint deux régions.
 - **Le son.**
   - Une couche de fret arrive : grondement de camions, avertisseurs de recul, cornes de navire. Son volume suit la logistique encore active.

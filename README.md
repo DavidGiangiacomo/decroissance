@@ -36,6 +36,7 @@ Détail, contenu et réglages dans [docs/acte-2.md](docs/acte-2.md).
 - **Approvisionnements** : la raffinerie fournit le fioul de la centrale thermique, la chimie le chlore de l'eau potable d'Orvenne, sauf si la filtration UV est faite. Chaque carte dit, avant le lancement, ce qu'il ferait au réseau.
 - **Démolir vite** : l'aciérie et la chimie peuvent se démolir en deux fois moins de temps, de Capacité et de Mains, au prix d'une pollution (de la Casse et un sol qui ne se régénère pas).
 - **Deuxième chiffre perdu** : la région la plus démantelée s'éteint sur la carte, le bourdonnement du réseau s'arrête, la rivière arrive. Chaque chiffre suivant éteint une autre région.
+- À côté du Consentement s'affiche ce qu'il a gagné ou perdu pendant la dernière minute de jeu, tout compris.
 - Le rapport de session reprend les données de l'acte : deuxième chiffre, coupures et délestages, démolitions qui ont pollué, régions éteintes.
 
 ## L'acte III : les gens
