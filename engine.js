@@ -31,6 +31,7 @@
       formations: [],       // lots en formation : { n, progress, lot, compo: [{ de, n }] }
       attente: [],          // gens à reconvertir, par origine, le plus ancien d'abord : { de, n, t0 }
       lots: 0,              // nombre de lots déjà formés ou en formation
+      formerEnContinu: false, // acte III : un lot part dès qu'une place se libère
       reembauches: 0,       // acte III : gens réembauchés par une relance au lieu d'être reconvertis
       penurie: false,       // acte III : les vivres manquent en ce moment
       penurieX: 0,          // Casse due aux pénuries
@@ -230,19 +231,6 @@
       });
     }
     return out;
-  }
-
-  // Tendance du Consentement, en points par minute, hors événements ponctuels (fermetures, formations).
-  function coTendance(s) {
-    let v = Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * 60);
-    const n = chantiersActifs(s);
-    if (n > 1) v -= D.CO_HATE * 60 * (n - 1);
-    if (s.acte >= 3) {
-      v -= D.CO_ATTENTE * 60 * s.deplaces / 1000;
-      const vv = vivres(s);
-      if (!relanceActive(s) && vv.marge < 0) v -= D.VIVRES.co * 60 * -vv.marge;
-    }
-    return v;
   }
 
   // Consommateurs à délester, dans l'ordre affiché, pour ramener la marge à zéro ou au-dessus.
@@ -494,6 +482,20 @@
     trace(s, 'reconversion', { n });
     return true;
   }
+  // Remplit toutes les places de formation libres ; renvoie le nombre de lots partis.
+  function reconvertirTout(s) {
+    let n = 0;
+    while (reconvertir(s)) n++;
+    return n;
+  }
+  // En continu, un lot part dès qu'une place se libère, au même coût que d'un clic.
+  function formerEnContinu(s, oui) {
+    oui = !!oui;
+    if (s.formerEnContinu === oui) return;
+    s.formerEnContinu = oui;
+    trace(s, 'continu', { oui });
+    if (oui) reconvertirTout(s);
+  }
 
   function relancer(s, auto) {
     if (relanceActive(s)) return null;
@@ -571,6 +573,7 @@
       ev.push({ type: 'reconv', n: f.n, lot: f.lot });
     }
     s.formations = s.formations.filter(f => f.progress < 1);
+    if (s.formerEnContinu) reconvertirTout(s);
     // Consentement : dérive vers l'équilibre, usure si l'on empile les chantiers
     const n = chantiersActifs(s);
     if (n > 1) s.Co -= D.CO_HATE * (n - 1) * dt;
@@ -757,6 +760,19 @@
   function nomDe(id) { return (defs[id] || noeuds[id] || { nom: id }).nom; }
   const CHIFFRES_ROMAINS = ['', 'I', 'II', 'III', 'IV', 'V'];
 
+  // La Casse par cause, d'après la chronologie : coupures (coupures, délestages, privations), pollutions, pénuries.
+  function casseParCause(s) {
+    const somme = (types) => s.chrono.filter(e => types.includes(e.type)).reduce((a, e) => a + (e.casse || 0), 0);
+    return { coupures: somme(['coupure', 'delestage', 'privation']), pollutions: somme(['pollution']), penuries: s.penurieX };
+  }
+  // « 1 200 personnes (coupures et délestages 400, pollutions 800) » : les causes nulles ne sont pas citées.
+  function texteCasse(s) {
+    const c = casseParCause(s);
+    const parts = [['coupures et délestages', c.coupures], ['pollutions', c.pollutions], ['pénuries', c.penuries]].filter(([, n]) => n > 0);
+    const total = `${fmt(s.X)} personne${s.X > 1 ? 's' : ''}`;
+    return parts.length ? `${total} (${parts.map(([nom, n]) => `${nom} ${fmt(n)}`).join(', ')})` : total;
+  }
+
   function rapport(s, version) {
     const relancesJoueur = s.chrono.filter(e => e.type === 'relance' && !e.auto);
     const pertes = s.chrono.filter(e => e.type === 'chiffre');
@@ -789,6 +805,7 @@
       reembauches: s.reembauches,
       chantiersIsoles: s.chrono.filter(e => e.type === 'engage' && e.isole).length,
       casse: s.X,
+      casseParCause: casseParCause(s),
       consentementMin: Math.round(s.coMin),
       empreinte: Math.round(s.E),
       chiffres: s.digits,
@@ -814,6 +831,7 @@
       case 'arret': return `À l'arrêt, faute d'approvisionnement : ${nomDe(e.id)}`;
       case 'retour': return `Rebranché : ${nomDe(e.id)}`;
       case 'reconversion': return `Reconversion de ${fmt(e.n)} personnes`;
+      case 'continu': return e.oui ? 'Formation en continu : activée' : 'Formation en continu : arrêtée';
       case 'relance': return e.auto ? 'Relance par le Conseil, sans le joueur' : 'Relance';
       case 'stabilise': return 'Le nombre a cessé de monter';
       case 'chiffre': return `Chiffre perdu, ${e.digits} chiffres restent`;
@@ -852,11 +870,12 @@
     lignes.push(
       `- Relances dans les 20 premières minutes : ${r.relances20min}`,
       `- Relances au total : ${r.relances}, plus ${r.relancesConseil} par le Conseil`,
-      `- Coupures et délestages : ${r.coupures}, Casse : ${fmt(r.casse)} personne${r.casse > 1 ? 's' : ''}`,
+      `- Casse : ${texteCasse(s)}`,
+      `- Coupures et délestages : ${r.coupures}`,
     );
     if (r.pollutions) lignes.push(`- Démolitions rapides qui ont pollué : ${r.pollutions}`);
     if (r.acte >= 3) {
-      lignes.push(`- Pénuries : ${r.penuries}, Casse : ${fmt(r.cassePenurie)} personne${r.cassePenurie > 1 ? 's' : ''}`);
+      lignes.push(`- Pénuries : ${r.penuries}`);
       lignes.push(`- Réembauchés par les relances au lieu d'être reconvertis : ${fmt(r.reembauches)}`);
       lignes.push(`- Chantiers lancés à bras, sur des sites isolés : ${r.chantiersIsoles}`);
     }
@@ -908,7 +927,8 @@
     D, defs, noeuds, create, tick, engage, canEngage, coupuresSi, reconvertir, relancer, applyOffline,
     gSites, gEff, gRebond, kRate, relanceActive, T, Tmax, chantiersActifs, digitsOf, alimentants, dependants, estAlimente,
     bilan, apercu, planDelestage, approvisionne, acteDe, cout, dureeChantier, mesureFaite,
-    retrait, isole, dessertes, vivres, apercuVivres, placesFormation, enFormation, personnes, coTendance,
+    retrait, isole, dessertes, vivres, apercuVivres, placesFormation, enFormation, personnes,
+    reconvertirTout, formerEnContinu, casseParCause, texteCasse,
     DERNIER_ACTE, TITRES_ACTES,
     fmt, fmtDur, fmtSci, migrer, rapport, rapportTexte,
   };

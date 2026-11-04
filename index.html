@@ -95,7 +95,7 @@
         </div>
         <div class="res">
           <div class="res-label">Consentement</div>
-          <div class="res-val"><span id="co">100</span><small> %</small><small id="co-tendance" class="co-tendance" hidden></small></div>
+          <div class="res-val"><span id="co">100</span><small> %</small><small id="co-tendance" class="co-tendance" hidden title="Ce que le consentement a réellement gagné ou perdu pendant la dernière minute de jeu, tout compris : formations, fermetures, attente, chantiers simultanés, relances."></small></div>
           <div class="barre"><i id="co-barre" style="width:100%"></i></div>
         </div>
       </section>
@@ -139,6 +139,7 @@
           <button id="btn-reconv" class="btn" disabled>Reconvertir</button>
         </div>
         <div id="reconv-etat" class="reconv-etat muted">Personne à reconvertir pour l'instant. Les gens viennent des sites fermés.</div>
+        <label id="continu-zone" class="continu" hidden><input type="checkbox" id="continu"> Former en continu : un lot part dès qu'une place se libère, au même coût.</label>
         <div id="reconv-barre-zone" class="barre fine"><i id="reconv-barre" style="width:0%"></i></div>
         <ol id="formations" class="formations" hidden></ol>
         <ul id="attente" class="attente" hidden></ul>

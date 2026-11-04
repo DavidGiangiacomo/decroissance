@@ -71,9 +71,14 @@ function choixActe3() {
 
 let coMin3 = Infinity, mainsMax = 0, finDeux = null;   // finDeux : Casse, rebond et régions à la fin de l'acte II
 for (let i = 0; i < 150 * 60 * 10; i++) {
-  // À l'acte III, le prudent ne lance pas de formation qui ferait passer le Consentement sous le seuil du Conseil.
-  const formerOk = s.acte < 3 || profil === 'pressé' || s.Co - D.RECONV.co >= D.RELANCE.autoSeuil + 0.5;
-  if (s.t >= prochainAction && formerOk && E.reconvertir(s)) prochainAction = s.t + reaction;
+  // Un clic remplit toutes les places libres. À l'acte III, le prudent ne lance pas de lot qui ferait passer
+  // le Consentement sous le seuil du Conseil.
+  const formerOk = () => s.acte < 3 || profil === 'pressé' || s.Co - D.RECONV.co >= D.RELANCE.autoSeuil + 0.5;
+  if (s.t >= prochainAction) {
+    let lots = 0;
+    while (formerOk() && E.reconvertir(s)) lots++;
+    if (lots) prochainAction = s.t + reaction;
+  }
   while (s.t >= prochainAction) {
     const choix = s.acte === 1 ? choixActe1() : s.acte === 2 ? choixActe2() : choixActe3();
     if (!choix) break;

@@ -24,7 +24,7 @@ Prérequis, une seule fois : dans les réglages du dépôt, *Pages → Build and
 - **Deux couches sonores retirées, deux ajoutées** : la rumeur de trafic s'éteint quand le nombre cesse de monter, et le vent arrive ; les turbines s'éteignent au premier chiffre perdu, et les oiseaux arrivent. Une relance ramène l'industrie à plein volume.
 - **Les deux moments testés** : la stabilisation (le jeu s'arrête 3 s, le son baisse) et la perte du premier chiffre (le chiffre de tête tombe, l'écran se resserre d'un cran, coup sourd). Un panneau affiche ensuite les données du test : temps jusqu'à l'arrêt, temps jusqu'au chiffre, nombre de relances, Casse, plancher.
 - Sauvegarde JSON en `localStorage`, tick à 10 Hz, état en objet plat (`engine.js` est pur et tourne aussi en node). Une partie enregistrée avec une autre liste de sites se reprend quand même ; une sauvegarde illisible mène à une nouvelle partie, avec une copie gardée de côté. Un onglet caché compte comme du temps hors ligne.
-- **Rapport de session** : le bouton « rapport » du pied de page copie les temps des deux moments, les relances des 20 premières minutes, le Consentement minimum, la version jouée et toute la chronologie de la partie, en texte suivi d'un bloc JSON.
+- **Rapport de session** : le bouton « rapport » du pied de page copie les temps des deux moments, les relances des 20 premières minutes, le Consentement minimum, la Casse par cause, la version jouée et toute la chronologie de la partie, en texte suivi d'un bloc JSON.
 
 ## L'acte II : le réseau
 
@@ -43,7 +43,7 @@ Détail, contenu et réglages dans [docs/acte-2.md](docs/acte-2.md).
 Détail, contenu, réglages et points à trancher dans [docs/acte-3.md](docs/acte-3.md).
 
 - **Les Mains deviennent le goulot.** Huit sites (le port, l'autoroute, deux sites logistiques, quatre exploitations agricoles) coûtent beaucoup de Mains et peu de Capacité, qui ne se renouvelle presque plus. Chacun retire une part de l'Empreinte qui reste : 35 à 60 %.
-- **Les gens attendent, par origine**, en semaines fictives. À l'acte III, attendre use le Consentement ; un lot de 300 qui finit sa formation en rend. Chaque lot en formation montre trois noms et leurs anciens métiers. Les centres de formation ouvrent une deuxième place.
+- **Les gens attendent, par origine**, en semaines fictives. À l'acte III, attendre use le Consentement ; un lot de 300 qui finit sa formation en rend. Chaque lot en formation montre trois noms et leurs anciens métiers. Les centres de formation ouvrent une deuxième place. Un clic remplit toutes les places libres ; l'option « former en continu » relance les lots sans clic.
 - **La desserte** : le port et l'autoroute desservent six sites. Un site isolé se démantèle à bras, pour deux fois plus de Mains.
 - **Les vivres** : une jauge de 100 points. Une exploitation qu'on démantèle cesse de produire ; sa terre convertie rend 90 % en cinq minutes. Sous 100, la pénurie fait de la Casse chaque minute. Les ceintures maraîchères ajoutent 30 points.
 - **La relance devient raisonnable** : elle importe les vivres qui manquent, et réembauche les gens en attente, qui ne deviendront jamais des Mains.

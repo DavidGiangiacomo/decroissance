@@ -368,6 +368,39 @@ test('les centres de formation ouvrent une deuxième place ; le plafond humain b
   assert.ok(!E.reconvertir(s2));
 });
 
+test('un clic remplit toutes les places libres ; en continu, un lot part dès qu\'une place se libère', () => {
+  const s = etatActe3({ Co: 60 });
+  s.sites.centres.state = 'fait';
+  s.attente = [{ de: 'port', n: 2000, t0: s.t }]; s.deplaces = 2000;
+  assert.strictEqual(E.reconvertirTout(s), 2);
+  assert.strictEqual(s.Co, 60 - 2 * E.D.RECONV.co);
+  assert.strictEqual(E.reconvertirTout(s), 0, 'plus de place libre');
+  E.formerEnContinu(s, true);
+  assert.ok(s.chrono.some(e => e.type === 'continu' && e.oui));
+  for (let i = 0; i < E.D.RECONV.dur * 10 + 5; i++) E.tick(s, 0.1);
+  assert.strictEqual(s.formations.length, 2, 'les deux places sont reprises sans clic');
+  assert.strictEqual(s.chrono.filter(e => e.type === 'reconversion').length, 4);
+  E.formerEnContinu(s, false);
+  for (let i = 0; i < E.D.RECONV.dur * 10 + 5; i++) E.tick(s, 0.1);
+  assert.strictEqual(s.formations.length, 0, 'à l\'arrêt, plus rien ne part tout seul');
+  const r = E.migrer(allerRetour(Object.assign(s, { formerEnContinu: true })));
+  assert.strictEqual(r.formerEnContinu, true);
+});
+
+test('le rapport sépare la Casse par cause', () => {
+  const s = etatActe2();
+  s.sites.uv.state = 'actif';
+  E.engage(s, 'chimie', { vite: true });                 // l'eau d'Orvenne est coupée : 400
+  for (let i = 0; i < E.defs.chimie.dur * 5 + 5; i++) E.tick(s, 0.1);   // la démolition rapide pollue : 500
+  const c = E.casseParCause(s);
+  assert.deepStrictEqual(c, { coupures: 400, pollutions: 500, penuries: 0 });
+  assert.strictEqual(c.coupures + c.pollutions + c.penuries, s.X);
+  const texte = E.rapportTexte(s, 'test');
+  assert.ok(texte.includes('- Casse : 900 personnes (coupures et délestages 400, pollutions 500)'), texte.split('\n').find(l => l.includes('Casse')));
+  assert.ok(texte.includes('- Coupures et délestages : 1'));
+  assert.strictEqual(E.texteCasse(E.create()), '0 personne');
+});
+
 test('chaque lot montre trois noms stables, aux métiers de son site d\'origine', () => {
   const f = { n: 300, lot: 12, progress: 0, compo: [{ de: 'port', n: 300 }] };
   const a = E.personnes(f, 3), b = E.personnes(f, 3);

@@ -353,6 +353,8 @@
     $('formations').hidden = !acte3 || !s.formations.length;
     $('attente').hidden = !acte3 || !s.attente.length;
     $('gens-note').hidden = !acte3;
+    $('continu-zone').hidden = !acte3;
+    $('continu').checked = !!s.formerEnContinu;
     if (!acte3) return;
     const semaines = (sec) => Math.max(0, Math.floor(sec / D.SEMAINE));
     const groupes = [];
@@ -419,22 +421,32 @@
     document.getElementById('app').dataset.digits = s.digits;
   }
 
+  // Évolution du Consentement : ce qu'il a réellement gagné ou perdu pendant la dernière minute de jeu,
+  // tout compris (formations, fermetures, attente, chantiers simultanés, relances). Un relevé par seconde de jeu.
+  let histoCo = [];
+  function evolutionCo() {
+    const der = histoCo[histoCo.length - 1];
+    if (!der || s.t - der[0] >= 1 || s.t < der[0]) histoCo.push([s.t, s.Co]);
+    while (histoCo.length > 1 && histoCo[1][0] <= s.t - 60) histoCo.shift();
+    return s.t - histoCo[0][0] >= 59 ? s.Co - histoCo[0][1] : null;
+  }
+
   function rendreRessources() {
     $('k').textContent = Math.floor(s.K); $('krate').textContent = ` +${E.kRate(s).toFixed(1).replace('.', ',')} / s`;
     const enForm = E.enFormation(s);
     $('m').textContent = E.fmt(s.M); $('meng').textContent = ` · ${E.fmt(s.Meng)} engagées${s.acte >= 3 && enForm ? ` · ${E.fmt(enForm)} en formation` : ''}`;
     const T = E.T(s); $('t').textContent = T.toFixed(1).replace('.', ','); $('t-barre').style.width = Math.min(100, T) + '%';
     $('co').textContent = Math.round(s.Co); $('co-barre').style.width = s.Co + '%'; $('co-barre').className = s.Co < 30 ? 'bas' : '';
-    const ct = $('co-tendance'); ct.hidden = s.acte < 3;
-    if (!ct.hidden) {   // acte III : le Consentement devient volatil, sa pente s'affiche
-      const v = E.coTendance(s);
-      ct.className = 'co-tendance' + (v < -0.05 ? ' baisse' : v > 0.05 ? ' hausse' : '');
-      ct.textContent = Math.abs(v) < 0.05 ? ' stable' : ` ${v < 0 ? '▼' : '▲'} ${Math.abs(v).toFixed(1).replace('.', ',')} / min`;
+    const ct = $('co-tendance'), dv = evolutionCo();
+    ct.hidden = s.acte < 3 || dv === null;   // acte III : le Consentement devient volatil, son évolution s'affiche
+    if (!ct.hidden) {
+      ct.className = 'co-tendance' + (dv <= -0.5 ? ' baisse' : dv >= 0.5 ? ' hausse' : '');
+      ct.textContent = Math.abs(dv) < 0.5 ? ' stable en 1 min' : ` ${dv < 0 ? '▼' : '▲'} ${Math.abs(dv).toFixed(1).replace('.', ',')} en 1 min`;
     }
     $('deplaces').textContent = E.fmt(s.deplaces);
-    const places = E.placesFormation(s), pleines = s.formations.length >= places, f0 = s.formations[0];
-    const br = $('btn-reconv'); br.disabled = pleines || s.deplaces <= 0;
-    br.textContent = pleines ? (places > 1 ? 'Formations complètes' : 'Reconversion en cours') : `Reconvertir ${Math.min(D.RECONV.batch, s.deplaces) || ''}`.trim();
+    const places = E.placesFormation(s), libres = places - s.formations.length, f0 = s.formations[0];
+    const br = $('btn-reconv'); br.disabled = libres <= 0 || s.deplaces <= 0;   // un clic remplit toutes les places libres
+    br.textContent = libres <= 0 ? (places > 1 ? 'Formations complètes' : 'Reconversion en cours') : `Reconvertir ${Math.min(D.RECONV.batch * libres, s.deplaces) || ''}`.trim();
     const re = $('reconv-etat');
     if (s.acte >= 3) {
       const nl = s.formations.length;
@@ -535,7 +547,7 @@
       ['Premier chiffre perdu', s.ms.chiffre !== null ? E.fmtDur(s.ms.chiffre) : 'jamais'],
       ['Relances, 20 premières minutes', String(E.rapport(s, VERSION).relances20min)],
       ['Relances au total', `${s.relances}${s.relancesAuto ? ` (+${s.relancesAuto} sans vous)` : ''}`],
-      ['Casse', `${E.fmt(s.X)} personnes`],
+      ['Casse', E.texteCasse(s)],
       ['Plancher irréductible', E.fmt(s.plancher)],
     ];
     let titre = 'Acte I — premier chiffre perdu', note = 'Le reste de la carte est là. Rien ne vous oblige à continuer.';
@@ -548,7 +560,7 @@
         ['Pénuries', `${r.penuries}, ${E.fmt(r.cassePenurie)} personnes`],
         ['Réembauchés au lieu d\'être reconvertis', E.fmt(r.reembauches)],
         ['Chantiers lancés à bras', String(r.chantiersIsoles)],
-        ['Casse', `${E.fmt(s.X)} personnes`],
+        ['Casse', E.texteCasse(s)],
         ['Relances au total', `${s.relances}${s.relancesAuto ? ` (+${s.relancesAuto} sans vous)` : ''}`],
         ['Empreinte restante', E.fmt(s.E)],
         ['Terre rendue', `${E.T(s).toFixed(1).replace('.', ',')} % — continue sans vous`]);
@@ -595,7 +607,7 @@
 
   // ---------- actions ----------
   function engager(id, opts) { const evs = E.engage(s, id, opts); if (evs.length) { traiter(evs); rendre(); sauver(); } }
-  function reconvertir() { if (E.reconvertir(s)) { rendre(); sauver(); } }
+  function reconvertir() { if (E.reconvertirTout(s)) { rendre(); sauver(); } }
   function relancer() { const ev = E.relancer(s, false); if (ev) { traiter([ev]); majSon(1.2); rendre(); sauver(); } }
 
   // ---------- boucle 10 Hz ----------
@@ -614,6 +626,7 @@
 
   function demarrer(etat) {
     s = etat; s.started = true;
+    histoCo = [];
     if (!s.versions.includes(VERSION)) s.versions.push(VERSION);
     document.documentElement.style.setProperty('--resserre', (8 * (10 - s.digitsMin)) + 'px');
     construireCarte(); construireChantiers();
@@ -647,6 +660,7 @@
     $('btn-commencer').addEventListener('click', () => demarrer(E.create()));
     $('btn-relancer').addEventListener('click', relancer);
     $('btn-reconv').addEventListener('click', reconvertir);
+    $('continu').addEventListener('change', (ev) => { E.formerEnContinu(s, ev.target.checked); rendre(); sauver(); });
     $('btn-son').addEventListener('click', () => { s.son = !s.son; son.setMute(!s.son); $('btn-son').textContent = `son : ${s.son ? 'oui' : 'non'}`; sauver(); });
     $('btn-reset').addEventListener('click', () => { if (confirm('Recommencer depuis le début ? La partie en cours sera effacée.')) { effacer(); demarrer(E.create()); } });
     $('btn-rapport').addEventListener('click', ouvrirRapport);
