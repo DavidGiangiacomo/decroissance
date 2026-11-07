@@ -24,9 +24,10 @@
     </div>
     <div class="haut-droite">
       <button id="btn-relancer" class="btn-relancer" title="Relancer la croissance. Ça marche.">Relancer</button>
-      <div class="casse" title="Dommages irréversibles, en gens. Ne redescend jamais.">
+      <div id="casse-bloc" class="casse">
         <span class="casse-label">Casse</span>
         <span id="casse" class="casse-val">0</span>
+        <span id="casse-unite" class="casse-unite">personne touchée pour de bon</span>
       </div>
     </div>
   </header>
@@ -96,7 +97,8 @@
         <div class="res">
           <div class="res-label">Consentement</div>
           <div class="res-val"><span id="co">100</span><small> %</small><small id="co-tendance" class="co-tendance" hidden title="Ce que le consentement a réellement gagné ou perdu pendant la dernière minute de jeu, tout compris : formations, fermetures, attente, chantiers simultanés, relances."></small></div>
-          <div class="barre"><i id="co-barre" style="width:100%"></i></div>
+          <div class="barre"><i id="co-barre" style="width:100%"></i><b id="co-seuil-marque" class="seuil-marque" style="left:20%"></b></div>
+          <div id="co-seuil" class="co-seuil">Sous 20 %, le Conseil relance la croissance sans vous.</div>
         </div>
       </section>
 

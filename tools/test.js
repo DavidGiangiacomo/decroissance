@@ -203,7 +203,7 @@ test('un site délesté se démantèle encore, sans compter deux fois ses gens',
 
 test('au deuxième chiffre perdu, la région la plus démantelée s\'éteint', () => {
   const s = etatActe2();
-  s.E = 1.9e8;
+  s.E = E.defs.acierie.E + 2e7;   // la fermeture fait passer sous 10⁸, sans descendre sous 10⁷
   E.engage(s, 'acierie');
   let ev = [];
   for (let i = 0; i < E.defs.acierie.dur * 10 + 5; i++) ev = ev.concat(E.tick(s, 0.1));
@@ -447,6 +447,82 @@ test('une sauvegarde d\'avant l\'acte III reprend sa formation et ses gens en at
   assert.ok(r.attente.every(c => c.de === null || c.de in E.defs));
   assert.strictEqual(r.acte, 3);
   assert.strictEqual(r.Meng, s3.Meng);
+});
+
+// ---- La Casse et le Conseil se voient avant de lancer (playtest n°3) ----
+test('le prix affiché d\'une coupure est celui qu\'elle coûte, en Casse et en consentement', () => {
+  const s = Object.assign(E.create(), { started: true, K: 5000, M: 5000 });
+  const c = E.canEngage(s, 'charbon');
+  assert.ok(c.coupures.length > 0, 'au départ, le charbon alimente encore quelque chose');
+  const p = E.prixLancement(s, 'charbon', c);
+  assert.ok(p.casse > 0 && p.co > 0);
+  const X0 = s.X, Co0 = s.Co;
+  E.engage(s, 'charbon');
+  assert.strictEqual(s.X - X0, p.casse);
+  assert.strictEqual(Co0 - s.Co, p.co);
+});
+
+test('l\'aperçu d\'un délestage annonce sa Casse et son consentement', () => {
+  const s = etatActe2();
+  const c = E.canEngage(s, 'thermique');
+  const p = E.prixLancement(s, 'thermique', c);
+  assert.ok(c.apercu.delestes.includes('acierie') && p.casse >= E.defs.acierie.deplaces);
+  const X0 = s.X, Co0 = s.Co;
+  E.engage(s, 'thermique');
+  E.tick(s, 0.1);
+  const usure = Co0 - s.Co - p.co;   // un tick de dérive et d'usure, en plus des délestages
+  assert.strictEqual(s.X - X0, p.casse);
+  assert.ok(Math.abs(usure) < 0.1, `consentement : annoncé −${p.co}, perdu ${(Co0 - s.Co).toFixed(2)}`);
+});
+
+test('à la première Casse, le journal dit ce qu\'elle compte, une seule fois', () => {
+  const s = Object.assign(E.create(), { started: true, K: 5000, M: 5000 });
+  E.tick(s, 0.1);
+  assert.ok(!s.log.some(l => l.kind === 'def'), 'pas de définition tant qu\'il n\'y a pas de Casse');
+  E.engage(s, 'charbon');
+  E.tick(s, 0.1); E.tick(s, 0.1);
+  const def = s.log.filter(l => l.kind === 'def');
+  assert.strictEqual(def.length, 1);
+  assert.strictEqual(def[0].msg, E.DEFINITION_CASSE);
+  const r = E.migrer(allerRetour(s));
+  E.tick(r, 0.1);
+  assert.strictEqual(r.log.filter(l => l.kind === 'def').length, 1, 'une partie rechargée ne la répète pas');
+  const ancienne = allerRetour(s);
+  delete ancienne.casseDite; ancienne.log = [];
+  const a = E.migrer(ancienne);
+  E.tick(a, 0.1);
+  assert.strictEqual(a.log.filter(l => l.kind === 'def').length, 1, 'une partie d\'avant ce changement la reçoit une fois');
+});
+
+test('la carte avertit quand un lancement ou une fermeture ferait passer le consentement sous le seuil du Conseil', () => {
+  const seuil = E.D.RELANCE.autoSeuil, co = E.defs.aero.co;
+  const s = Object.assign(E.create(), { started: true, K: 5000, M: 5000 });
+  s.Co = seuil + co + 1;
+  assert.strictEqual(E.risqueConseil(s, 'aero', E.canEngage(s, 'aero')), null);
+  s.Co = seuil + co - 1;
+  assert.deepStrictEqual(E.risqueConseil(s, 'aero', E.canEngage(s, 'aero')), { quand: 'fermeture', co, seuil });
+  E.engage(s, 'aero');
+  assert.strictEqual(E.risqueConseil(s, 'aero').quand, 'fermeture', 'la carte le redit pendant le chantier');
+  for (let i = 0; i < 6000 && s.sites.aero.state === 'chantier'; i++) E.tick(s, 0.1);
+  assert.strictEqual(s.relancesAuto, 1, 'le Conseil relance bien à la fermeture annoncée');
+  assert.strictEqual(E.risqueConseil(s, 'aero'), null, 'plus rien à annoncer sur un site fermé');
+  const s2 = Object.assign(E.create(), { started: true, K: 5000, M: 5000, Co: seuil + 10 });
+  assert.strictEqual(E.risqueConseil(s2, 'charbon', E.canEngage(s2, 'charbon')).quand, 'lancement', 'une coupure coûte tout de suite');
+  s2.Co = seuil - 1;
+  assert.strictEqual(E.risqueConseil(s2, 'aero', E.canEngage(s2, 'aero')), null, 'déjà sous le seuil : l\'affichage du consentement le dit');
+});
+
+test('l\'aperçu d\'une pénurie annonce à peu près la Casse qu\'elle fera', () => {
+  const s = etatActe3();
+  const c = E.canEngage(s, 'cereales');
+  assert.ok(c.ok, c.raisons.join(', '));
+  const v = c.apercu.vivres;
+  assert.ok(v.duree > 0 && v.casse > 0 && v.co > 0);
+  const X0 = s.X;
+  E.engage(s, 'cereales');
+  for (let i = 0; i < 400 * 10; i++) E.tick(s, 0.1);
+  const vraie = s.X - X0;
+  assert.ok(Math.abs(vraie - v.casse) <= 0.1 * vraie, `annoncé ${v.casse}, fait ${vraie}`);
 });
 
 console.log(`\n${passes} tests passés`);
