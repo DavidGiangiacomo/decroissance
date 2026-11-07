@@ -217,9 +217,10 @@
         <div class="cout"><span>Capacité <b class="ck">${d.K}</b></span><span>Mains <b class="cm">${d.M}</b></span><span><b>${E.fmtDur(d.dur)}</b></span>${d.g ? `<span>croissance <b>+${d.g.toFixed(2).replace('.', ',')} %/min</b></span>` : ''}${d.deplaces ? `<span><b>${E.fmt(d.deplaces)}</b> personnes</span>` : ''}${d.co ? `<span>consentement <b>−${d.co}</b></span>` : ''}</div>
         ${reseau ? `<div class="mw">${infosReseau(d)}</div>` : acte3 && !d.mesure ? `<div class="mw">${infosActe3(d)}</div>` : ''}
         ${deps.length ? `<div class="alim">alimente : ${deps.join(', ')}</div>` : ''}
-        ${d.rapide ? `<div class="vite-note">Démolir vite : moitié du temps, de la Capacité et des Mains, mais une pollution qui touche ${E.fmt(d.rapide.casse)} personnes et laisse un sol pollué.</div>` : ''}
+        ${d.rapide ? `<div class="vite-note">Démolir vite : moitié du temps, de la Capacité et des Mains, mais une pollution qui touche ${E.fmt(d.rapide.casse)} personnes, comptées dans la Casse, et laisse un sol pollué.</div>` : ''}
         ${d.desservi ? '<div class="isole-note" hidden>Isolé : plus rien ne le dessert, tout se fait à bras. Mains ×2.</div>' : ''}
         ${reseau || acte3 ? '<div class="apercu" hidden></div>' : ''}
+        <div class="conseil-note" hidden></div>
         <div class="action"><button class="btn engager">Engager</button>${d.rapide ? '<button class="btn vite">Démolir vite</button>' : ''}<div class="prog" hidden><i></i></div><span class="etat"></span></div>`;
       c.querySelector('.engager').addEventListener('click', (ev) => { ev.stopPropagation(); engager(d.id); });
       if (d.rapide) c.querySelector('.vite').addEventListener('click', (ev) => { ev.stopPropagation(); engager(d.id, { vite: true }); });
@@ -229,13 +230,23 @@
   }
 
   // Ce qu'un lancement ferait au réseau, en une phrase (R4 : tout se voit avant de lancer)
-  function texteApercu(a) {
+  // Le prix d'une coupure, d'un délestage ou d'une privation, dans les unités des compteurs du haut (R4)
+  const nbPersonnes = (n) => `${E.fmt(n)} ${n >= 2 ? 'personnes' : 'personne'}`;
+  const textePrix = (p) => `Casse +${nbPersonnes(p.casse)}${p.sansReclassement ? ' sans reclassement' : ''}, consentement −${E.fmt(p.co)}.`;
+  function texteApercu(a, p) {
     const marge = `${a.apres >= 0 ? '+' : '−'}${E.fmt(Math.abs(a.apres))} MW`;
     const morceaux = [`Lancé maintenant : la marge ${a.apres < 0 ? 'tombe' : 'passe'} à ${marge}.`];
     if (a.arretes.length) morceaux.push(`À l'arrêt : ${a.arretes.map(nomDe).join(', ')}.`);
     if (a.delestes.length) morceaux.push(`Délestés : ${a.delestes.map(nomDe).join(', ')}.`);
     for (const id of a.prives) morceaux.push(`Sans ${E.noeuds[id].besoin.quoi} : ${nomDe(id)}.`);
+    if (p && (p.casse > 0 || p.co > 0)) morceaux.push(textePrix(p));
     return { danger: a.prives.length + a.delestes.length > 0, texte: morceaux.join(' ') };
+  }
+  // Sous le seuil, le Conseil relance sans le joueur : la carte le dit avant (R4)
+  function texteConseil(r, enCours) {
+    if (r.quand === 'lancement') return `Lancé maintenant, le consentement passerait sous ${r.seuil} % (−${E.fmt(r.co)}) : le Conseil relancerait la croissance sans vous.`;
+    const [passe, relance] = enCours ? ['passera', 'relancera'] : ['passerait', 'relancerait'];
+    return `À la fermeture, le consentement ${passe} sous ${r.seuil} % (−${E.fmt(r.co)}) s'il ne remonte pas d'ici là : le Conseil ${relance} la croissance sans vous.`;
   }
   // Acte III : l'Empreinte retirée, ce qu'on isolerait, ce qui manquerait à manger
   function texteApercu3(a, d) {
@@ -244,7 +255,7 @@
     if (a.isoles.length) morceaux.push(`Isolerait : ${a.isoles.map(nomDe).join(', ')} (Mains ×2).`);
     if (a.vivres) {
       const bas = Math.floor(a.vivres.bas);
-      morceaux.push(a.vivres.duree ? `Vivres au plus bas : ${bas} sur 100, pénurie pendant ${E.fmtDur(a.vivres.duree)} environ.` : `Vivres au plus bas : ${bas} sur 100.`);
+      morceaux.push(a.vivres.duree ? `Vivres au plus bas : ${bas} sur 100, pénurie pendant ${E.fmtDur(a.vivres.duree)} environ : Casse ≈ +${nbPersonnes(a.vivres.casse)}, consentement ≈ −${E.fmt(a.vivres.co)}.` : `Vivres au plus bas : ${bas} sur 100.`);
     }
     return { danger: a.isoles.length > 0 || !!(a.vivres && a.vivres.duree > 0), texte: morceaux.join(' ') };
   }
@@ -258,7 +269,10 @@
       const can = E.canEngage(s, d.id);
       c.className = `chantier ${st.state}${st.pollue ? ' pollue' : ''}${selection === d.id ? ' selection' : ''}`;
       const btn = c.querySelector('.engager'), bv = c.querySelector('.vite'), prog = c.querySelector('.prog'), etat = c.querySelector('.etat');
-      const alim = c.querySelector('.alim'), ap = c.querySelector('.apercu'), vn = c.querySelector('.vite-note');
+      const alim = c.querySelector('.alim'), ap = c.querySelector('.apercu'), vn = c.querySelector('.vite-note'), cn = c.querySelector('.conseil-note');
+      const risque = E.risqueConseil(s, d.id, can);
+      cn.hidden = !risque;
+      if (risque) cn.textContent = texteConseil(risque, st.state === 'chantier');
       if (vn) vn.hidden = st.state !== 'actif';
       const coutM = can.cout ? can.cout.M : d.M;   // un site isolé coûte deux fois plus de Mains
       c.querySelector('.ck').className = 'ck' + (st.state === 'actif' && s.K < d.K ? ' manque' : '');
@@ -276,9 +290,9 @@
         const manque = can.ok ? '' : can.raisons.join(' · ');
         etat.className = 'etat' + (restes ? ' rouge' : '');
         etat.textContent = restes ? `coupé, à l'arrêt${manque ? ' · ' + manque : ''}` : st.sansApport ? `à l'arrêt, faute de ${d.besoin.quoi}${manque ? ' · ' + manque : ''}` : manque;
-        if (alim) { const m = can.coupures.length; alim.className = 'alim' + (m ? ' menace' : ''); alim.textContent = m ? `couperait maintenant : ${can.coupures.map(nomDe).join(', ')}` : `alimente : ${E.dependants(d.id).map(nomDe).join(', ')}`; }
+        if (alim) { const m = can.coupures.length; alim.className = 'alim' + (m ? ' menace' : ''); alim.textContent = m ? `couperait maintenant : ${can.coupures.map(nomDe).join(', ')}. ${textePrix(E.prixLancement(s, d.id, can))}` : `alimente : ${E.dependants(d.id).map(nomDe).join(', ')}`; }
         if (ap) {
-          const a = restes || !can.apercu ? null : E.acteDe(d) >= 3 ? texteApercu3(can.apercu, d) : texteApercu(can.apercu);
+          const a = restes || !can.apercu ? null : E.acteDe(d) >= 3 ? texteApercu3(can.apercu, d) : texteApercu(can.apercu, E.prixLancement(s, d.id, can));
           ap.hidden = !a || !a.texte;
           if (!ap.hidden) { ap.className = 'apercu' + (a.danger ? ' danger' : ''); ap.textContent = a.texte; }
         }
@@ -286,6 +300,7 @@
         btn.hidden = true; if (bv) bv.hidden = true; prog.hidden = false; prog.firstElementChild.style.width = (st.progress * 100).toFixed(1) + '%';
         const reste = Math.ceil(E.dureeChantier(d, st) * (1 - st.progress) / speed);
         etat.className = 'etat'; etat.textContent = `${st.vite ? 'démolition rapide' : st.restes ? 'restes' : 'chantier'} · ${E.fmtDur(reste)}`;
+        if (alim) { alim.className = 'alim'; alim.textContent = ''; }   // le site s'est arrêté à l'ouverture : il n'alimente plus rien
         if (ap) ap.hidden = true;
       } else {
         btn.hidden = true; if (bv) bv.hidden = true; prog.hidden = true;
@@ -437,6 +452,7 @@
     $('m').textContent = E.fmt(s.M); $('meng').textContent = ` · ${E.fmt(s.Meng)} engagées${s.acte >= 3 && enForm ? ` · ${E.fmt(enForm)} en formation` : ''}`;
     const T = E.T(s); $('t').textContent = T.toFixed(1).replace('.', ','); $('t-barre').style.width = Math.min(100, T) + '%';
     $('co').textContent = Math.round(s.Co); $('co-barre').style.width = s.Co + '%'; $('co-barre').className = s.Co < 30 ? 'bas' : '';
+    $('co-seuil').className = 'co-seuil' + (s.Co < D.RELANCE.autoSeuil + 5 ? ' proche' : '');
     const ct = $('co-tendance'), dv = evolutionCo();
     ct.hidden = s.acte < 2 || dv === null;   // dès l'acte II, où les coupures et le Conseil entrent en jeu
     if (!ct.hidden) {
@@ -457,6 +473,7 @@
     else re.textContent = 'Personne à reconvertir pour l\'instant. Les gens viennent des sites fermés.';
     $('reconv-barre').style.width = f0 ? (f0.progress * 100) + '%' : '0%';
     const x = $('casse'); x.textContent = E.fmt(s.X); x.classList.toggle('zero', s.X === 0);
+    $('casse-unite').textContent = s.X >= 2 ? 'personnes touchées pour de bon' : 'personne touchée pour de bon';
     const b = $('btn-relancer'); const rel = E.relanceActive(s);
     const auto = rel && s.t - s.autoRelanceAt < D.RELANCE.dur;
     b.className = 'btn-relancer' + (rel ? (auto ? ' auto' : ' actif') : '');
@@ -656,6 +673,9 @@
   // ---------- init ----------
   function init() {
     $('version').textContent = `version ${VERSION}`;
+    $('casse-bloc').title = E.DEFINITION_CASSE;
+    $('co-seuil').textContent = `Sous ${D.RELANCE.autoSeuil} %, le Conseil relance la croissance sans vous.`;
+    $('co-seuil-marque').style.left = D.RELANCE.autoSeuil + '%';
     // Les actions d'abord : une sauvegarde abîmée ne doit jamais laisser l'écran d'accueil inerte.
     $('btn-commencer').addEventListener('click', () => demarrer(E.create()));
     $('btn-relancer').addEventListener('click', relancer);

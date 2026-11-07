@@ -25,6 +25,7 @@
       deplaces: 0,          // personnes à reconvertir
       Co: 100,
       X: 0,                 // Casse, en gens, irréversible
+      casseDite: false,     // la définition de la Casse a été donnée, à sa première apparition
       sites: {},            // id -> { state: actif|chantier|eteint|coupe|fait, progress, regen, vite, pollue }
       hopital: 'alimente',  // acte I : alimente | coupe | autonome
       noeuds: {},           // acte II : id -> alimente | deleste | prive
@@ -177,16 +178,17 @@
     }
     return { prod, besoin: V.besoin, marge: prod - V.besoin };
   }
-  // Ce qu'un lancement ferait aux vivres : le point le plus bas, et combien de temps ils manqueraient.
+  // Ce qu'un lancement ferait aux vivres : le point le plus bas, combien de temps ils manqueraient,
+  // et ce que la pénurie coûterait, en Casse et en Consentement, si rien d'autre ne changeait.
   function apercuVivres(s, id) {
-    const V = D.VIVRES;
-    let bas = Infinity, duree = 0;
-    for (let dt = 0; dt <= V.releveDur; dt += 5) {
+    const V = D.VIVRES, pas = 5;
+    let bas = Infinity, duree = 0, casse = 0, co = 0;
+    for (let dt = 0; dt <= V.releveDur; dt += pas) {
       const v = vivres(s, id, dt);
       if (v.prod < bas) bas = v.prod;
-      if (v.marge < 0) duree = dt + 5;
+      if (v.marge < 0) { duree = dt + pas; casse += -v.marge * V.casse * pas; co += -v.marge * V.co * pas; }
     }
-    return { bas, besoin: V.besoin, duree };
+    return { bas, besoin: V.besoin, duree, casse: Math.round(casse), co: Math.round(co) };
   }
 
   // Les gens qui attendent une formation, par origine : le groupe le plus ancien part en formation d'abord.
@@ -278,6 +280,45 @@
   function log(s, msg, kind) {
     s.log.push({ t: Math.floor(s.t), msg, kind: kind || '' });
     if (s.log.length > 200) s.log.shift();
+  }
+
+  // La Casse se dit une fois, à sa première apparition : une définition, pas un commentaire (§10).
+  const DEFINITION_CASSE = "La Casse compte les personnes touchées pour de bon : licenciées sans reconversion, privées d'électricité, d'eau ou de soins, intoxiquées par une démolition bâclée, mal nourries. Elle ne redescend jamais.";
+  function direCasse(s) {
+    if (s.casseDite || !(s.X > 0)) return;
+    s.casseDite = true;
+    log(s, DEFINITION_CASSE, 'def');
+  }
+
+  // Ce que coûte une coupure, un délestage ou une privation, avant qu'ils n'aient lieu (R4) :
+  // les mêmes nombres que coupure(), delester() et priver(). Un site arrêté net perd ses gens sans reclassement.
+  function prixCoupure(id) {
+    const d = defs[id];
+    if (d) return { casse: d.deplaces || 0, co: D.COUPURE_SITE_CO };
+    const n = noeuds[id];
+    return { casse: (n && n.casse) || 0, co: (n && n.co) || 0 };
+  }
+  // Le prix d'un lancement : ce qu'il couperait tout de suite (acte I), délesterait ou priverait (acte II).
+  function prixLancement(s, id, c) {
+    c = c || canEngage(s, id);
+    const a = c.apercu;
+    const ids = [...(c.coupures || []), ...(a ? [...(a.delestes || []), ...(a.prives || [])] : [])];
+    let casse = 0, co = 0;
+    for (const x of ids) { const p = prixCoupure(x); casse += p.casse; co += p.co; }
+    return { ids, casse, co, sansReclassement: ids.length > 0 && ids.every(x => !!defs[x]) };
+  }
+  // Le Conseil relance sous un seuil de Consentement. Ce lancement, ou la fermeture qui suivra, le ferait-il franchir ?
+  // Compté avec le Consentement d'aujourd'hui : le jeu ne devine pas ce qu'il deviendra d'ici la fermeture.
+  function risqueConseil(s, id, c) {
+    const d = defs[id], st = s.sites[id], seuil = D.RELANCE.autoSeuil;
+    if (!d || !st || s.Co < seuil) return null;   // déjà sous le seuil : l'affichage du Consentement le dit
+    const fermeture = d.co || 0;
+    if (st.state === 'chantier') return s.Co - fermeture < seuil ? { quand: 'fermeture', co: fermeture, seuil } : null;
+    if (st.state !== 'actif' && st.state !== 'coupe') return null;
+    const lancement = prixLancement(s, id, c).co;
+    if (s.Co - lancement < seuil) return { quand: 'lancement', co: lancement, seuil };
+    if (s.Co - lancement - fermeture < seuil) return { quand: 'fermeture', co: fermeture, seuil };
+    return null;
   }
 
   // Chronologie complète pour le rapport de session et l'épilogue : pas de limite, contrairement au journal.
@@ -548,6 +589,7 @@
 
   function tick(s, dt) {
     const ev = [];
+    direCasse(s);   // une coupure au lancement arrive hors du tick : sa définition suit au tick d'après
     if (s.paused > 0) { s.paused -= dt; return ev; }
     s.t += dt;
     const rel = relanceActive(s);
@@ -929,6 +971,7 @@
     bilan, apercu, planDelestage, approvisionne, acteDe, cout, dureeChantier, mesureFaite,
     retrait, isole, dessertes, vivres, apercuVivres, placesFormation, enFormation, personnes,
     reconvertirTout, formerEnContinu, casseParCause, texteCasse,
+    prixCoupure, prixLancement, risqueConseil, DEFINITION_CASSE,
     DERNIER_ACTE, TITRES_ACTES,
     fmt, fmtDur, fmtSci, migrer, rapport, rapportTexte,
   };

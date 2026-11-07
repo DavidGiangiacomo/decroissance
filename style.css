@@ -64,6 +64,7 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .casse-val { font-family: var(--mono); font-size: 26px; color: var(--rouge); font-variant-numeric: tabular-nums; }
 .casse-val.zero { color: var(--gris); }
 .casse-val.coup { animation: coup .8s ease-out; }
+.casse-unite { font-size: 11px; color: var(--muted); text-align: right; white-space: nowrap; }
 @keyframes coup { 0% { transform: scale(1.5); color: #fff; } 100% { transform: scale(1); } }
 
 /* ---- corps ---- */
@@ -126,12 +127,15 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .res-label { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
 .res-val { font-family: var(--mono); font-size: 20px; font-variant-numeric: tabular-nums; }
 .res-val small { font-size: 11.5px; color: var(--muted); font-family: var(--sans); }
-.barre { height: 5px; background: #141619; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.barre { position: relative; height: 5px; background: #141619; border-radius: 3px; overflow: hidden; margin-top: 4px; }
 .barre i { display: block; height: 100%; background: var(--gris); transition: width .3s linear; }
 #t-barre { background: var(--vert); }
 #co-barre { background: #9aa3ad; }
 #co-barre.bas { background: var(--rouge); }
 .barre.fine { height: 3px; }
+.barre .seuil-marque { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #f0a49c; }
+.co-seuil { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.3; }
+.co-seuil.proche { color: #f0a49c; }
 #reconv-barre { background: var(--chaud); }
 .mains { border: 1px solid var(--bord); border-radius: 6px; padding: 10px 12px; background: var(--panneau-2); }
 .mains-ligne { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -174,6 +178,7 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .journal li.casse { color: #f0a49c; }
 .journal li.jalon { color: var(--texte); font-weight: 600; }
 .journal li.relance { color: var(--chaud); }
+.journal li.def { color: var(--muted); font-style: italic; }
 .pied { margin-top: auto; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; padding-top: 6px; border-top: 1px solid var(--bord); }
 .pied > * { white-space: nowrap; }
 .pied .version { margin-left: auto; font-variant-numeric: tabular-nums; }
@@ -264,6 +269,8 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .chantier .action { flex-wrap: wrap; }
 .btn.vite { border-color: #8a6a3a; color: var(--chaud-2); }
 .chantier .vite-note { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); }
+.chantier .conseil-note { grid-column: 1 / -1; font-size: 12px; color: #f0a49c; }
+.chantier .conseil-note::before { content: "⚠ "; }
 
 /* carton d'ouverture d'un acte */
 .carton-acte { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(10,11,14,.78); pointer-events: none; animation: carton-acte 4s ease forwards; }
@@ -306,6 +313,8 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
   .app { height: auto; }
   .haut { grid-template-columns: 1fr; text-align: center; }
   .haut-droite { justify-content: center; }
+  .casse { align-items: center; }
+  .casse-unite { text-align: center; }
   .corps { grid-template-columns: 1fr; }
   .carte-zone { height: 60vh; border-right: 0; border-bottom: 1px solid var(--bord); }
   .panneau { overflow: visible; }
