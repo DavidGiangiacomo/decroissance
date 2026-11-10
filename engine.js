@@ -2,6 +2,8 @@
 // Acte I : faire cesser la croissance, puis perdre un chiffre (le MVP).
 // Acte II : le réseau. Production et demande électriques ; marge négative → délestage, marge positive → rebond.
 // Acte III : les gens. Les Mains deviennent le goulot : gens en attente, formations, desserte, vivres.
+// Acte IV : le legs. Ce qui ne se démantèle pas se garde ; le réseau national est le point de non-retour ;
+// les sols se dépolluent au temps réel seul ; le plancher s'affiche.
 (function (root) {
   const D = (typeof module !== 'undefined' && module.exports) ? require('./data.js') : root.DATA;
 
@@ -34,6 +36,8 @@
       lots: 0,              // nombre de lots déjà formés ou en formation
       formerEnContinu: false, // acte III : un lot part dès qu'une place se libère
       reembauches: 0,       // acte III : gens réembauchés par une relance au lieu d'être reconvertis
+      gardiens: 0,          // acte IV : gens affectés pour toujours à la garde de ce qui ne se démantèle pas
+      digitsActe4: 0,       // acte IV : chiffres de l'Empreinte à l'ouverture de l'acte (0 : pas encore ouvert)
       penurie: false,       // acte III : les vivres manquent en ce moment
       penurieX: 0,          // Casse due aux pénuries
       penurieAcc: 0,        // fraction de personne en cours de pénurie
@@ -45,7 +49,7 @@
       plancher: D.PLANCHER0,
       digits: 10,
       digitsMin: 10,
-      ms: { stabilise: null, chiffre: null, coupure: null, fin: null, acte2: null, fin2: null, acte3: null, fin3: null },
+      ms: { stabilise: null, chiffre: null, coupure: null, fin: null, acte2: null, fin2: null, acte3: null, fin3: null, acte4: null, fin4: null },
       regionsEteintes: [],
       paused: 0,
       log: [],
@@ -66,13 +70,37 @@
   const digitsOf = (E) => String(Math.floor(Math.max(1, E))).length;
   const relanceActive = (s) => s.t < s.relanceUntil;
 
+  // --- acte IV : le legs ---
+  // Les sols d'un site de l'acte II n'existent que s'il a été démoli trop vite.
+  const existe = (s, d) => !d.seulementSi || !!s.sites[d.seulementSi].pollue || s.sites[d.id].state !== 'actif';
+  // Après le réseau national, la Capacité ne se renouvelle plus, et le rebond du réseau s'arrête.
+  const capaciteFinie = (s) => D.sites.some(d => d.finCapacite && s.sites[d.id].state === 'eteint');
+  // Les gardiens se forment sur les places de formation : une garde en formation en occupe une. Une garde demandée
+  // quand toutes sont prises attend la première qui se libère, avant tout nouveau lot de reconversion.
+  const gardesEnFormation = (s) => D.sites.filter(d => d.garde && s.sites[d.id].state === 'chantier' && !s.sites[d.id].attentePlace).length;
+  const gardeEnAttente = (s) => D.sites.some(d => d.garde && s.sites[d.id].state === 'chantier' && s.sites[d.id].attentePlace);
+  const placesOccupees = (s) => s.formations.length + gardesEnFormation(s);
+  // La part de ce qui reste qui ne sortira de l'Empreinte qu'en étant gardée : ce que retireront ensemble,
+  // de l'Empreinte d'aujourd'hui, les gardes qui ne sont pas encore instituées.
+  function aGarder(s) {
+    let reste = 1;
+    for (const d of D.sites) if (d.garde && s.sites[d.id].state !== 'eteint') reste *= 1 - d.part;
+    return 1 - reste;
+  }
+  const fmtPlancher = (p) => (p < 1000 ? String(Math.round(p * 10) / 10).replace('.', ',') : fmt(p));
+
   function gSites(s) {
     let g = 0;
-    for (const d of D.sites) if (d.g && s.sites[d.id].state === 'actif') g += d.g;
+    for (const d of D.sites) {
+      if (!d.g || acteDe(d) > s.acte) continue;
+      const st = s.sites[d.id];
+      // Une charge de l'acte IV fuit tant que sa garde n'est pas instituée, formation des gardiens comprise.
+      if (st.state === 'actif' || (d.garde && st.state === 'chantier')) g += d.g;
+    }
     return g;
   }
   const gEff = (s) => gSites(s) + gRebond(s) + (relanceActive(s) ? D.RELANCE.g : 0);
-  const kRate = (s) => D.K0 * Math.pow(s.E / D.E0, D.KEXP) * (relanceActive(s) ? D.RELANCE.kMul : 1);
+  const kRate = (s) => (capaciteFinie(s) ? 0 : D.K0 * Math.pow(s.E / D.E0, D.KEXP) * (relanceActive(s) ? D.RELANCE.kMul : 1));
 
   function T(s) {
     let t = 0;
@@ -84,9 +112,10 @@
   }
   const Tmax = () => D.sites.reduce((a, d) => a + d.T, 0);
 
+  // Chantiers menés de front, qui usent le Consentement. Les sols et la formation des gardiens n'en sont pas.
   function chantiersActifs(s) {
     let n = 0;
-    for (const id in s.sites) if (s.sites[id].state === 'chantier') n++;
+    for (const d of D.sites) if (s.sites[d.id].state === 'chantier' && !d.sol && !d.garde) n++;
     return n;
   }
 
@@ -144,7 +173,7 @@
 
   // Rebond : l'électricité en trop relance la croissance, en proportion de la marge.
   function gRebond(s) {
-    if (s.acte < 2) return 0;
+    if (s.acte < 2 || capaciteFinie(s)) return 0;   // sans réseau national, le barrage n'alimente plus que les villes
     const b = bilan(s);
     return b.marge > 0 && b.prod > 0 ? D.REBOND * b.marge / b.prod : 0;
   }
@@ -152,9 +181,9 @@
   // --- acte III : les gens, la desserte, les vivres ---
   // Empreinte qu'un site retire en fermant : fixe aux actes I et II ; à l'acte III, une part de ce qui reste.
   const retrait = (s, d) => (d.part ? s.E * d.part : d.E);
-  // Retire de l'Empreinte, sans jamais plus de RETRAIT_MAX de ce qui reste ; renvoie ce qui a été retiré.
+  // Retire de l'Empreinte, sans jamais plus de RETRAIT_MAX de ce qui reste, ni sous le plancher ; renvoie ce qui a été retiré.
   function retirer(s, e) {
-    const r = Math.min(e, s.E * D.RETRAIT_MAX);
+    const r = Math.max(0, Math.min(e, s.E * D.RETRAIT_MAX, s.E - s.plancher));
     s.E -= r;
     return r;
   }
@@ -412,15 +441,23 @@
     const d = defs[id], st = s.sites[id];
     if (!d) return { ok: false, raisons: ['inconnu'], coupures: [] };
     if (acteDe(d) > s.acte) return { ok: false, raisons: ['pas encore'], coupures: [] };
+    if (!existe(s, d)) return { ok: false, raisons: ['sans objet'], coupures: [] };
     const restes = st.state === 'coupe' && !d.mesure;   // site coupé : on démantèle ce qu'il en reste (R4)
     if (st.state !== 'actif' && !restes) return { ok: false, raisons: [st.state], coupures: [] };
     if (d.mesure && id === 'autonomie' && s.hopital === 'autonome') return { ok: false, raisons: ['déjà fait'], coupures: [] };
     const isol = isole(s, d);
-    const c = cout(d, !!(opts && opts.vite && d.rapide), isol);
+    let c = cout(d, !!(opts && opts.vite && d.rapide), isol);
+    // Acte IV : une garde réduite ou pleine (deux fois plus de gardiens) ; sans Capacité, tout se fait à bras.
+    const dosage = d.garde ? (opts && opts.dosage === 'pleine' ? 'pleine' : 'reduite') : null;
+    if (dosage === 'pleine') c = { K: c.K, M: c.M * 2 };
+    const aBras = acteDe(d) >= 4 && d.K > 0 && s.K < d.K;
+    if (aBras) c = { K: 0, M: c.M * D.A_BRAS };
     const raisons = [];
     if (s.K < c.K) raisons.push(`Capacité ${Math.floor(s.K)}/${c.K}`);
     if (s.M < c.M) raisons.push(`Mains ${s.M}/${c.M}`);
-    return { ok: raisons.length === 0, raisons, restes, isole: isol, cout: c, coupures: acteDe(d) === 1 && !restes ? coupuresSi(s, id) : [], apercu: apercu(s, id) };
+    return { ok: raisons.length === 0, raisons, restes, isole: isol, aBras, dosage, cout: c,
+      placeLibre: placesOccupees(s) < placesFormation(s),
+      coupures: acteDe(d) === 1 && !restes ? coupuresSi(s, id) : [], apercu: apercu(s, id) };
   }
 
   function engage(s, id, opts) {
@@ -433,9 +470,19 @@
     s.K -= cc.K;
     s.M -= cc.M; s.Meng += cc.M;
     st.state = 'chantier'; st.progress = 0; st.vite = vite; st.mEng = cc.M; st.restes = !!c.restes; st.isole = c.isole; st.t0 = s.t;
-    log(s, c.restes ? `Chantier ouvert sur les restes : ${d.nom}.` : vite ? `Démolition rapide lancée : ${d.nom}.` :
-      c.isole ? `Chantier ouvert à bras, faute de desserte : ${d.nom}.` : `Chantier ouvert : ${d.nom}.`, 'chantier');
-    trace(s, 'engage', Object.assign({ id }, vite ? { vite: true } : {}, c.restes ? { restes: true } : {}, c.isole ? { isole: true } : {}));
+    if (c.aBras) st.aBras = true;
+    if (d.garde) {
+      st.dosage = c.dosage;
+      st.attentePlace = !c.placeLibre;
+      log(s, `Gardiens en formation : ${d.nom}, garde ${c.dosage === 'pleine' ? 'pleine' : 'réduite'}, ${fmt(cc.M)} personnes${c.aBras ? ', à bras, faute de Capacité' : ''}.` +
+        (st.attentePlace ? ' Toutes les places de formation sont prises : ils commenceront à la première qui se libère.' : ''), 'chantier');
+    } else {
+      log(s, c.restes ? `Chantier ouvert sur les restes : ${d.nom}.` : vite ? `Démolition rapide lancée : ${d.nom}.` :
+        d.sol ? `Dépollution lancée : ${d.nom}. Elle avancera à son rythme, même sans vous.` :
+        c.isole ? `Chantier ouvert à bras, faute de desserte : ${d.nom}.` : c.aBras ? `Chantier ouvert à bras, faute de Capacité : ${d.nom}.` : `Chantier ouvert : ${d.nom}.`, 'chantier');
+    }
+    trace(s, 'engage', Object.assign({ id }, vite ? { vite: true } : {}, c.restes ? { restes: true } : {}, c.isole ? { isole: true } : {},
+      d.garde ? { dosage: c.dosage } : {}, c.aBras ? { aBras: true } : {}));
     const ev = [{ type: 'engage', id }];
     // Un port ou une autoroute qu'on démantèle isole ce qu'il desservait encore.
     const isoles = desservis.filter(x => isole(s, defs[x]));
@@ -484,10 +531,18 @@
     st.Eretire = E0;
     s.K = Math.min(D.KCAP, s.K + d.kBack);
     const mEng = Number.isFinite(st.mEng) ? st.mEng : d.M;
-    s.M += mEng; s.Meng -= mEng;
+    s.Meng -= mEng;
+    if (d.garde) s.gardiens += mEng;   // les gardiens ne reviennent jamais dans le jeu
+    else s.M += mEng;
     if (!st.restes) ajouterAttente(s, id, d.deplaces);
     s.Co -= d.co;
-    if (st.restes) {
+    if (d.garde) {
+      ev[0] = { type: 'garde', id, dosage: st.dosage, gardiens: mEng };
+      log(s, `Gardée : ${d.nom}, pour ${fmt(d.ans)} ans. ${fmt(mEng)} gardiens chaque année, pour toujours. Empreinte −${fmt(E0)} (${Math.round(d.part * 100)} % de ce qui restait).`, 'ok');
+    } else if (d.sol) {
+      if (d.seulementSi) s.sites[d.seulementSi].pollue = false;   // le sol de l'acte II, enfin dépollué, se régénère
+      log(s, `Dépollué : ${d.nom}. Empreinte −${fmt(E0)} (${Math.round(d.part * 100)} % de ce qui restait).`, 'ok');
+    } else if (st.restes) {
       log(s, `Restes démantelés : ${d.nom}. Empreinte −${fmt(E0)}.`, 'ok');
     } else if (id === 'autonomie') {
       s.hopital = 'autonome';
@@ -498,7 +553,13 @@
       const part = d.part ? ` (${Math.round(d.part * 100)} % de ce qui restait)` : '';
       log(s, `Fermé : ${d.nom}. Empreinte −${fmt(E0)}${part}${d.deplaces ? `, ${fmt(d.deplaces)} personnes à reconvertir` : ''}.`, 'ok');
     }
-    trace(s, 'ferme', st.restes ? { id, restes: true } : { id });
+    if (d.garde) trace(s, 'garde', Object.assign({ id, dosage: st.dosage, gardiens: mEng }, st.aBras ? { aBras: true } : {}));
+    else trace(s, 'ferme', st.restes ? { id, restes: true } : { id });
+    if (d.finCapacite) {   // le point de non-retour : choisi par le joueur, jamais déclenché par le récit (§5)
+      log(s, `${d.nom} démantelé. La Capacité ne se renouvellera plus.`, 'jalon');
+      trace(s, 'non-retour', { id });
+      ev.push({ type: 'non-retour', id });
+    }
     if (st.vite && d.rapide) {   // démoli vite : la pollution reste, le sol ne se régénère pas avant l'acte IV
       st.pollue = true;
       s.X += d.rapide.casse;
@@ -512,7 +573,8 @@
 
   // Un lot part en formation s'il reste une place ; le plafond humain borne les Mains, engagées et en formation comprises.
   function reconvertir(s) {
-    if (s.formations.length >= placesFormation(s) || s.deplaces <= 0) return false;
+    if (gardeEnAttente(s)) return false;   // une garde qui attend une place passe avant les lots
+    if (placesOccupees(s) >= placesFormation(s) || s.deplaces <= 0) return false;
     const place = D.MAINS_MAX - (s.M + s.Meng + enFormation(s));
     const n = Math.min(D.RECONV.batch, s.deplaces, Math.max(0, place));
     if (n <= 0) return false;
@@ -556,13 +618,18 @@
     return { type: 'relance', auto: !!auto, reembauche };
   }
 
-  const TITRES_ACTES = { 1: "L'inventaire", 2: 'Le réseau', 3: 'Les gens' };
+  const TITRES_ACTES = { 1: "L'inventaire", 2: 'Le réseau', 3: 'Les gens', 4: 'Le legs' };
   function ouvrirActe(s, n) {
     s.acte = n;
     s.ms['acte' + n] = s.t;
     s.paused = D.PAUSE_ACTE;
     log(s, `Acte ${CHIFFRES_ROMAINS[n] || n} — ${TITRES_ACTES[n] || ''}.`, 'jalon');
     trace(s, 'acte', { n });
+    if (n === 4) {   // le plancher se révèle (R5) : zéro n'est pas possible, et l'essentiel de ce qui reste se garde
+      s.digitsActe4 = s.digitsMin;
+      log(s, `Le plancher apparaît : ${fmtPlancher(s.plancher)}. L'Empreinte ne descendra jamais en dessous.`, 'jalon');
+      log(s, `À garder : ${Math.round(aGarder(s) * 100)} % de ce qui reste. Cela ne se démantèle pas : cela se garde.`, 'jalon');
+    }
     return [{ type: 'acte', n }, ...equilibrer(s)];
   }
 
@@ -585,7 +652,7 @@
     return [{ type: 'region', region: choix }];
   }
 
-  const acteFini = (s, n) => D.sites.every(d => acteDe(d) !== n || d.mesure || s.sites[d.id].state === 'eteint');
+  const acteFini = (s, n) => D.sites.every(d => acteDe(d) !== n || d.mesure || !existe(s, d) || s.sites[d.id].state === 'eteint');
 
   function tick(s, dt) {
     const ev = [];
@@ -598,12 +665,20 @@
     s.K = Math.min(D.KCAP, s.K + kRate(s) * dt);
 
     const speed = rel ? D.RELANCE.speedMul : 1;
+    for (const d of D.sites) {   // une garde qui attendait prend la première place de formation libre
+      const st = s.sites[d.id];
+      if (!d.garde || st.state !== 'chantier' || !st.attentePlace || placesOccupees(s) >= placesFormation(s)) continue;
+      st.attentePlace = false;
+      log(s, `Une place se libère : les gardiens de ${d.nom} commencent leur formation.`, 'chantier');
+    }
     for (const d of D.sites) {
       const st = s.sites[d.id];
       if (st.state === 'chantier') {
-        st.progress += (dt * speed) / dureeChantier(d, st);
+        if (d.garde && st.attentePlace) continue;
+        // Les sols et la formation des gardiens vont à leur rythme : la relance ne les accélère pas.
+        st.progress += (dt * (d.sol || d.garde ? 1 : speed)) / dureeChantier(d, st);
         if (st.progress >= 1) ev.push(...close(s, d.id));
-      } else if (st.state === 'eteint' && st.regen < 1 && !st.pollue) {
+      } else if (st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) {
         st.regen = Math.min(1, st.regen + dt / d.regen);
       }
     }
@@ -676,6 +751,13 @@
       trace(s, 'fin', { acte: 3 });
       ev.push({ type: 'fin', acte: 3 });
     }
+    if (s.acte === 3 && s.ms.fin3 !== null && DERNIER_ACTE >= 4) ev.push(...ouvrirActe(s, 4));
+    if (s.acte >= 4 && s.ms.fin4 === null && acteFini(s, 4)) {
+      s.ms.fin4 = s.t;
+      log(s, "Tout ce qui pouvait l'être est démantelé, dépollué ou gardé. Le reste se rendra à la main.", 'jalon');
+      trace(s, 'fin', { acte: 4 });
+      ev.push({ type: 'fin', acte: 4 });
+    }
     return ev;
   }
 
@@ -705,23 +787,42 @@
     return ev;
   }
 
-  // Hors-ligne : seule la régénération avance (plafond 12 h), et le Consentement dérive.
-  // Sert aussi au temps passé onglet caché : la partie ne tourne pas pendant ce temps.
+  // Hors-ligne : la régénération et la dépollution avancent (plafond 12 h), et le Consentement dérive.
+  // Rien ne se démantèle. Sert aussi au temps passé onglet caché : la partie ne tourne pas pendant ce temps.
   function applyOffline(s, elapsed) {
     elapsed = Math.max(0, elapsed || 0);
     s.horsLigne = (s.horsLigne || 0) + elapsed;
     if (elapsed >= 30) trace(s, 'absence', { duree: Math.round(elapsed) });
     elapsed = Math.min(elapsed, D.OFFLINE_CAP);
     if (elapsed < 5) return null;
-    const T0 = T(s);
+    const T0 = T(s), E0 = s.E, depollues = [], fini = new Set();
+    let sols = 0;
+    for (const d of D.sites) {   // les sols : la seule chose qui progresse sans le joueur (§5)
+      const st = s.sites[d.id];
+      if (!d.sol || st.state !== 'chantier') continue;
+      sols++;
+      st.progress += elapsed / dureeChantier(d, st);
+      if (st.progress < 1) continue;
+      const apres = (st.progress - 1) * dureeChantier(d, st);   // temps écoulé depuis la fin de la dépollution
+      close(s, d.id);
+      if (d.regen > 0) st.regen = Math.min(1, apres / d.regen);
+      fini.add(d.id); depollues.push(d.id);
+      if (d.seulementSi) {   // le site de l'acte II, dépollué pendant l'absence, ne repousse que depuis
+        const p = defs[d.seulementSi], sp = s.sites[d.seulementSi];
+        if (p.regen > 0) sp.regen = Math.min(1, sp.regen + apres / p.regen);
+        fini.add(d.seulementSi);
+      }
+    }
     for (const d of D.sites) {
       const st = s.sites[d.id];
-      if (st.state === 'eteint' && st.regen < 1 && !st.pollue) st.regen = Math.min(1, st.regen + elapsed / d.regen);
+      if (!fini.has(d.id) && st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) st.regen = Math.min(1, st.regen + elapsed / d.regen);
     }
     s.Co += Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * elapsed);
     const dT = T(s) - T0;
+    if (sols) log(s, `Pendant votre absence (${fmtDur(elapsed)}), la dépollution a continué` +
+      `${depollues.length ? ` : ${depollues.map(id => defs[id].nom).join(', ')}, terminé${depollues.length > 1 ? 's' : ''}` : ''}.`, 'ok');
     if (dT >= 0.05) log(s, `Pendant votre absence (${fmtDur(elapsed)}), la terre a regagné ${dT.toFixed(1).replace('.', ',')} point${dT >= 2 ? 's' : ''}.`, 'ok');
-    return { elapsed, dT };
+    return { elapsed, dT, sols, depollues, dE: E0 - s.E };
   }
 
   // --- sauvegarde ---
@@ -756,6 +857,9 @@
         if (Number.isFinite(st.t0)) s.sites[id].t0 = st.t0;
         if (Number.isFinite(st.Eretire)) s.sites[id].Eretire = st.Eretire;
         if (st.isole) s.sites[id].isole = true;
+        if (st.aBras) s.sites[id].aBras = true;
+        if (st.dosage === 'reduite' || st.dosage === 'pleine') s.sites[id].dosage = st.dosage;
+        if (st.attentePlace) s.sites[id].attentePlace = true;
       }
     }
     if (save.noeuds && typeof save.noeuds === 'object') {
@@ -835,6 +939,11 @@
       finActe2: s.ms.fin2,
       acte3: s.ms.acte3,
       finActe3: s.ms.fin3,
+      acte4: s.ms.acte4,
+      finActe4: s.ms.fin4,
+      gardes: s.chrono.filter(e => e.type === 'garde').map(e => Object.assign({ id: e.id, dosage: e.dosage, gardiens: e.gardiens, t: e.t }, e.aBras ? { aBras: true } : {})),
+      gardiens: s.gardiens,
+      reseauNational: (s.chrono.find(e => e.type === 'non-retour') || { t: null }).t,
       chiffresPerdus: pertes.map(e => e.t),
       relances20min: relancesJoueur.filter(e => e.t <= LIMITE_RELANCES).length,
       relances: s.relances,
@@ -858,14 +967,21 @@
     };
   }
 
+  const texteGarde = (g) => `${nomDe(g.id)}, ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}${g.aBras ? ' à bras' : ''} (${fmt(g.gardiens)} gardiens)`;
   function ligneChrono(e) {
     switch (e.type) {
-      case 'engage': return e.vite ? `Démolition rapide : ${nomDe(e.id)}` : e.isole ? `Chantier ouvert à bras, isolé : ${nomDe(e.id)}` : `Chantier ouvert : ${nomDe(e.id)}`;
+      case 'engage':
+        if (e.dosage) return `Gardiens en formation : ${nomDe(e.id)}, garde ${e.dosage === 'pleine' ? 'pleine' : 'réduite'}${e.aBras ? ', à bras' : ''}`;
+        if (defs[e.id] && defs[e.id].sol) return `Dépollution lancée : ${nomDe(e.id)}`;
+        return e.vite ? `Démolition rapide : ${nomDe(e.id)}` : e.isole ? `Chantier ouvert à bras, isolé : ${nomDe(e.id)}` :
+          e.aBras ? `Chantier ouvert à bras, sans Capacité : ${nomDe(e.id)}` : `Chantier ouvert : ${nomDe(e.id)}`;
+      case 'garde': return `Garde instituée : ${texteGarde(e)}`;
+      case 'non-retour': return 'Point de non-retour : la Capacité ne se renouvellera plus';
       case 'isolement': return `Isolé : ${nomDe(e.id)}`;
       case 'reembauche': return `La relance réembauche ${fmt(e.n)} personnes qui attendaient une formation`;
       case 'penurie': return `Pénurie : les vivres couvrent ${e.vivres} % des besoins`;
       case 'penurie-fin': return e.import ? `Importations pendant la relance : pénurie suspendue, ${fmt(e.casse)} personnes` : `Fin de la pénurie : ${fmt(e.casse)} personnes`;
-      case 'ferme': return `${e.restes ? 'Restes démantelés' : defs[e.id] && defs[e.id].mesure ? 'Fait' : 'Fermé'} : ${nomDe(e.id)}`;
+      case 'ferme': return `${e.restes ? 'Restes démantelés' : defs[e.id] && defs[e.id].mesure ? 'Fait' : defs[e.id] && defs[e.id].sol ? 'Dépollué' : 'Fermé'} : ${nomDe(e.id)}`;
       case 'coupure': return `Coupure : ${nomDe(e.id)}, ${fmt(e.casse)} personnes`;
       case 'delestage': return `Délestage : ${nomDe(e.id)}, ${fmt(e.casse)} personnes`;
       case 'privation': return `Coupure : ${nomDe(e.id)}, ${fmt(e.casse)} personnes`;
@@ -879,7 +995,8 @@
       case 'chiffre': return `Chiffre perdu, ${e.digits} chiffres restent`;
       case 'region': return `${(D.regions[e.region] || { nom: e.region }).nom} s'éteint`;
       case 'acte': return `Acte ${CHIFFRES_ROMAINS[e.n] || e.n}${TITRES_ACTES[e.n] ? ' : ' + TITRES_ACTES[e.n].toLowerCase() : ''}`;
-      case 'fin': return e.acte === 3 ? 'La carte est vide : ce qui reste ne se démantèle pas' : e.acte === 2 ? 'Plus rien à démanteler sur le réseau' : 'Plus rien à démanteler sur cette carte';
+      case 'fin': return e.acte === 4 ? "Tout ce qui pouvait l'être est démantelé, dépollué ou gardé" : e.acte === 3 ? 'La carte est vide : ce qui reste ne se démantèle pas' :
+        e.acte === 2 ? 'Plus rien à démanteler sur le réseau' : 'Plus rien à démanteler sur cette carte';
       case 'absence': return `Absence de ${fmtDur(e.duree)}`;
       default: return e.type;
     }
@@ -907,6 +1024,7 @@
     }
     if (r.acte >= 3) {
       lignes.push(`- Acte III ouvert : ${quand(r.acte3)}`);
+      if (r.acte >= 4) lignes.push(`- Acte IV ouvert : ${quand(r.acte4)}`);
       lignes.push(`- Chiffres perdus : ${r.chiffresPerdus.map(fmtDur).join(', ')}`);
     }
     lignes.push(
@@ -921,15 +1039,21 @@
       lignes.push(`- Réembauchés par les relances au lieu d'être reconvertis : ${fmt(r.reembauches)}`);
       lignes.push(`- Chantiers lancés à bras, sur des sites isolés : ${r.chantiersIsoles}`);
     }
+    if (r.acte >= 4) {   // le dosage ne se paie qu'à l'épilogue (#20) : le rapport le note en attendant
+      lignes.push(`- Gardes : ${r.gardes.length ? r.gardes.map(texteGarde).join(', ') : 'aucune'}`);
+      lignes.push(`- Gardiens, pour toujours : ${fmt(r.gardiens)}`);
+      lignes.push(`- Réseau national démantelé : ${quand(r.reseauNational)}`);
+    }
     lignes.push(
       `- Consentement minimum : ${r.consentementMin} %`,
       `- Empreinte : ${fmt(r.empreinte)}`,
       `- Terre rendue : ${String(r.terreRendue).replace('.', ',')} %`,
-      `- Plancher irréductible : ${fmt(r.plancher)}`,
+      `- Plancher irréductible : ${fmtPlancher(r.plancher)}`,
       `- Carte de l'acte I vidée : ${quand(r.carteVidee)}`,
     );
     if (r.acte >= 2) lignes.push(`- Réseau démantelé : ${quand(r.finActe2)}`);
     if (r.acte >= 3) lignes.push(`- Carte de l'acte III vidée : ${quand(r.finActe3)}`);
+    if (r.acte >= 4) lignes.push(`- Acte IV achevé : ${quand(r.finActe4)}`);
     if (!r.chronologieComplete) lignes.push('- Partie commencée avant le rapport : chronologie incomplète');
     lignes.push('', 'Chronologie', '```');
     for (const e of r.chrono) lignes.push(`${fmtDur(e.t).padStart(11)}  ${ligneChrono(e)}`);
@@ -942,7 +1066,7 @@
   }
 
   // --- formats ---
-  const NBSP = ' ';
+  const NBSP = '\u00A0';   // espace insécable : un nombre ne se coupe jamais en fin de ligne
   function fmt(n) {
     n = Math.floor(Math.abs(n));
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
@@ -972,6 +1096,7 @@
     retrait, isole, dessertes, vivres, apercuVivres, placesFormation, enFormation, personnes,
     reconvertirTout, formerEnContinu, casseParCause, texteCasse,
     prixCoupure, prixLancement, risqueConseil, DEFINITION_CASSE,
+    existe, capaciteFinie, aGarder, placesOccupees, gardeEnAttente, gardesEnFormation, fmtPlancher,
     DERNIER_ACTE, TITRES_ACTES,
     fmt, fmtDur, fmtSci, migrer, rapport, rapportTexte,
   };

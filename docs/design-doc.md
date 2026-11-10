@@ -214,6 +214,8 @@ Le message est mécanique, jamais énoncé : *ce qui répare marche mieux quand 
 
 **Acte IV — Le legs.** Le compteur ralentit brutalement, et le joueur comprend pourquoi : sous 6·10⁴, l'essentiel de ce qui reste ne se démantèle pas. La Garde s'ouvre. Le verbe change. On passe des chantiers aux siècles, et le jeu affiche pour la première fois des durées qui dépassent celles de toute civilisation connue.
 
+*Prototype : l'acte IV, validé et réglé, est décrit dans [acte-4.md](acte-4.md).*
+
 **Acte V — Rendre.** Capacité résiduelle quasi nulle, chaque geste compte, tout est manuel. La carte est presque verte. Le compteur descend par dizaines, puis par unités. Et il s'arrête sur le plancher, qui n'est pas zéro et ne le sera jamais.
 
 ---

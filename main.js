@@ -1,4 +1,4 @@
-// Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I, II et III.
+// Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I à IV.
 (function () {
   const E = window.Engine, D = E.D;
   const CLE = 'decroissance.mvp.v1';
@@ -73,6 +73,7 @@
     }
     const poste = svgEl('g', { class: 'poste', transform: `translate(${P.x},${P.y})` }, gl);
     poste.innerHTML = '<rect x="-5" y="-5" width="10" height="10" rx="1"/><text x="9" y="4">poste</text><title>Poste de la Sère : toute la production et toute la demande passent par ici</title>';
+    el.poste = poste;
     // Liens : électricité un à un (acte I), fioul et chlore (acte II)
     const pos = (id) => E.defs[id] || E.noeuds[id];
     for (const l of D.liens) {
@@ -100,10 +101,13 @@
       el['noeud-' + n.id] = g;
     }
     for (const d of D.sites) {
-      if (d.mesure) continue;
+      if (d.mesure || d.carte === false) continue;
       const g = svgEl('g', { class: 'site actif', transform: `translate(${d.x},${d.y})` }, $('sites'));
       g.dataset.id = d.id;
-      g.innerHTML = `<circle class="halo" r="16"/><circle class="vegetal" r="0"/><circle class="disque" r="9"/><path class="arc" d=""/><text class="etiquette" y="24" text-anchor="middle">${d.court || d.nom}</text><title>${d.nom}</title>`;
+      // Une charge de l'acte IV porte un repère à part, avec la durée de sa garde.
+      const disque = d.garde ? '<path class="disque" d="M10,0 L5,8.7 L-5,8.7 L-10,0 L-5,-8.7 L5,-8.7 Z"/>' : '<circle class="disque" r="9"/>';
+      const duree = d.garde ? `<text class="duree" y="35" text-anchor="middle">${E.fmt(d.ans)} ans</text>` : '';
+      g.innerHTML = `<circle class="halo" r="16"/><circle class="vegetal" r="0"/>${disque}<path class="arc" d=""/><text class="etiquette" y="24" text-anchor="middle">${d.court || d.nom}</text>${duree}<title>${d.nom}</title>`;
       g.addEventListener('click', () => selectionner(d.id));
       el['site-' + d.id] = g;
     }
@@ -127,17 +131,21 @@
   function rendreCarte() {
     const acte2 = s.acte >= 2, acte3 = s.acte >= 3, menace = menaces();
     for (const d of D.sites) {
-      if (d.mesure) continue;
+      if (d.mesure || d.carte === false) continue;
       const g = el['site-' + d.id], st = s.sites[d.id];
       const sansApport = st.state === 'actif' && st.sansApport;
       const isole = acte3 && st.state === 'actif' && E.isole(s, d);
-      g.setAttribute('class', `site ${st.state}${st.pollue ? ' pollue' : ''}${sansApport ? ' sans-apport' : ''}${isole ? ' isole' : ''}` +
+      const attend = d.garde && st.state === 'chantier' && st.attentePlace;
+      g.setAttribute('class', `site ${st.state}${d.garde ? ' garde' : ''}${d.sol ? ' sol' : ''}${attend ? ' attend' : ''}${st.pollue ? ' pollue' : ''}${sansApport ? ' sans-apport' : ''}${isole ? ' isole' : ''}` +
         `${menace.has(d.id) ? ' menace' : ''}${selection === d.id ? ' selection' : ''}${E.acteDe(d) > s.acte ? ' futur' : ''}`);
-      g.querySelector('.arc').setAttribute('d', st.state === 'chantier' ? arcPath(st.progress) : '');
+      g.querySelector('.arc').setAttribute('d', st.state === 'chantier' && !attend ? arcPath(st.progress) : '');
       const v = g.querySelector('.vegetal');
-      if (st.state === 'eteint' && !st.pollue) { v.setAttribute('r', (10 + 14 * st.regen).toFixed(1)); v.style.opacity = (0.15 + 0.6 * st.regen).toFixed(2); }
+      if (st.state === 'eteint' && !st.pollue && d.regen > 0) { v.setAttribute('r', (10 + 14 * st.regen).toFixed(1)); v.style.opacity = (0.15 + 0.6 * st.regen).toFixed(2); }
       else v.style.opacity = 0;
     }
+    // Acte IV : le réseau national remplace le poste ; une fois démantelé, les lignes s'éteignent.
+    el.poste.classList.toggle('futur', s.acte >= 4);
+    const reseauMort = E.capaciteFinie(s);
     el['noeud-hopital'].setAttribute('class', `noeud ${s.hopital}`);
     for (const n of D.noeuds) {
       if (!reseauVisible(n)) continue;
@@ -148,12 +156,12 @@
       for (const d of D.sites) {
         if (!reseauVisible(d) || !(d.prod || d.cons)) continue;
         const st = s.sites[d.id], marche = st.state === 'actif' && E.approvisionne(s, d);
-        const cls = marche ? (d.prod ? 'ligne prod' : 'ligne') : st.state === 'coupe' ? 'ligne coupee' : 'ligne morte';
+        const cls = reseauMort ? 'ligne morte' : marche ? (d.prod ? 'ligne prod' : 'ligne') : st.state === 'coupe' ? 'ligne coupee' : 'ligne morte';
         el['ligne-' + d.id].setAttribute('class', cls + (menace.has(d.id) ? ' menace' : ''));
       }
       for (const n of D.noeuds) {
         if (!reseauVisible(n)) continue;
-        const cls = n.prod ? 'ligne prod' : s.noeuds[n.id] === 'alimente' ? 'ligne' : 'ligne coupee';
+        const cls = reseauMort ? 'ligne morte' : n.prod ? 'ligne prod' : s.noeuds[n.id] === 'alimente' ? 'ligne' : 'ligne coupee';
         el['ligne-' + n.id].setAttribute('class', cls + (menace.has(n.id) ? ' menace' : ''));
       }
     }
@@ -181,6 +189,7 @@
     for (const cle of Object.keys(D.regions)) el['region-' + cle].setAttribute('class', `ombre${s.regionsEteintes.includes(cle) ? ' eteinte' : ''}`);
     document.querySelectorAll('.leg-acte2').forEach(x => { x.hidden = !acte2; });
     document.querySelectorAll('.leg-acte3').forEach(x => { x.hidden = !acte3; });
+    document.querySelectorAll('.leg-acte4').forEach(x => { x.hidden = s.acte < 4; });
   }
 
   // ---------- panneau ----------
@@ -204,6 +213,7 @@
   function construireChantiers() {
     const box = $('liste-chantiers'); box.innerHTML = '';
     for (const d of D.sites) {
+      if (d.garde) continue;   // ce qui se garde n'apparaît jamais dans la liste des chantiers (§5) : c'est la Garde
       const c = document.createElement('div');
       c.className = 'chantier'; c.dataset.id = d.id;
       const effet = d.part ? `−${Math.round(d.part * 100)} %` : d.E > 0 ? `−${E.fmt(d.E)}` : d.E < 0 ? `+${E.fmt(-d.E)}` : '0';
@@ -219,6 +229,9 @@
         ${deps.length ? `<div class="alim">alimente : ${deps.join(', ')}</div>` : ''}
         ${d.rapide ? `<div class="vite-note">Démolir vite : moitié du temps, de la Capacité et des Mains, mais une pollution qui touche ${E.fmt(d.rapide.casse)} personnes, comptées dans la Casse, et laisse un sol pollué.</div>` : ''}
         ${d.desservi ? '<div class="isole-note" hidden>Isolé : plus rien ne le dessert, tout se fait à bras. Mains ×2.</div>' : ''}
+        ${d.sol ? '<div class="sol-note">Temps réel seul : rien ne l\'accélère, ni les Mains ni la relance. La dépollution avance aussi quand vous n\'êtes pas là.</div>' : ''}
+        ${d.finCapacite ? '<div class="noretour-note">Point de non-retour : après lui, la Capacité ne se renouvellera plus.</div>' : ''}
+        ${E.acteDe(d) >= 4 && d.K > 0 ? '<div class="abras-note" hidden>Sans Capacité suffisante : à bras, deux fois plus de Mains.</div>' : ''}
         ${reseau || acte3 ? '<div class="apercu" hidden></div>' : ''}
         <div class="conseil-note" hidden></div>
         <div class="action"><button class="btn engager">Engager</button>${d.rapide ? '<button class="btn vite">Démolir vite</button>' : ''}<div class="prog" hidden><i></i></div><span class="etat"></span></div>`;
@@ -263,8 +276,9 @@
   function rendreChantiers() {
     const speed = E.relanceActive(s) ? D.RELANCE.speedMul : 1;
     for (const d of D.sites) {
+      if (d.garde) continue;
       const c = el['ch-' + d.id], st = s.sites[d.id];
-      c.hidden = E.acteDe(d) !== s.acte;   // seules les cartes de l'acte en cours restent ouvertes
+      c.hidden = E.acteDe(d) !== s.acte || !E.existe(s, d);   // seules les cartes de l'acte en cours restent ouvertes
       if (c.hidden) continue;
       const can = E.canEngage(s, d.id);
       c.className = `chantier ${st.state}${st.pollue ? ' pollue' : ''}${selection === d.id ? ' selection' : ''}`;
@@ -279,13 +293,14 @@
       const cm = c.querySelector('.cm');
       cm.className = 'cm' + (st.state === 'actif' && s.M < coutM ? ' manque' : '');
       if (st.state === 'actif') cm.textContent = coutM;
-      const ret = c.querySelector('.retrait'), iso = c.querySelector('.isole-note');
+      const ret = c.querySelector('.retrait'), iso = c.querySelector('.isole-note'), ab = c.querySelector('.abras-note');
       if (ret) ret.textContent = st.state === 'eteint' ? (Number.isFinite(st.Eretire) ? `retiré : −${E.fmt(st.Eretire)}` : '') : `≈ −${E.fmt(E.retrait(s, d))} aujourd'hui`;
       if (iso) iso.hidden = !(st.state === 'actif' && can.isole);
+      if (ab) ab.hidden = !(st.state === 'actif' && can.aBras);
       if (st.state === 'actif' || (st.state === 'coupe' && !d.mesure)) {
         const restes = st.state === 'coupe';
         btn.hidden = false; prog.hidden = true; btn.disabled = !can.ok;
-        btn.textContent = restes ? 'Démanteler les restes' : 'Engager';
+        btn.textContent = restes ? 'Démanteler les restes' : d.sol ? 'Lancer la dépollution' : 'Engager';
         if (bv) { bv.hidden = restes; bv.disabled = !E.canEngage(s, d.id, { vite: true }).ok; }
         const manque = can.ok ? '' : can.raisons.join(' · ');
         etat.className = 'etat' + (restes ? ' rouge' : '');
@@ -298,19 +313,22 @@
         }
       } else if (st.state === 'chantier') {
         btn.hidden = true; if (bv) bv.hidden = true; prog.hidden = false; prog.firstElementChild.style.width = (st.progress * 100).toFixed(1) + '%';
-        const reste = Math.ceil(E.dureeChantier(d, st) * (1 - st.progress) / speed);
-        etat.className = 'etat'; etat.textContent = `${st.vite ? 'démolition rapide' : st.restes ? 'restes' : 'chantier'} · ${E.fmtDur(reste)}`;
+        const reste = Math.ceil(E.dureeChantier(d, st) * (1 - st.progress) / (d.sol ? 1 : speed));   // un sol ne va jamais plus vite
+        etat.className = 'etat'; etat.textContent = `${st.vite ? 'démolition rapide' : st.restes ? 'restes' : d.sol ? 'dépollution' : 'chantier'} · ${E.fmtDur(reste)}${d.sol ? ', temps réel' : ''}`;
         if (alim) { alim.className = 'alim'; alim.textContent = ''; }   // le site s'est arrêté à l'ouverture : il n'alimente plus rien
         if (ap) ap.hidden = true;
       } else {
         btn.hidden = true; if (bv) bv.hidden = true; prog.hidden = true;
         etat.className = 'etat' + (st.pollue ? ' rouge' : '');
-        etat.textContent = st.state === 'fait' ? 'fait' : st.pollue ? 'démolie vite · sol pollué' : `fermé · terre rendue ${Math.round(st.regen * 100)} %`;
+        etat.textContent = st.state === 'fait' ? 'fait' : st.pollue ? 'démolie vite · sol pollué' : `${d.sol ? 'dépollué' : 'fermé'}${d.regen > 0 ? ` · terre rendue ${Math.round(st.regen * 100)} %` : ''}`;
         if (alim) { alim.className = 'alim'; alim.textContent = ''; }
         if (ap) ap.hidden = true;
       }
     }
-    if (s.acte >= 2) {
+    if (s.acte >= 4) {
+      const restants = D.sites.filter(d => E.acteDe(d) === 4 && !d.garde && E.existe(s, d) && s.sites[d.id].state !== 'eteint').length;
+      $('g-detail').textContent = restants ? `— le legs : ${restants} chantier${restants > 1 ? 's' : ''} à mener` : '— tout est démantelé ou dépollué';
+    } else if (s.acte >= 2) {
       const restants = D.sites.filter(d => E.acteDe(d) === s.acte && !d.mesure && s.sites[d.id].state !== 'eteint').length;
       const quoi = s.acte >= 3 ? 'les gens' : 'le réseau';
       $('g-detail').textContent = restants ? `— ${quoi} : ${restants} site${restants > 1 ? 's' : ''} à démanteler` : s.acte >= 3 ? '— la carte est vide' : '— le réseau est démantelé';
@@ -320,9 +338,76 @@
     }
   }
 
+  // ---------- la Garde (acte IV) ----------
+  const GARDES = D.sites.filter(d => d.garde);
+  const semainesDe = (sec) => Math.round(sec / D.SEMAINE);
+  // Des durées qui dépassent celles de toute civilisation connue (§10), à l'échelle de ce qu'on connaît.
+  const EN_LETTRES = { 2: 'deux', 12: 'douze', 20: 'vingt' };
+  function echelle(ans) {
+    if (ans >= 10000) { const n = Math.round(ans / 5000); return `${EN_LETTRES[n] || n} fois toute l'histoire écrite`; }
+    const n = Math.round(ans / 25);
+    return `${EN_LETTRES[n] || n} générations`;
+  }
+  function construireGardes() {
+    const box = $('liste-gardes'); box.innerHTML = '';
+    for (const d of GARDES) {
+      const c = document.createElement('div');
+      c.className = 'chantier garde-carte'; c.dataset.id = d.id;
+      c.innerHTML = `
+        <div class="nom">${d.nom}<small>${E.fmt(d.ans)} ans</small></div>
+        <div class="effet moins">−${Math.round(d.part * 100)} %</div>
+        <div class="retrait"></div>
+        <div class="desc">${d.desc}</div>
+        <div class="cout"><span>Capacité <b class="ck">${d.K}</b></span><span>formation <b>${semainesDe(d.dur)} semaines</b></span><span>fuite <b>+${String(d.g).replace('.', ',')} %/min</b></span></div>
+        <div class="duree-note">${E.fmt(d.ans)} ans, ${echelle(d.ans)}. Chaque année : ${E.fmt(d.M)} gardiens pour une garde réduite, ${E.fmt(2 * d.M)} pour une garde pleine.</div>
+        <div class="abras-note" hidden>Sans Capacité suffisante : à bras, deux fois plus de gardiens.</div>
+        <div class="action"><button class="btn reduite">Garder réduit</button><button class="btn pleine">Garder plein</button><div class="prog" hidden><i></i></div><span class="etat"></span></div>`;
+      c.querySelector('.reduite').addEventListener('click', (ev) => { ev.stopPropagation(); engager(d.id, { dosage: 'reduite' }); });
+      c.querySelector('.pleine').addEventListener('click', (ev) => { ev.stopPropagation(); engager(d.id, { dosage: 'pleine' }); });
+      c.addEventListener('click', () => selectionner(d.id));
+      box.appendChild(c); el['garde-' + d.id] = c;
+    }
+  }
+  function rendreGardes() {
+    const sec = $('garde');
+    sec.hidden = s.acte < 4;
+    if (sec.hidden) return;
+    const reste = E.aGarder(s), nb = GARDES.filter(d => s.sites[d.id].state === 'eteint').length;
+    $('garde-etat').textContent = reste > 0 ? `à garder : ${Math.round(reste * 100)} % de ce qui reste` : `tout est gardé · ${E.fmt(s.gardiens)} gardiens`;
+    for (const d of GARDES) {
+      const c = el['garde-' + d.id], st = s.sites[d.id];
+      c.className = `chantier garde-carte ${st.state}${selection === d.id ? ' selection' : ''}`;
+      const br = c.querySelector('.reduite'), bp = c.querySelector('.pleine'), prog = c.querySelector('.prog'), etat = c.querySelector('.etat');
+      const ret = c.querySelector('.retrait'), ab = c.querySelector('.abras-note');
+      ret.textContent = st.state === 'eteint' ? (Number.isFinite(st.Eretire) ? `retiré : −${E.fmt(st.Eretire)}` : '') : `≈ −${E.fmt(E.retrait(s, d))} aujourd'hui`;
+      if (st.state === 'actif') {
+        const cr = E.canEngage(s, d.id, { dosage: 'reduite' }), cp = E.canEngage(s, d.id, { dosage: 'pleine' });
+        br.hidden = bp.hidden = false; prog.hidden = true;
+        br.disabled = !cr.ok; bp.disabled = !cp.ok;
+        br.textContent = `Garder réduit · ${E.fmt(cr.cout ? cr.cout.M : d.M)}`;
+        bp.textContent = `Garder plein · ${E.fmt(cp.cout ? cp.cout.M : 2 * d.M)}`;
+        c.querySelector('.ck').className = 'ck' + (cr.aBras ? ' manque' : '');
+        ab.hidden = !cr.aBras;
+        etat.className = 'etat rouge';
+        etat.textContent = cr.ok ? (cr.placeLibre ? 'fuit' : 'fuit · toutes les places de formation sont prises') : `fuit · ${cr.raisons.join(' · ')}`;
+      } else if (st.state === 'chantier') {
+        br.hidden = bp.hidden = true; ab.hidden = true;
+        prog.hidden = !!st.attentePlace; prog.firstElementChild.style.width = (st.progress * 100).toFixed(1) + '%';
+        etat.className = 'etat';
+        const sem = Math.min(semainesDe(d.dur), Math.floor(st.progress * semainesDe(d.dur)) + 1);
+        etat.textContent = st.attentePlace ? `${E.fmt(st.mEng)} gardiens attendent une place de formation` :
+          `${E.fmt(st.mEng)} gardiens en formation · semaine ${sem} sur ${semainesDe(d.dur)}`;
+      } else {
+        br.hidden = bp.hidden = true; prog.hidden = true; ab.hidden = true;
+        etat.className = 'etat';
+        etat.textContent = `gardée${st.dosage === 'pleine' ? ', pleine' : ', réduite'}${st.aBras ? ', à bras' : ''} · ${E.fmt(st.mEng)} gardiens, chaque année, pendant ${E.fmt(d.ans)} ans`;
+      }
+    }
+  }
+
   function rendreReseau() {
     const sec = $('reseau');
-    sec.hidden = s.acte < 2;
+    sec.hidden = s.acte < 2 || E.capaciteFinie(s);   // sans réseau national, le barrage alimente les villes en direct
     if (sec.hidden) return;
     const b = E.bilan(s), g = E.gRebond(s);
     $('reseau-prod').textContent = E.fmt(b.prod);
@@ -336,7 +421,7 @@
 
   function rendreVivres() {
     const sec = $('vivres');
-    sec.hidden = s.acte < 3;
+    sec.hidden = s.acte !== 3;   // à l'acte IV, l'agro-industrie est démantelée : les vivres ne bougent plus
     if (sec.hidden) return;
     const V = D.VIVRES, v = E.vivres(s), rel = E.relanceActive(s), deficit = v.marge < 0;
     $('vivres-prod').textContent = Math.floor(v.prod);
@@ -365,7 +450,7 @@
     const acte3 = s.acte >= 3;
     $('gens-titre').hidden = !acte3;
     $('reconv-barre-zone').hidden = acte3;
-    $('formations').hidden = !acte3 || !s.formations.length;
+    $('formations').hidden = !acte3 || (!s.formations.length && !GARDES.some(d => s.sites[d.id].state === 'chantier'));
     $('attente').hidden = !acte3 || !s.attente.length;
     $('gens-note').hidden = !acte3;
     $('continu-zone').hidden = !acte3;
@@ -377,11 +462,23 @@
       const g = groupes.find(x => x.de === c.de);
       if (g) { g.n += c.n; g.t0 = Math.min(g.t0, c.t0); } else groupes.push({ de: c.de, n: c.n, t0: c.t0 });
     }
+    const gardes = GARDES.filter(d => s.sites[d.id].state === 'chantier');
     const cle = JSON.stringify([s.formations.map(f => [f.lot, f.n, Math.floor(f.progress * SEMAINES_LOT), Math.round(f.progress * 100)]),
+      gardes.map(d => [d.id, !!s.sites[d.id].attentePlace, Math.round(s.sites[d.id].progress * 100)]),
       groupes.map(g => [g.de, g.n, semaines(s.t - g.t0)]), Math.round(s.deplaces / 100)]);
     if (cle === dernierGens) return;
     dernierGens = cle;
     const ol = $('formations'); ol.innerHTML = '';
+    $('formations').hidden = !s.formations.length && !gardes.length;
+    for (const d of gardes) {   // acte IV : les gardiens se forment sur les mêmes places
+      const st = s.sites[d.id], tot = semainesDe(d.dur), sem = Math.min(tot, Math.floor(st.progress * tot) + 1);
+      const li = document.createElement('li'); li.className = 'gardiens';
+      li.innerHTML = `<div class="lot-tete"><span></span><span class="muted"></span></div><div class="lot-noms muted"></div><div class="barre fine"><i style="width:${(st.progress * 100).toFixed(1)}%"></i></div>`;
+      li.querySelector('.lot-tete span').textContent = `Gardiens · ${E.fmt(st.mEng)} personnes`;
+      li.querySelector('.lot-tete .muted').textContent = st.attentePlace ? 'attendent une place' : `semaine ${sem} sur ${tot}`;
+      li.querySelector('.lot-noms').textContent = `${d.nom} : ${E.fmt(d.ans)} ans de garde.`;
+      ol.appendChild(li);
+    }
     for (const f of s.formations) {
       const li = document.createElement('li');
       const gens = E.personnes(f, 3).map(p => `${p.nom}, ${p.metier}`).join(' ; ');
@@ -429,10 +526,13 @@
     const k = g > 0.005 ? 'monte' : g < -0.005 ? 'descend' : 'stable';
     c.className = 'compteur ' + k + (rel ? ' relance' : '') + (performance.now() < animPerte ? ' perte' : '');
     const t = $('tendance'); t.className = 'tendance ' + k;
-    const rebond = E.gRebond(s) > 0.005 && !rel;
-    t.textContent = g > 0.005 ? `▲ +${(g < 1 ? g.toFixed(2) : g.toFixed(1)).replace('.', ',')} % / min${rebond ? ' · rebond du réseau' : ''}` : 'stable — plus rien ne monte';
+    const rebond = E.gRebond(s) > 0.005 && !rel, fuite = s.acte >= 4 && E.gSites(s) > 0 && !rel;
+    t.textContent = g > 0.005 ? `▲ +${(g < 1 ? g.toFixed(2) : g.toFixed(1)).replace('.', ',')} % / min${fuite ? ' · les charges fuient' : rebond ? ' · rebond du réseau' : ''}` : 'stable — plus rien ne monte';
     if (s.ms.stabilise === null && g <= 0.005) t.textContent = 'stable';
     $('sci').hidden = !rel; if (rel) $('sci').textContent = E.fmtSci(s.E);
+    const acte4 = s.acte >= 4, ag = E.aGarder(s);
+    $('plancher').hidden = !acte4; if (acte4) $('plancher').textContent = `plancher : ${E.fmtPlancher(s.plancher)}`;
+    $('a-garder').hidden = !acte4 || ag <= 0; if (acte4) $('a-garder').textContent = `à garder : ${Math.round(ag * 100)} %`;
     document.getElementById('app').dataset.digits = s.digits;
   }
 
@@ -447,9 +547,9 @@
   }
 
   function rendreRessources() {
-    $('k').textContent = Math.floor(s.K); $('krate').textContent = ` +${E.kRate(s).toFixed(1).replace('.', ',')} / s`;
+    $('k').textContent = Math.floor(s.K); $('krate').textContent = E.capaciteFinie(s) ? ' · ne se renouvelle plus' : ` +${E.kRate(s).toFixed(1).replace('.', ',')} / s`;
     const enForm = E.enFormation(s);
-    $('m').textContent = E.fmt(s.M); $('meng').textContent = ` · ${E.fmt(s.Meng)} engagées${s.acte >= 3 && enForm ? ` · ${E.fmt(enForm)} en formation` : ''}`;
+    $('m').textContent = E.fmt(s.M); $('meng').textContent = ` · ${E.fmt(s.Meng)} engagées${s.acte >= 3 && enForm ? ` · ${E.fmt(enForm)} en formation` : ''}${s.gardiens ? ` · ${E.fmt(s.gardiens)} gardiens` : ''}`;
     const T = E.T(s); $('t').textContent = T.toFixed(1).replace('.', ','); $('t-barre').style.width = Math.min(100, T) + '%';
     $('co').textContent = Math.round(s.Co); $('co-barre').style.width = s.Co + '%'; $('co-barre').className = s.Co < 30 ? 'bas' : '';
     $('co-seuil').className = 'co-seuil' + (s.Co < D.RELANCE.autoSeuil + 5 ? ' proche' : '');
@@ -460,13 +560,13 @@
       ct.textContent = Math.abs(dv) < 0.5 ? ' stable en 1 min' : ` ${dv < 0 ? '▼' : '▲'} ${Math.abs(dv).toFixed(1).replace('.', ',')} en 1 min`;
     }
     $('deplaces').textContent = E.fmt(s.deplaces);
-    const places = E.placesFormation(s), libres = places - s.formations.length, f0 = s.formations[0];
-    const br = $('btn-reconv'); br.disabled = libres <= 0 || s.deplaces <= 0;   // un clic remplit toutes les places libres
-    br.textContent = libres <= 0 ? (places > 1 ? 'Formations complètes' : 'Reconversion en cours') : `Reconvertir ${Math.min(D.RECONV.batch * libres, s.deplaces) || ''}`.trim();
+    const places = E.placesFormation(s), libres = places - E.placesOccupees(s), f0 = s.formations[0], garde = E.gardeEnAttente(s);
+    const br = $('btn-reconv'); br.disabled = garde || libres <= 0 || s.deplaces <= 0;   // un clic remplit toutes les places libres
+    br.textContent = garde ? 'Une garde attend une place' : libres <= 0 ? (places > 1 ? 'Formations complètes' : 'Reconversion en cours') : `Reconvertir ${Math.min(D.RECONV.batch * libres, s.deplaces) || ''}`.trim();
     const re = $('reconv-etat');
     if (s.acte >= 3) {
-      const nl = s.formations.length;
-      re.textContent = `${nl ? `${nl} lot${nl > 1 ? 's' : ''}` : 'Aucun lot'} en formation sur ${places} place${places > 1 ? 's' : ''}. ` +
+      const nl = s.formations.length, ng = E.gardesEnFormation(s);
+      re.textContent = `${nl ? `${nl} lot${nl > 1 ? 's' : ''}` : 'Aucun lot'}${ng ? ` et ${ng} garde${ng > 1 ? 's' : ''}` : ''} en formation sur ${places} place${places > 1 ? 's' : ''}. ` +
         `${D.RECONV.batch} personnes par lot, ${SEMAINES_LOT} semaines ; consentement −${D.RECONV.co} au départ, +${D.CO_FORMES} à l'arrivée.`;
     } else if (f0) re.textContent = `${f0.n} personnes en formation, ${E.fmtDur(Math.ceil(D.RECONV.dur * (1 - f0.progress)))} restantes.`;
     else if (s.deplaces > 0) re.textContent = `Par lot de ${D.RECONV.batch}, ${E.fmtDur(D.RECONV.dur)} chacun, consentement −${D.RECONV.co}.`;
@@ -482,7 +582,7 @@
     $('horloge').textContent = E.fmtDur(s.t);
   }
 
-  function rendre() { rendreCompteur(); rendreRessources(); rendreReseau(); rendreVivres(); rendreGens(); rendreChantiers(); rendreCarte(); }
+  function rendre() { rendreCompteur(); rendreRessources(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
 
   // ---------- son : niveaux selon l'état ----------
   const PROD_FOSSILE = D.sites.reduce((a, d) => a + (d.prod || 0), 0);
@@ -495,9 +595,13 @@
     // les insectes arrivent au troisième, les voix au quatrième.
     const acte3 = s.acte >= 3, apres3 = s.digitsMin <= 7, apres4 = s.digitsMin <= 6;
     const fret = acte3 && !apres4 ? Math.round(LOGISTIQUE.filter(d => s.sites[d.id].state === 'actif').length / LOGISTIQUE.length * 10) / 10 : 0;
-    if (rel) return { trafic: 1, turbines: 1, reseau: acte2 ? 1 : 0, fret: acte3 ? 1 : 0, vent: 0.15, oiseaux: 0, eau: apres2 ? 0.3 : 0, insectes: 0, voix: apres4 ? 0.3 : 0 };
-    return { trafic: stab ? 0 : 1, turbines: chiffre ? 0 : 1, reseau, fret, vent: stab ? 1 : 0, oiseaux: chiffre ? 1 : 0, eau: apres2 ? 1 : 0,
-      insectes: apres3 ? 1 : 0, voix: apres4 ? 1 : 0 };
+    // Acte IV : le dernier bourdonnement, celui du poste, s'éteint avec le réseau national. Au premier chiffre perdu
+    // de l'acte, la pluie arrive ; au deuxième, presque le silence : il ne reste que le vent, l'eau et la pluie (§12).
+    const acte4 = s.acte >= 4, perdus4 = acte4 && s.digitsActe4 ? s.digitsActe4 - s.digitsMin : 0;
+    const poste = acte4 && !E.capaciteFinie(s) ? 1 : 0, pluie = perdus4 >= 1 ? (perdus4 >= 2 ? 0.7 : 1) : 0, silence = perdus4 >= 2;
+    if (rel) return { trafic: 1, turbines: 1, reseau: acte2 ? 1 : 0, fret: acte3 ? 1 : 0, vent: 0.15, oiseaux: 0, eau: apres2 ? 0.3 : 0, insectes: 0, voix: apres4 ? 0.3 : 0, poste, pluie: pluie * 0.3 };
+    return { trafic: stab ? 0 : 1, turbines: chiffre ? 0 : 1, reseau, fret: silence ? 0 : fret, vent: stab ? (silence ? 0.7 : 1) : 0, oiseaux: chiffre && !silence ? 1 : 0, eau: apres2 ? 1 : 0,
+      insectes: apres3 && !silence ? 1 : 0, voix: apres4 && !silence ? 1 : 0, poste, pluie };
   }
   let dernierNiv = '';
   function majSon(fade) { const n = niveauxSon(); const j = JSON.stringify(n); if (j !== dernierNiv || fade != null) { dernierNiv = j; son.applique(n, fade); } }
@@ -524,6 +628,9 @@
       if (ev.type === 'isolement') toast(`Isolés : ${ev.ids.map(nomDe).join(', ')}. Sans desserte, leurs chantiers demanderont deux fois plus de Mains.`);
       if (ev.type === 'penurie') { son.coupure(); secousseCasse(); toast(`Pénurie : les vivres ne couvrent plus que ${Math.round(ev.vivres)} % des besoins.`); }
       if (ev.type === 'penurie-fin') toast(ev.import ? `La relance importe : plus de pénurie tant qu'elle dure. ${E.fmt(ev.casse)} personnes touchées.` : `Fin de la pénurie. ${E.fmt(ev.casse)} personnes touchées.`);
+      if (ev.type === 'garde') toast(`Gardée : ${nomDe(ev.id)}, pour ${E.fmt(E.defs[ev.id].ans)} ans. ${E.fmt(ev.gardiens)} gardiens, pour toujours.`);
+      if (ev.type === 'ferme' && E.defs[ev.id] && E.defs[ev.id].sol) toast(`Dépollué : ${nomDe(ev.id)}.`);
+      if (ev.type === 'non-retour') { son.extinction(); toast('Le réseau national est démantelé. La Capacité ne se renouvellera plus.'); }
       if (ev.type === 'fin' && ev.acte === E.DERNIER_ACTE) montrerJalon('fin');
     }
     if (delestes.length) {   // un délestage coupe souvent plusieurs consommateurs d'un coup : une seule alerte
@@ -568,21 +675,22 @@
       ['Plancher irréductible', E.fmt(s.plancher)],
     ];
     let titre = 'Acte I — premier chiffre perdu', note = 'Le reste de la carte est là. Rien ne vous oblige à continuer.';
-    if (kind === 'fin') {   // fin du dernier acte du prototype : l'acte III
+    if (kind === 'fin') {   // fin du dernier acte du prototype : l'acte IV
       const r = E.rapport(s, VERSION);
-      const pertes3 = r.chiffresPerdus.filter(t => r.acte3 !== null && t >= r.acte3);
+      const pertes4 = r.chiffresPerdus.filter(t => r.acte4 !== null && t >= r.acte4);
       lignes.splice(0, lignes.length,
-        ['Acte III ouvert', E.fmtDur(r.acte3)],
-        ['Chiffres perdus dans l\'acte', pertes3.length ? pertes3.map(E.fmtDur).join(', ') : 'aucun'],
-        ['Pénuries', `${r.penuries}, ${E.fmt(r.cassePenurie)} personnes`],
-        ['Réembauchés au lieu d\'être reconvertis', E.fmt(r.reembauches)],
-        ['Chantiers lancés à bras', String(r.chantiersIsoles)],
+        ['Acte IV ouvert', E.fmtDur(r.acte4)],
+        ['Chiffres perdus dans l\'acte', pertes4.length ? pertes4.map(E.fmtDur).join(', ') : 'aucun'],
+        ...r.gardes.map(g => [E.defs[g.id].nom, `${E.fmt(E.defs[g.id].ans)} ans · garde ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}${g.aBras ? ', à bras' : ''} · ${E.fmt(g.gardiens)} gardiens par an`]),
+        ['Gardiens, pour toujours', E.fmt(r.gardiens)],
+        ['Réseau national démantelé', r.reseauNational !== null ? E.fmtDur(r.reseauNational) : 'non'],
         ['Casse', E.texteCasse(s)],
         ['Relances au total', `${s.relances}${s.relancesAuto ? ` (+${s.relancesAuto} sans vous)` : ''}`],
         ['Empreinte restante', E.fmt(s.E)],
+        ['Plancher irréductible', E.fmtPlancher(s.plancher)],
         ['Terre rendue', `${E.T(s).toFixed(1).replace('.', ',')} % — continue sans vous`]);
-      titre = 'Fin de l\'acte III — le prototype s\'arrête là';
-      note = 'Ce qui reste ne se démantèle pas. La suite, c\'est la Garde : ce sera l\'acte IV.';
+      titre = 'Fin de l\'acte IV — le prototype s\'arrête là';
+      note = 'Ce qui reste se rendra à la main, jusqu\'au plancher. Ce sera l\'acte V.';
     }
     j.innerHTML = `<h3>${titre}</h3>
       <table>${lignes.map(l => `<tr><td>${l[0]}</td><td>${l[1]}</td></tr>`).join('')}</table>
@@ -646,7 +754,7 @@
     histoCo = [];
     if (!s.versions.includes(VERSION)) s.versions.push(VERSION);
     document.documentElement.style.setProperty('--resserre', (8 * (10 - s.digitsMin)) + 'px');
-    construireCarte(); construireChantiers();
+    construireCarte(); construireChantiers(); construireGardes();
     dernierNb = ''; rendre(); rendreJournal();
     son.init(); son.setMute(!s.son); majSon(0.1);
     $('btn-son').textContent = `son : ${s.son ? 'oui' : 'non'}`;
@@ -701,8 +809,9 @@
       $('btn-reprendre').hidden = false; $('btn-neuf').hidden = false; $('btn-commencer').hidden = true;
       if (absence) {
         const terre = absence.dT >= 0.05 ? ` ; la terre a regagné ${absence.dT.toFixed(1).replace('.', ',')} point${absence.dT >= 2 ? 's' : ''}` : '';
+        const sols = absence.sols ? `, mais la dépollution a continué${absence.depollues.length ? ` : ${absence.depollues.map(nomDe).join(', ')}, terminé${absence.depollues.length > 1 ? 's' : ''}` : ''}` : '';
         $('intro-absence').hidden = false;
-        $('intro-absence').textContent = `Vous avez été absent ${E.fmtDur(absence.elapsed)}. Rien n'a été démantelé pendant ce temps${terre}.`;
+        $('intro-absence').textContent = `Vous avez été absent ${E.fmtDur(absence.elapsed)}. Rien n'a été démantelé pendant ce temps${sols}${terre}.`;
       }
       $('btn-reprendre').addEventListener('click', () => demarrer(sauvegarde));
       $('btn-neuf').addEventListener('click', () => { if (confirm('Effacer la partie en cours ?')) { effacer(); demarrer(E.create()); } });

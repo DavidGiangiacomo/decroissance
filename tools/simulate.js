@@ -1,5 +1,5 @@
-// Simulation hors navigateur : un joueur automatique joue les actes I, II et III.
-// node tools/simulate.js [profil] [réaction en s]
+// Simulation hors navigateur : un joueur automatique joue les actes I à IV.
+// node tools/simulate.js [profil] [réaction en s]     DOSAGE=pleine : gardes pleines à l'acte IV (réduites sinon)
 //   profils : prudent (par défaut), pressé, vite (prudent, mais démolit vite à l'acte II),
 //             relance-1 (une relance à 2 min), croissance (relance en continu)
 //   ex. : node tools/simulate.js prudent 10        node tools/simulate.js pressé 10
@@ -69,8 +69,27 @@ function choixActe3() {
   return null;
 }
 
+// Acte IV. Prudent : les sols d'abord (ils vont à leur rythme), puis les gardes, la plus grosse fuite d'abord,
+// le réseau national en dernier ; jamais sous 25 de Consentement. Pressé : la plus grosse part d'abord.
+const DOSAGE = process.env.DOSAGE === 'pleine' ? 'pleine' : 'reduite';
+function choixActe4() {
+  const restants = D.sites.filter(d => E.acteDe(d) === 4 && E.existe(s, d) && s.sites[d.id].state === 'actif');
+  const ordre = profil === 'pressé' ? restants.sort((a, b) => b.part - a.part)
+    : [...restants.filter(d => d.sol), ...restants.filter(d => d.garde).sort((a, b) => b.g - a.g), ...restants.filter(d => !d.sol && !d.garde)];
+  for (const d of ordre) {
+    const opts = d.garde ? { dosage: DOSAGE } : undefined;
+    const c = E.canEngage(s, d.id, opts);
+    if (!c.ok) continue;
+    if (profil !== 'pressé' && s.Co - (d.co || 0) < 25) continue;
+    if (profil !== 'pressé' && d.garde && !c.placeLibre && E.gardeEnAttente(s)) continue;   // une garde à la fois en attente
+    return { id: d.id, opts };
+  }
+  return null;
+}
+
 let coMin3 = Infinity, mainsMax = 0, finDeux = null;   // finDeux : Casse, rebond et régions à la fin de l'acte II
-for (let i = 0; i < 150 * 60 * 10; i++) {
+let coMin4 = Infinity, finTrois = null;               // finTrois : Empreinte et chiffres à la fin de l'acte III
+for (let i = 0; i < 240 * 60 * 10; i++) {
   // Un clic remplit toutes les places libres. À l'acte III, le prudent ne lance pas de lot qui ferait passer
   // le Consentement sous le seuil du Conseil.
   const formerOk = () => s.acte < 3 || profil === 'pressé' || s.Co - D.RECONV.co >= D.RELANCE.autoSeuil + 0.5;
@@ -80,12 +99,12 @@ for (let i = 0; i < 150 * 60 * 10; i++) {
     if (lots) prochainAction = s.t + reaction;
   }
   while (s.t >= prochainAction) {
-    const choix = s.acte === 1 ? choixActe1() : s.acte === 2 ? choixActe2() : choixActe3();
+    const choix = s.acte === 1 ? choixActe1() : s.acte === 2 ? choixActe2() : s.acte === 3 ? choixActe3() : choixActe4();
     if (!choix) break;
     const ev = E.engage(s, choix.id, choix.opts);
     prochainAction = s.t + reaction;
     const casse = ev.filter(e => e.type === 'coupure' || e.type === 'delestage' || e.type === 'privation' || e.type === 'isolement');
-    marks.push(`${quand(s.t)}  ${choix.opts ? 'démolition rapide' : 'engage'} ${choix.id}  E=${E.fmt(s.E)}  M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)}` +
+    marks.push(`${quand(s.t)}  ${choix.opts && choix.opts.vite ? 'démolition rapide' : choix.opts && choix.opts.dosage ? `garde ${choix.opts.dosage}${s.sites[choix.id].aBras ? ' à bras' : ''}` : 'engage'} ${choix.id}  E=${E.fmt(s.E)}  K=${Math.floor(s.K)} M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)}` +
       (casse.length ? `  ${casse.map(e => `${e.type.toUpperCase()} ${e.id || e.dep || e.ids.join('+')}`).join(', ')}` : ''));
   }
   if (profil === 'relance-1' && s.t > 120 && !relanceFaite) { E.relancer(s); relanceFaite++; marks.push(`${quand(s.t)}  RELANCE`); }
@@ -94,14 +113,16 @@ for (let i = 0; i < 150 * 60 * 10; i++) {
   const evs = E.tick(s, dt);
   if (s.paused <= 0 && gReb > 0) rebond += avant * (Math.exp(gReb / 100 / 60 * dt) - 1);
   for (const ev of evs) {
-    if (['stabilise', 'chiffre', 'acte', 'fin', 'relance', 'ferme', 'pollution', 'region', 'arret', 'retour', 'penurie', 'penurie-fin'].includes(ev.type))
+    if (['stabilise', 'chiffre', 'acte', 'fin', 'relance', 'ferme', 'garde', 'non-retour', 'pollution', 'region', 'arret', 'retour', 'penurie', 'penurie-fin'].includes(ev.type))
       marks.push(`${quand(s.t)}  ${ev.type.toUpperCase()} ${ev.id || ev.region || ev.digits || ev.n || ''}${ev.reembauche ? ` réembauche ${ev.reembauche}` : ''}  E=${E.fmt(s.E)}  K=${Math.floor(s.K)} M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)} X=${E.fmt(s.X)}`);
   }
   if (s.E > maxE) maxE = s.E;
   if (s.ms.stabilise === null && s.E < minEavantStab) minEavantStab = s.E;
   if (s.acte >= 3) { coMin3 = Math.min(coMin3, s.Co); mainsMax = Math.max(mainsMax, s.M + s.Meng + E.enFormation(s)); }
   if (s.ms.fin2 !== null && !finDeux) finDeux = { casse: s.X, rebond, regions: [...s.regionsEteintes] };
-  if (s.ms.fin3 !== null && s.t - s.ms.fin3 > 5) break;
+  if (s.acte >= 4) coMin4 = Math.min(coMin4, s.Co);
+  if (s.ms.fin3 !== null && !finTrois) finTrois = { E: s.E, T: E.T(s) };
+  if (E.DERNIER_ACTE >= 4 ? s.ms.fin4 !== null && s.t - s.ms.fin4 > 5 : s.ms.fin3 !== null && s.t - s.ms.fin3 > 5) break;
 }
 
 const r = E.rapport(s, 'simulation');
@@ -124,6 +145,14 @@ if (r.acte3 !== null) {
     `  chiffres perdus=${pertes.map(E.fmtDur).join(', ')}  écarts=${ecarts.join(', ')}`);
   console.log(`         pénuries=${r.penuries} (${E.fmt(r.cassePenurie)} personnes)  réembauchés=${E.fmt(r.reembauches)}  chantiers isolés=${r.chantiersIsoles}` +
     `  Co min acte III=${coMin3.toFixed(0)}  Mains au plus haut=${E.fmt(mainsMax)}  en attente à la fin=${E.fmt(s.deplaces)}` +
-    `  relances du Conseil dans l'acte=${s.chrono.filter(e => e.type === 'relance' && e.auto && e.t >= r.acte3).length}`);
+    `  relances du Conseil dans l'acte=${s.chrono.filter(e => e.type === 'relance' && e.auto && e.t >= r.acte3 && (r.acte4 === null || e.t < r.acte4)).length}`);
+}
+if (r.acte4 !== null) {
+  const p4 = pertes.filter(t => t >= r.acte4), avant = pertes.filter(t => t < r.acte4).pop();
+  const ecarts4 = p4.map((t, i) => E.fmtDur(t - (i ? p4[i - 1] : avant)));
+  console.log(`acte IV  ouvert=${E.fmtDur(r.acte4)} à E=${E.fmt(finTrois.E)}  fin=${r.finActe4 !== null ? E.fmtDur(r.finActe4) : '—'}  durée de l'acte=${r.finActe4 !== null ? E.fmtDur(r.finActe4 - r.acte4) : '—'}` +
+    `  chiffres perdus dans l'acte=${p4.map(E.fmtDur).join(', ') || '—'}  écarts (depuis le précédent)=${ecarts4.join(', ') || '—'}`);
+  console.log(`         gardes=${r.gardes.map(g => `${g.id} ${g.dosage}${g.aBras ? ' à bras' : ''}`).join(', ')}  gardiens=${E.fmt(r.gardiens)}  réseau national=${r.reseauNational !== null ? E.fmtDur(r.reseauNational) : '—'}` +
+    `  Co min acte IV=${coMin4.toFixed(0)}  relances du Conseil dans l'acte=${s.chrono.filter(e => e.type === 'relance' && e.auto && e.t >= r.acte4).length}  plancher=${E.fmtPlancher(s.plancher)}`);
 }
 console.log(`fin      E=${E.fmt(s.E)}  Co=${s.Co.toFixed(0)}  T=${E.T(s).toFixed(1)}/${E.Tmax().toFixed(1)}  relances=${r.relances}  relances du Conseil=${r.relancesConseil}`);

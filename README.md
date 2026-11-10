@@ -1,6 +1,6 @@
-# Décroissance — prototype (actes I à III)
+# Décroissance — prototype (actes I à IV)
 
-Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md). L'acte III, « Les gens », s'ouvre quand le réseau est démantelé ; il est décrit dans [docs/acte-3.md](docs/acte-3.md).
+Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md). L'acte III, « Les gens », s'ouvre quand le réseau est démantelé ; il est décrit dans [docs/acte-3.md](docs/acte-3.md). L'acte IV, « Le legs », s'ouvre quand la carte de l'acte III est vidée ; il est décrit dans [docs/acte-4.md](docs/acte-4.md).
 
 Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `python3 -m http.server` puis http://localhost:8000). Le son est synthétisé en WebAudio, il n'y a aucun fichier audio.
 
@@ -48,7 +48,18 @@ Détail, contenu, réglages et points à trancher dans [docs/acte-3.md](docs/act
 - **La desserte** : le port et l'autoroute desservent six sites. Un site isolé se démantèle à bras, pour deux fois plus de Mains.
 - **Les vivres** : une jauge de 100 points. Une exploitation qu'on démantèle cesse de produire ; sa terre convertie rend 90 % en cinq minutes. Sous 100, la pénurie fait de la Casse chaque minute. Les ceintures maraîchères ajoutent 30 points.
 - **La relance devient raisonnable** : elle importe les vivres qui manquent, et réembauche les gens en attente, qui ne deviendront jamais des Mains.
-- Le son ajoute le fret, puis les insectes et des voix. Un panneau de fin d'acte et le rapport de session reprennent les données de l'acte : chiffres perdus, pénuries, réembauchés, chantiers lancés à bras.
+- Le son ajoute le fret, puis les insectes et des voix. Le rapport de session reprend les données de l'acte : chiffres perdus, pénuries, réembauchés, chantiers lancés à bras.
+
+## L'acte IV : le legs
+
+Détail, contenu, arbitrages et réglages dans [docs/acte-4.md](docs/acte-4.md).
+
+- **Le plancher se révèle** : sous le compteur, le plancher irréductible et la part de ce qui reste « à garder ». L'Empreinte ne descend jamais sous le plancher.
+- **La Garde**, un panneau à part : trois charges fuient et font remonter l'Empreinte tant qu'elles ne sont pas gardées (digues, 300 ans ; galeries, 10 000 ans ; combustibles usés, 100 000 ans). Une garde coûte de la Capacité une fois, et des gardiens pour toujours, formés sur les places de formation. Réduite ou pleine : la différence se paiera à l'épilogue.
+- **Le réseau national**, point de non-retour : après lui, la Capacité ne se renouvelle plus, et le rebond s'arrête.
+- **Les sols** se dépolluent au temps réel seul, hors ligne compris : rien ne les accélère. S'y ajoutent les sols pollués par les démolitions rapides de l'acte II.
+- Sans Capacité, tout se fait à bras : deux fois plus de gardiens ou de Mains.
+- Le son ajoute le bourdonnement du poste, qui s'éteint avec le réseau national, puis la pluie, puis presque le silence. Un panneau de fin d'acte et le rapport de session reprennent les gardes, leur dosage, les gardiens et le plancher.
 
 ## Fichiers
 
@@ -57,14 +68,15 @@ Détail, contenu, réglages et points à trancher dans [docs/acte-3.md](docs/act
 | `docs/design-doc.md` | le design doc complet, référence des sections citées ici et dans les issues |
 | `docs/acte-2.md` | l'acte II tel que validé et réglé : règles, contenu, écarts, rythme mesuré |
 | `docs/acte-3.md` | l'acte III proposé et réglé : règles, contenu, piège, rythme mesuré, points à trancher |
-| `data.js` | toutes les valeurs de réglage : sites, graphe, réseau, vivres, régions, noms et métiers, constantes |
-| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, relance, hors-ligne, formats) |
+| `docs/acte-4.md` | l'acte IV tel que validé et réglé : règles, contenu, arbitrages, écarts, rythme mesuré |
+| `data.js` | toutes les valeurs de réglage : sites, graphe, réseau, vivres, gardes et sols, régions, noms et métiers, constantes |
+| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, relance, hors-ligne, formats) |
 | `audio.js` | couches sonores synthétisées et sons ponctuels |
 | `main.js` | rendu, carte SVG, sauvegarde, boucle |
 | `index.html`, `style.css` | l'écran unique |
 | `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur |
 | `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
-| `tools/test.js` | tests du moteur : actes II et III, reprise des sauvegardes, rapport de session |
+| `tools/test.js` | tests du moteur : actes II à IV, reprise des sauvegardes, rapport de session |
 | `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
 
 ```
@@ -73,10 +85,11 @@ node tools/simulate.js pressé 10      # ignore les avertissements : coupures, r
 node tools/simulate.js vite 10        # prudent, mais démolit vite à l'acte II
 node tools/simulate.js relance-1 10   # une relance à 2 min
 node tools/simulate.js croissance     # relance en continu
+DOSAGE=pleine node tools/simulate.js prudent 10   # gardes pleines à l'acte IV
 node tools/test.js                    # tests du moteur
 ```
 
-Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, puis deux chiffres de plus et la fin de l'acte III vers 1 h 01. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois.
+Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 01, puis trois chiffres et la fin de l'acte IV vers 1 h 26. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois premiers, un peu plus de 2 h pour les quatre.
 
 Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`.
 

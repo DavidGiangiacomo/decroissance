@@ -2,6 +2,7 @@
 // Acte I : deux couches industrielles (trafic, turbines), deux naturelles (vent, oiseaux).
 // Acte II : le bourdonnement du réseau, puis la rivière au deuxième chiffre perdu.
 // Acte III : le fret (camions, port), puis les insectes au troisième chiffre perdu et les voix au quatrième.
+// Acte IV : le bourdonnement grave du poste, qui s'éteint avec le réseau national ; puis la pluie, et presque le silence.
 // Le volume de chaque couche est piloté par l'état du jeu, crossfade lent.
 (function (root) {
   const FADE = 3.5;
@@ -23,6 +24,8 @@
       this.couches.fret = this._fret();
       this.couches.insectes = this._insectes();
       this.couches.voix = this._voix();
+      this.couches.poste = this._poste();
+      this.couches.pluie = this._pluie();
       for (const k in this.couches) this.couches[k].gain.gain.value = 0;
       if (ctx.state === 'suspended') ctx.resume();
     }
@@ -184,6 +187,44 @@
         const lg2 = ctx.createGain(); lg2.gain.value = f * 0.12; lfo2.connect(lg2); lg2.connect(bp.frequency); lfo2.start();
         src.connect(bp); bp.connect(amp); amp.connect(gain);
       }
+      return { gain };
+    }
+
+    _poste() { // le poste de la Sère : un bourdonnement grave, plus bas et plus lent que celui du réseau
+      const ctx = this.ctx, gain = ctx.createGain();
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
+      const pre = ctx.createGain(); pre.gain.value = 0.06;
+      for (const [f, a] of [[50, 1], [100, 0.45], [49.6, 0.5]]) {
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+        const og = ctx.createGain(); og.gain.value = a; o.connect(og); og.connect(lp); o.start();
+      }
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.08;
+      const lg = ctx.createGain(); lg.gain.value = 0.02; lfo.connect(lg); lg.connect(pre.gain); lfo.start();
+      lp.connect(pre); pre.connect(gain); gain.connect(this.master);
+      return { gain };
+    }
+
+    _pluie() { // pluie : un bruit fin dans les aigus, et des gouttes plus nettes, au hasard
+      const ctx = this.ctx, gain = ctx.createGain();
+      const src = this._bruit(5, false);
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 3800; bp.Q.value = 0.4;
+      const amp = ctx.createGain(); amp.gain.value = 0.05;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07;
+      const lg = ctx.createGain(); lg.gain.value = 0.015; lfo.connect(lg); lg.connect(amp.gain); lfo.start();
+      src.connect(hp); hp.connect(bp); bp.connect(amp); amp.connect(gain); gain.connect(this.master);
+      const goutte = () => {   // une goutte : un clic bref, filtré, d'une hauteur au hasard
+        if (!this.ctx) return;
+        const t = ctx.currentTime;
+        if (gain.gain.value > 0.02) {
+          const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(1800 + Math.random() * 2400, t);
+          o.frequency.exponentialRampToValueAtTime(600, t + 0.05);
+          const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+          o.connect(g); g.connect(gain); o.start(t); o.stop(t + 0.08);
+        }
+        this._pluieTimer = setTimeout(goutte, 60 + Math.random() * 260);
+      };
+      goutte();
       return { gain };
     }
 

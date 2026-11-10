@@ -31,7 +31,7 @@ Suite de l'acte II ([#14](https://github.com/DavidGiangiacomo/decroissance/issue
   - Une couche de fret arrive : grondement de camions, avertisseurs de recul, cornes de navire. Son volume suit la logistique encore active.
   - Au troisième chiffre perdu (7 chiffres restants), les insectes arrivent.
   - Au quatrième (6 chiffres restants), le fret s'éteint et des voix lointaines arrivent.
-- **La fin.** L'acte finit quand ses huit sites sont démantelés. Un panneau « Fin de l'acte III — le prototype s'arrête là » reprend les données de l'acte : chiffres perdus, pénuries, réembauchés, chantiers lancés à bras, Casse, relances. Le rapport de session les contient aussi.
+- **La fin.** L'acte finit quand ses huit sites sont démantelés : « La carte est vide. Ce qui reste ne se démantèle pas. » L'acte IV s'ouvre alors ([acte-4.md](acte-4.md)). Les données de l'acte restent dans le rapport de session : chiffres perdus, pénuries, réembauchés, chantiers lancés à bras.
 - **L'acte II** ne montre plus son propre panneau de fin : son dernier chantier ouvre directement l'acte III. Ses données restent dans le rapport.
 
 ## Contenu
@@ -118,7 +118,7 @@ Joué en 36 minutes par un testeur naïf, sans pénurie ni site isolé, avec « 
 
 ## Points à trancher
 
-1. **L'Empreinte en parts**, plutôt qu'en valeurs fixes comme aux actes I et II. C'est le choix le plus structurant de l'acte : il servira aussi aux actes IV et V.
+1. **L'Empreinte en parts**, plutôt qu'en valeurs fixes comme aux actes I et II. C'est le choix le plus structurant de l'acte. **Tranché** avec l'acte IV ([#16](https://github.com/DavidGiangiacomo/decroissance/issues/16)) : les parts valent aussi pour lui. Reste à savoir s'il faut y passer l'acte II ([acte-2.md](acte-2.md)).
 2. **La relance réembauche tout le monde.** C'est fort : une relance du Conseil a coûté 4 100 Mains futures au bot prudent. Une variante : elle n'en réembaucherait qu'une partie.
 3. **Le Consentement arrive bas.** Les bots ouvrent l'acte III vers 23 %, et le Conseil relance au moins une fois pour la plupart des profils. Le prudent à 30 s l'évite. Au premier playtest, le Consentement est resté entre 26 et 38 % pendant tout l'acte III : la tension que vise le §10, où la relance devient raisonnable, n'est pas apparue. Au deuxième, il est tombé de 58 à 16 % à l'acte II, et l'acte III s'est ouvert à 21 %.
 4. **La pénurie est rude**, à 15 personnes par point et par minute : fermer les céréales et les élevages ensemble, sans les ceintures, coûte environ 1 700 personnes.
@@ -127,5 +127,5 @@ Joué en 36 minutes par un testeur naïf, sans pénurie ni site isolé, avec « 
 7. **Hors de cet acte :**
    - les recettes fiscales du §6 ne sont pas modélisées, seuls les emplois apparaissent, sous la forme des gens par site d'origine ;
    - la décision Travail, Réquisition ou Volontariat, viendra avec les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)) ;
-   - la Garde, qui absorbera des Mains pour toujours, c'est l'acte IV ([#16](https://github.com/DavidGiangiacomo/decroissance/issues/16)) ;
-   - le Consentement se répare hors ligne : au deuxième playtest, une absence de 13 h l'a fait passer de 49,7 à 70 d'un coup. Quitter le jeu suffit donc à échapper au Conseil. C'est à trancher avec l'acte IV, où le temps hors ligne comptera.
+   - la Garde, qui absorbe des Mains pour toujours, c'est l'acte IV ([acte-4.md](acte-4.md)) ;
+   - le Consentement se répare hors ligne : au deuxième playtest, une absence de 13 h l'a fait passer de 49,7 à 70 d'un coup. Quitter le jeu suffit donc à échapper au Conseil. **Tranché** avec l'acte IV : c'est gardé tel quel.
