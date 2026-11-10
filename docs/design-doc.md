@@ -181,12 +181,46 @@ Neuf chiffres perdus au total, un toutes les 22 min environ : vers 12, 34, 56, 7
 
 - **I1** — Un chiffre perdu toutes les 20 à 25 min en moyenne, **jamais plus de 25 min sans**. Depuis 1,0·10⁹, on ne peut perdre que neuf chiffres : sur 205 min, la moyenne ne descend pas sous 20 min. C'est l'événement de récompense principal, il doit être rythmé comme un déblocage d'upgrade.
 - **I2** — Aucun multiplicateur permanent ne dépasse ×2, cumul compris. Le joueur ne devient jamais puissant.
-- **I3** — Le coût marginal d'un point d'Empreinte croît de façon monotone du début à la fin. **La courbe de difficulté du jeu monte quand la courbe du genre descend.**
+- **I3** — Le coût d'un point d'Empreinte croît d'acte en acte : chaque acte engage plus de Capacité et de Mains par point retiré que le précédent. **La courbe de difficulté du jeu monte quand la courbe du genre descend.** À l'intérieur d'un acte, l'ordre des coûts est libre.
 - **I4** — La Casse est irréversible, toujours affichée, jamais rattrapable. Aucune décision ne l'efface.
 - **I5** — **La Terre rendue progresse de façon quasi linéaire en temps réel.** C'est la seule courbe linéaire du jeu et la seule que le joueur ressent vraiment. Tout le reste s'équilibre autour d'elle.
 - **I6** — Le bouton Croissance reste visible et fonctionnel de la première à la dernière minute.
 
 I5 est l'invariant maître, comme dans *La langue morte* : la vraie barre de progression n'est pas un nombre, c'est la carte qui verdit et le son qui change (§12). Si elle avance irrégulièrement, le jeu paraît calé même quand l'Empreinte tombe.
+
+**I3 se compte par acte, pas site par site** (issue #11). La première version demandait un coût croissant « de façon monotone du début à la fin ». Le prototype la casse dès l'acte I, et c'est voulu : la régie publicitaire coûte 30 de Capacité et de Mains par million de points, l'aérodrome 125, la cimenterie et les centrales 8. Les petits sites valent pour la croissance qu'ils portent, pas pour l'Empreinte qu'ils retirent.
+
+- Compter la croissance arrêtée ne tranche rien : il faudrait fixer sur combien de minutes on la compte, et ce nombre déciderait du résultat.
+- N'appliquer I3 qu'à partir de l'acte II ne suffit pas : site par site, l'acte II et l'acte IV ne sont pas monotones non plus.
+- La moyenne par acte, elle, monte toujours : 12 par million de points à l'acte I, 15 à 21 à l'acte II, de 400 à 23 000 à l'acte III, de 14 000 à un million à l'acte IV. À partir de l'acte III, chaque site retire une part de ce qui reste : le coût par point monte de lui-même.
+
+### Vérification automatique
+
+`node tools/check.js` fait jouer treize parties aux bots du simulateur : le prudent, le pressé, le rapide et le joueur qui relance une fois, à 10, 30 et 45 s de réaction, et la relance continue. Il sort en erreur si un invariant mesurable est cassé. Un workflow le lance sur chaque pull request, avec les tests du moteur.
+
+| Invariant | Ce qui est mesuré | Seuil |
+|---|---|---|
+| I1 | Le plus long moment sans chiffre perdu, du début à la fin de la partie | 25 min |
+| I2 | Les multiplicateurs permanents en faveur du joueur. Aujourd'hui, un seul : les places de formation, que les centres doublent | ×2 |
+| I3 | La Capacité et les Mains engagées par point d'Empreinte retiré, en moyenne sur chaque acte | plus qu'à l'acte précédent |
+| I4 | La Casse d'un pas à l'autre, puis après une relance, une sauvegarde rechargée et douze heures hors ligne | aucune baisse |
+| I5 | L'écart de la courbe de Terre rendue à la droite la plus proche, en temps réel | 20 % de la Terre rendue à la fin |
+| I6 | La relance, essayée toutes les 15 s et à chaque événement, hors relance en cours : elle répond, et la croissance repart | à chaque essai, dans chaque acte |
+
+Ce que la vérification ne couvre pas :
+
+- **La moyenne d'I1**, 20 à 25 min. Les bots jouent plus vite qu'un humain, et le prototype s'arrête à l'acte IV : ils perdent un chiffre toutes les 10 à 15 min, pour la plupart. Le script affiche cette moyenne sans la juger.
+- **Les décisions du §7**, pour I2 : elles ne sont pas encore dans le jeu.
+- **Le rendu**, pour I4 et I6. Le script vérifie que le compteur de Casse et le bouton Relancer sont dans la page et que le code ne les masque pas. Il n'ouvre pas de navigateur.
+- **La relance continue**, pour I1 et I3 : c'est un autre jeu (§8).
+
+Le seuil d'I5 est une garde contre les régressions, pas une cible. La courbe du tableau de rythme s'écarte elle-même de 6 % d'une droite ; celles des bots, de 8 à 16 %.
+
+**Écarts connus.** Le réglage actuel casse déjà I1 et I5 pour quelques joueurs. Le script les tient dans une liste, chacun avec un plafond : il échoue si l'un d'eux s'aggrave, et aussi s'il se résorbe, pour que sa ligne soit retirée.
+
+- Les joueurs à 45 s de réaction passent 27 à 37 min sans chiffre perdu, à l'acte II ou à l'acte III ([acte-2.md](acte-2.md), [acte-3.md](acte-3.md)).
+- Le rapide à 30 s passe 25 min 46 sans chiffre perdu, à l'ouverture de l'acte IV ([acte-4.md](acte-4.md)).
+- La Terre rendue du rapide à 45 s s'écarte de 25 % d'une droite : elle monte peu jusqu'à la fin de l'acte II, puis vite.
 
 ### Hors-ligne
 
