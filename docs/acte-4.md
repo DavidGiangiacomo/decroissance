@@ -106,7 +106,7 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les bots prud
 | Vite | 45 s | 1 h 20 | 297 695 | 27 min 15 | 3 | 14 min 37, 15 s, 7 min | — | 5 300 | 0 | 4,8 | 196 |
 | Relance à 2 min | 10 s | 1 h 02 | 143 440 | 25 min 30 | 3 | 18 min 36, 8 min 54, 6 min 39 | — | 5 300 | 0 | 4,8 | 181 |
 
-- Aucun écart ne dépasse 25 min (I1). Le plus long, 22 min 30, est celui de la transition pour le prudent à 30 s : la première fermeture de l'acte IV ne peut pas venir avant 5 min, le temps de former les gardiens des digues.
+- Aucun écart du tableau ne dépasse 25 min (I1). Le plus long, 22 min 30, est celui de la transition pour le prudent à 30 s : la première fermeture de l'acte IV ne peut pas venir avant 5 min, le temps de former les gardiens des digues.
 - Le pressé à 10 s finit sur son plancher : quatre relances du Conseil l'ont porté à 38,4. Ses relances lui coûtent exactement ce que le §8 annonce.
 - Les actes I à IV se jouent en 1 h 26 pour le bot prudent à 10 s, le §9 en prévoit 2 h 50. La Terre rendue atteint 63 à 65 % à la fin de l'acte, puis 81,8 % un quart d'heure plus tard, quand la terre des sols a repoussé.
 
@@ -116,7 +116,8 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les bots prud
 2. **La fin de l'acte attend la dernière dépollution.** Après la dernière garde, il peut rester une dizaine de minutes sans autre geste que de reconvertir. C'est voulu (« les sols tôt », et l'absence fait avancer la partie), mais un playtest dira si c'est vécu comme une attente ou comme une invitation à partir. R3, qui borne les murs de temps réel à 4 min, vise l'acte V.
 3. **Les gardiens ne comptent pas dans le plafond humain** de 40 000 Mains. Ce plafond n'est pas atteint.
 4. **Le Consentement qui remonte hors ligne** est gardé tel quel (point 7). Avec les sols, partir devient une stratégie : à observer.
-5. **Hors de cet acte :**
+5. **Le rapide à 30 s dépasse I1 de 46 s**, hors du tableau ci-dessus. Il finit l'acte III à 11 259, juste au-dessus de 10⁴, et son premier sol n'est dépollué que 15 min après l'ouverture de l'acte IV : 25 min 46 séparent son cinquième et son sixième chiffre. `tools/check.js`, qui l'a trouvé, le tient pour un écart connu (§9 du design doc).
+6. **Hors de cet acte :**
    - l'acte V, « Rendre » ([#17](https://github.com/DavidGiangiacomo/decroissance/issues/17)), où le compteur descend jusqu'au plancher ;
    - l'épilogue et les fins ([#20](https://github.com/DavidGiangiacomo/decroissance/issues/20)), où se paiera le dosage ;
    - les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)), dont la crédibilité « en acte IV » de la branche Dette ;

@@ -76,8 +76,10 @@ Détail, contenu, arbitrages et réglages dans [docs/acte-4.md](docs/acte-4.md).
 | `index.html`, `style.css` | l'écran unique |
 | `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur |
 | `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
-| `tools/test.js` | tests du moteur : actes II à IV, reprise des sauvegardes, rapport de session |
+| `tools/test.js` | tests du moteur : actes II à IV, reprise des sauvegardes, rapport de session, jugement des invariants |
+| `tools/check.js` | vérifie les invariants I1 à I6 du §9 sur treize parties jouées par les bots, et sort en erreur si l'un d'eux est cassé |
 | `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
+| `.github/workflows/tests.yml` | lance les tests et la vérification des invariants sur chaque pull request, et sur `main` |
 
 ```
 node tools/simulate.js prudent 10     # bot prudent, 10 s de réaction par action
@@ -87,7 +89,10 @@ node tools/simulate.js relance-1 10   # une relance à 2 min
 node tools/simulate.js croissance     # relance en continu
 DOSAGE=pleine node tools/simulate.js prudent 10   # gardes pleines à l'acte IV
 node tools/test.js                    # tests du moteur
+node tools/check.js                   # invariants I1 à I6 du §9, sur treize parties (20 s environ)
 ```
+
+Les deux dernières commandes tournent sur chaque pull request. Ce que `tools/check.js` mesure, ses seuils et les écarts connus du réglage actuel sont décrits au §9 du [design doc](docs/design-doc.md), « Vérification automatique ».
 
 Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 01, puis trois chiffres et la fin de l'acte IV vers 1 h 26. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois premiers, un peu plus de 2 h pour les quatre.
 

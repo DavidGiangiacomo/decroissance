@@ -1,4 +1,5 @@
-// Tests du moteur, sans navigateur : reprise des sauvegardes et rapport de session.
+// Tests du moteur, sans navigateur : actes II à IV, reprise des sauvegardes, rapport de session,
+// et le jugement de la vérification des invariants (tools/check.js).
 // Usage : node tools/test.js
 const assert = require('assert');
 const E = require('../engine.js');
@@ -704,6 +705,85 @@ test('une sauvegarde d\'avant l\'acte IV se reprend, et une garde en cours aussi
   assert.ok(r.acte === 4 && r.sites.combustibles.dosage === 'pleine' && r.sites.combustibles.attentePlace);
   assert.strictEqual(r.Meng, 6000);
   assert.strictEqual(r.digitsActe4, 5);
+});
+
+// ---- Vérification des invariants (tools/check.js) : le jugement, sur des mesures fabriquées ----
+const C = require('./check.js');
+const PAGE = { 'index.html': '<button id="btn-relancer" class="btn-relancer">Relancer</button><div id="casse-bloc" class="casse"><span id="casse">0</span></div>', 'main.js': '' };
+// Une partie où tout tient ; `extra` y casse un invariant.
+function partieSaine(extra) {
+  return Object.assign({
+    nom: 'témoin', autreJeu: false, finie: true, duree: 5400,
+    pertes: [600, 1800, 3000, 4200, 5400], sansChiffre: C.plusLongSansChiffre([600, 1800, 3000, 4200, 5400], 5400),
+    coutParActe: [12, 19, 9000, 400000],
+    casse: { baisses: [], sauvegarde: true, horsLigne: true },
+    terre: { ecart: 12, fin: 65 },
+    relance: { essais: 400, actes: 4, echecs: [] },
+  }, extra);
+}
+const jugement = (extra, opts) => C.juger([partieSaine(extra)], Object.assign({ fichiers: PAGE, connus: [], multiplicateurs: [{ nom: 'témoin', facteur: 2 }] }, opts));
+const enEchec = (sections) => sections.flatMap(sec => sec.lignes.filter(l => l.etat === 'echec').map(() => sec.titre.slice(0, 2)));
+
+test('la vérification passe quand tous les invariants tiennent', () => {
+  assert.deepStrictEqual(enEchec(jugement()), []);
+});
+
+test('chaque invariant cassé fait échouer la vérification', () => {
+  const pertes = [600, 1800, 3400, 4200, 5400];   // 26 min 40 entre le 2e et le 3e chiffre
+  assert.deepStrictEqual(enEchec(jugement({ pertes, sansChiffre: C.plusLongSansChiffre(pertes, 5400) })), ['I1']);
+  assert.deepStrictEqual(enEchec(jugement({}, { multiplicateurs: [{ nom: 'témoin', facteur: 2.5 }] })), ['I2']);
+  assert.deepStrictEqual(enEchec(jugement({ coutParActe: [12, 11, 9000, 400000] })), ['I3']);
+  assert.deepStrictEqual(enEchec(jugement({ casse: { baisses: [1200], sauvegarde: true, horsLigne: true } })), ['I4']);
+  assert.deepStrictEqual(enEchec(jugement({ casse: { baisses: [], sauvegarde: false, horsLigne: true } })), ['I4']);
+  assert.deepStrictEqual(enEchec(jugement({ terre: { ecart: 21, fin: 65 } })), ['I5']);
+  assert.deepStrictEqual(enEchec(jugement({ relance: { essais: 400, actes: 4, echecs: [3000] } })), ['I6']);
+  assert.deepStrictEqual(enEchec(jugement({ relance: { essais: 400, actes: 3, echecs: [] } })), ['I6']);
+  assert.deepStrictEqual(enEchec(jugement({ finie: false })), ['Pa']);   // une partie qui ne finit pas
+});
+
+test('la relance continue est un autre jeu : I1 et I3 ne s\'y appliquent pas', () => {
+  const pertes = [600];
+  const m = { autreJeu: true, pertes, sansChiffre: C.plusLongSansChiffre(pertes, 5400), coutParActe: [12, 19, 60, null] };
+  assert.deepStrictEqual(enEchec(jugement(m)), []);
+  assert.deepStrictEqual(enEchec(jugement(Object.assign(m, { terre: { ecart: 30, fin: 65 } }))), ['I5']);
+});
+
+test('un écart connu passe sous son plafond, échoue s\'il s\'aggrave, et aussi s\'il se résorbe', () => {
+  const connus = [{ inv: 'I1', partie: 'témoin', plafond: 28 * 60, ref: 'test' }];
+  const avec = (ecart) => { const pertes = [600, 600 + ecart]; return jugement({ pertes, sansChiffre: C.plusLongSansChiffre(pertes, 600 + ecart) }, { connus }); };
+  assert.strictEqual(C.compter(avec(27 * 60), 'connu'), 1);
+  assert.deepStrictEqual(enEchec(avec(27 * 60)), []);
+  assert.deepStrictEqual(enEchec(avec(29 * 60)), ['I1']);
+  assert.deepStrictEqual(enEchec(avec(20 * 60)), ['I1']);
+});
+
+test('les mesures : le plus long moment sans chiffre, l\'écart à la droite', () => {
+  assert.deepStrictEqual(C.plusLongSansChiffre([600, 1800], 2000), { duree: 1200, rang: 2, dernier: false });
+  assert.deepStrictEqual(C.plusLongSansChiffre([600], 2600), { duree: 2000, rang: 2, dernier: true });   // rien après le dernier chiffre
+  assert.deepStrictEqual(C.plusLongSansChiffre([], 900), { duree: 900, rang: 1, dernier: true });
+  const droite = [], marche = [];
+  for (let t = 0; t <= 100; t++) { droite.push([t, 3 * t]); marche.push([t, t < 50 ? 0 : 100]); }
+  assert.ok(C.ecartDroite(droite) < 1e-9);
+  assert.ok(C.ecartDroite(marche) > 20);
+});
+
+test('l\'affichage : la Casse et le bouton Relancer sont dans la page, et rien ne les masque', () => {
+  assert.strictEqual(C.affichage('btn-relancer', PAGE), null);
+  assert.strictEqual(C.affichage('casse-bloc', PAGE), null);
+  const page = (html, js) => ({ 'index.html': html, 'main.js': js || '' });
+  assert.ok(C.affichage('btn-relancer', page('<p>rien</p>')));
+  assert.ok(C.affichage('btn-relancer', page('<button id="btn-relancer" hidden>Relancer</button>')));
+  assert.ok(C.affichage('btn-relancer', page('<button id="btn-relancer" disabled>Relancer</button>')));
+  assert.ok(C.affichage('casse-bloc', page(PAGE['index.html'], "$('casse-bloc').hidden = s.X === 0;")));
+  assert.ok(enEchec(jugement({}, { fichiers: page('<div id="casse-bloc"><span id="casse">0</span></div>') })).includes('I6'));
+});
+
+test('les écarts connus désignent des parties qui existent, au-dessus du seuil', () => {
+  const noms = C.PARTIES.map(p => (p.reaction ? `${p.profil} ${p.reaction} s` : p.profil));
+  for (const c of C.ECARTS_CONNUS) {
+    assert.ok(noms.includes(c.partie), c.partie);
+    assert.ok(c.plafond > C.SEUILS[c.inv], `${c.inv} ${c.partie}`);
+  }
 });
 
 console.log(`\n${passes} tests passés`);
