@@ -428,7 +428,8 @@ test('l\'acte III finit quand ses sites sont démantelés, et le rapport le déc
   const texte = E.rapportTexte(s, 'test');
   assert.ok(texte.includes('Acte III ouvert') && texte.includes('Pénuries : 0') && texte.includes('Carte de l\'acte III vidée'));
   const json = JSON.parse(texte.split('```json\n')[1].split('\n```')[0]);
-  assert.ok(json.acte === 3 && json.finActe3 !== null && json.chiffresPerdus.length >= 3);
+  assert.ok(json.finActe3 !== null && json.chiffresPerdus.length >= 3);
+  assert.ok(json.acte === 4 && json.acte4 !== null, 'l\'acte IV s\'ouvre dans la foulée');
 });
 
 test('une sauvegarde d\'avant l\'acte III reprend sa formation et ses gens en attente', () => {
@@ -523,6 +524,186 @@ test('l\'aperçu d\'une pénurie annonce à peu près la Casse qu\'elle fera', (
   for (let i = 0; i < 400 * 10; i++) E.tick(s, 0.1);
   const vraie = s.X - X0;
   assert.ok(Math.abs(vraie - v.casse) <= 0.1 * vraie, `annoncé ${v.casse}, fait ${vraie}`);
+});
+
+// ---- Acte IV : le legs ----
+// Un état de début d'acte IV : les cartes des actes I à III sont vides, les centres de formation faits.
+function etatActe4(extra) {
+  const s = Object.assign(E.create(), { started: true });
+  for (const d of E.D.sites) if (E.acteDe(d) <= 3) s.sites[d.id].state = d.mesure ? 'fait' : 'eteint';
+  s.hopital = 'autonome';
+  Object.assign(s, { acte: 3, E: 3e4, digits: 5, digitsMin: 5 });
+  Object.assign(s.ms, { stabilise: 1, chiffre: 2, fin: 3, acte2: 3, fin2: 4, acte3: 4 });
+  E.tick(s, 0.1);          // l'acte III est fini, l'acte IV s'ouvre
+  Object.assign(s, { paused: 0, K: 900, M: 20000, Co: 60 }, extra || {});
+  return s;
+}
+const jusquA = (s, cond, max) => { let ev = []; for (let i = 0; i < (max || 36000) && !cond(); i++) ev = ev.concat(E.tick(s, 0.1)); return ev; };
+
+test('l\'acte IV s\'ouvre quand la carte de l\'acte III est vidée, et le plancher apparaît', () => {
+  const s = etatActe4();
+  assert.strictEqual(s.acte, 4);
+  assert.ok(s.ms.fin3 !== null && s.ms.acte4 !== null && s.digitsActe4 === 5);
+  assert.ok(s.log.some(l => l.msg.startsWith('Le plancher apparaît : 2,4')));
+  assert.ok(Math.abs(E.aGarder(s) - (1 - 0.3 * 0.45 * 0.6)) < 1e-9, `à garder ${E.aGarder(s)}`);
+  assert.ok(s.log.some(l => l.msg.startsWith('À garder : 92 %')));
+});
+
+test('les charges fuient tant qu\'elles ne sont pas gardées, et seulement à l\'acte IV', () => {
+  const debut = E.create();
+  assert.ok(Math.abs(E.gSites(debut) - 2.4) < 1e-9, 'à l\'acte I, les charges ne comptent pas encore');
+  const s = etatActe4();
+  assert.ok(Math.abs(E.gSites(s) - 0.5) < 1e-9, `fuite ${E.gSites(s)}`);
+  const E0 = s.E;
+  for (let i = 0; i < 600; i++) E.tick(s, 0.1);
+  assert.ok(s.E > E0, 'le compteur remonte');
+  E.engage(s, 'digues');
+  assert.ok(Math.abs(E.gSites(s) - 0.5) < 1e-9, 'la charge fuit encore pendant la formation des gardiens');
+  jusquA(s, () => s.sites.digues.state === 'eteint');
+  assert.ok(Math.abs(E.gSites(s) - 0.4) < 1e-9, 'une fois gardée, elle ne fuit plus');
+});
+
+test('une garde coûte de la Capacité une fois, et des gardiens pour toujours', () => {
+  const s = etatActe4();
+  const c = E.canEngage(s, 'combustibles');
+  assert.ok(c.ok && c.dosage === 'reduite' && !c.aBras && c.cout.K === 400 && c.cout.M === 3000);
+  const M0 = s.M, K0 = s.K;
+  E.engage(s, 'combustibles');
+  assert.strictEqual(s.M, M0 - 3000);
+  assert.ok(Math.abs(s.K - (K0 - 400)) < 1e-9);
+  assert.strictEqual(E.chantiersActifs(s), 0, 'former des gardiens n\'est pas un chantier de plus');
+  const avant = s.E;
+  const ev = jusquA(s, () => s.sites.combustibles.state === 'eteint');
+  assert.ok(ev.some(e => e.type === 'garde' && e.id === 'combustibles' && e.dosage === 'reduite' && e.gardiens === 3000));
+  assert.strictEqual(s.gardiens, 3000);
+  assert.strictEqual(s.Meng, 0);
+  assert.ok(s.M <= M0 - 3000 + 1, 'les gardiens ne reviennent pas dans les Mains');
+  const part = s.sites.combustibles.Eretire / (s.E + s.sites.combustibles.Eretire);
+  assert.ok(Math.abs(part - 0.7) < 0.001 && s.E < avant, `la garde retire 70 % de ce qui reste : ${part}`);
+  assert.ok(s.chrono.some(e => e.type === 'garde' && e.id === 'combustibles'));
+});
+
+test('une garde pleine demande deux fois plus de gardiens ; sans Capacité, tout se fait à bras', () => {
+  const s = etatActe4();
+  assert.strictEqual(E.canEngage(s, 'galeries', { dosage: 'pleine' }).cout.M, 3000);
+  s.K = 100;
+  const c = E.canEngage(s, 'galeries', { dosage: 'pleine' });
+  assert.ok(c.aBras && c.cout.K === 0 && c.cout.M === 6000, JSON.stringify(c.cout));
+  const r = E.canEngage(s, 'reseau');
+  assert.ok(r.aBras && r.cout.K === 0 && r.cout.M === 5000, 'le réseau national aussi');
+  assert.ok(!E.canEngage(s, 'pfas').aBras, 'un sol ne coûte pas de Capacité');
+  E.engage(s, 'galeries', { dosage: 'pleine' });
+  jusquA(s, () => s.sites.galeries.state === 'eteint');
+  assert.strictEqual(s.gardiens, 6000);
+  assert.ok(E.rapportTexte(s, 'test').includes(`Galeries du bassin de Cherbaix, pleine à bras (${E.fmt(6000)} gardiens)`));
+});
+
+test('les gardiens se forment sur une place de formation ; une garde qui attend passe avant les lots', () => {
+  const s = etatActe4();
+  s.attente = [{ de: 'reseau', n: 3000, t0: s.t }]; s.deplaces = 3000;
+  assert.strictEqual(E.placesFormation(s), 2);
+  E.reconvertirTout(s);
+  assert.strictEqual(s.formations.length, 2);
+  E.engage(s, 'digues');
+  assert.ok(s.sites.digues.attentePlace, 'toutes les places sont prises');
+  assert.ok(E.gardeEnAttente(s) && !E.reconvertir(s), 'aucun lot ne part tant qu\'une garde attend');
+  const p0 = s.sites.digues.progress;
+  for (let i = 0; i < 100; i++) E.tick(s, 0.1);
+  assert.strictEqual(s.sites.digues.progress, p0, 'sans place, la formation n\'avance pas');
+  jusquA(s, () => !s.sites.digues.attentePlace, 600);
+  assert.ok(!s.sites.digues.attentePlace && E.gardesEnFormation(s) === 1);
+  assert.strictEqual(E.placesOccupees(s), 1 + s.formations.length, 'la garde occupe une place libérée');
+  s.formerEnContinu = true;
+  E.tick(s, 0.1);
+  assert.strictEqual(E.placesOccupees(s), 2, 'en continu, un lot reprend l\'autre place');
+});
+
+test('le réseau national est le point de non-retour : plus de Capacité, plus de rebond', () => {
+  const s = etatActe4();
+  assert.ok(E.kRate(s) > 0 && E.gRebond(s) > 0);
+  const c = E.canEngage(s, 'reseau');
+  assert.ok(c.ok && c.cout.K === 300 && c.cout.M === 2500);
+  E.engage(s, 'reseau');
+  const ev = jusquA(s, () => s.sites.reseau.state === 'eteint');
+  assert.ok(ev.some(e => e.type === 'non-retour'));
+  assert.ok(E.capaciteFinie(s) && E.kRate(s) === 0 && E.gRebond(s) === 0);
+  assert.ok(s.deplaces >= 1500, 'ses gens attendent une reconversion');
+  E.relancer(s);
+  assert.strictEqual(E.kRate(s), 0, 'même une relance n\'y change rien');
+});
+
+test('les sols se dépolluent au temps réel seul, hors ligne compris', () => {
+  const s = etatActe4();
+  E.engage(s, 'pfas');
+  E.relancer(s);
+  for (let i = 0; i < 100; i++) E.tick(s, 0.1);
+  assert.ok(Math.abs(s.sites.pfas.progress - 10 / E.defs.pfas.dur) < 1e-6, 'la relance ne l\'accélère pas');
+  assert.strictEqual(E.chantiersActifs(s), 0, 'un sol n\'use pas le Consentement');
+  const E0 = s.E;
+  const r = E.applyOffline(s, E.defs.pfas.dur);
+  assert.ok(r.sols === 1 && r.depollues.includes('pfas'));
+  assert.strictEqual(s.sites.pfas.state, 'eteint');
+  assert.ok(s.E < E0 * 0.31, 'la dépollution retire sa part hors ligne');
+  assert.ok(s.log.some(l => l.msg.includes('la dépollution a continué')));
+  const ev = E.tick(s, 0.1);
+  assert.ok(ev.some(e => e.type === 'chiffre'), 'le chiffre tombe au retour');
+});
+
+test('les sols pollués à l\'acte II n\'existent que si une démolition rapide les a pollués', () => {
+  const s = etatActe4();
+  assert.ok(!E.existe(s, E.defs['sol-acierie']) && E.canEngage(s, 'sol-acierie').raisons[0] === 'sans objet');
+  const p = etatActe4();
+  p.sites.acierie.pollue = true;
+  assert.ok(E.existe(p, E.defs['sol-acierie']));
+  E.engage(p, 'sol-acierie');
+  jusquA(p, () => p.sites['sol-acierie'].state === 'eteint');
+  assert.ok(!p.sites.acierie.pollue, 'dépollué, le sol de l\'aciérie se régénère enfin');
+  for (let i = 0; i < 100; i++) E.tick(p, 0.1);
+  assert.ok(p.sites.acierie.regen > 0);
+});
+
+test('l\'Empreinte ne descend jamais sous le plancher', () => {
+  const s = etatActe4({ E: 3 });
+  E.engage(s, 'nitrates');
+  jusquA(s, () => s.sites.nitrates.state === 'eteint');
+  assert.ok(s.E >= s.plancher - 1e-9, `E ${s.E}, plancher ${s.plancher}`);
+});
+
+test('l\'acte IV finit quand tout est gardé, démantelé et dépollué, et le rapport le décrit', () => {
+  const s = etatActe4({ M: 40000 });
+  let ev = [];
+  for (const id of ['decharges', 'pfas', 'nitrates']) E.engage(s, id);
+  for (const id of ['combustibles', 'galeries', 'digues', 'reseau']) {
+    E.engage(s, id);
+    ev = ev.concat(jusquA(s, () => s.sites[id].state === 'eteint'));
+  }
+  ev = ev.concat(jusquA(s, () => s.ms.fin4 !== null));
+  assert.ok(ev.some(e => e.type === 'fin' && e.acte === 4) && s.ms.fin4 !== null);
+  assert.ok(s.E < 3e4 * 0.01, `l'acte fait perdre plus de deux chiffres : ${s.E}`);
+  for (let i = 0; i < 9100; i++) E.tick(s, 0.1);   // la terre des sols repousse ensuite, en quinze minutes
+  assert.ok(E.T(s) > 81, `la Terre rendue approche 82 % : ${E.T(s)}`);
+  const texte = E.rapportTexte(s, 'test');
+  for (const t of ['Acte IV ouvert', 'Gardes : Combustibles usés de la pointe de Morvel, réduite', `Gardiens, pour toujours : ${E.fmt(5300)}`, 'Réseau national démantelé', 'Acte IV achevé', 'Garde instituée', 'Dépollué', 'Point de non-retour'])
+    assert.ok(texte.includes(t), t);
+  const json = JSON.parse(texte.split('```json\n')[1].split('\n```')[0]);
+  assert.ok(json.acte === 4 && json.finActe4 !== null && json.gardes.length === 3 && json.gardiens === 5300);
+});
+
+test('une sauvegarde d\'avant l\'acte IV se reprend, et une garde en cours aussi', () => {
+  const ancienne = allerRetour(etatActe3());
+  for (const k of ['gardiens', 'digitsActe4']) delete ancienne[k];
+  for (const id of ['combustibles', 'galeries', 'digues', 'reseau', 'decharges', 'pfas', 'nitrates', 'sol-acierie', 'sol-chimie']) delete ancienne.sites[id];
+  const a = E.migrer(ancienne);
+  assert.ok(a && a.acte === 3 && a.gardiens === 0 && a.sites.combustibles.state === 'actif');
+  assert.doesNotThrow(() => jouer(a, 5));
+  const s = etatActe4();
+  s.attente = [{ de: null, n: 600, t0: s.t }]; s.deplaces = 600;
+  E.reconvertirTout(s);
+  E.engage(s, 'combustibles', { dosage: 'pleine' });
+  const r = E.migrer(allerRetour(s));
+  assert.ok(r.acte === 4 && r.sites.combustibles.dosage === 'pleine' && r.sites.combustibles.attentePlace);
+  assert.strictEqual(r.Meng, 6000);
+  assert.strictEqual(r.digitsActe4, 5);
 });
 
 console.log(`\n${passes} tests passés`);

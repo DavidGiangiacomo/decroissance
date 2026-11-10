@@ -1,5 +1,5 @@
 // Décroissance — données (géographie fictive : l'Ostrane). Acte I : le MVP ; acte II : le réseau (issue #14) ;
-// acte III : les gens (issue #15).
+// acte III : les gens (issue #15) ; acte IV : le legs (issue #16).
 // Valeurs de réglage. Toutes les durées sont en secondes de jeu réelles.
 (function (root) {
   const DATA = {
@@ -44,6 +44,9 @@
     // l'ouverture du chantier, et sa terre, convertie, en rend `releve` en `releveDur` s. Sous 100 : pénurie.
     VIVRES: { besoin: 100, base: 30, ceintures: 30, releve: 0.9, releveDur: 300, casse: 15 / 60, co: 0.1 / 60 },
 
+    // Acte IV : le legs. Sans Capacité, un élément de l'acte se fait à bras : ce facteur sur ses Mains ou ses gardiens.
+    A_BRAS: 2,
+
     // Régions de la carte. Au deuxième chiffre perdu, la plus démantelée s'éteint.
     regions: {
       'Valdrance': { nom: 'Valdrance', x: 250, y: 150, r: 125 },
@@ -52,6 +55,7 @@
       'Orvenne': { nom: 'Orvenne', x: 265, y: 425, r: 90 },
       'Vallée de la Sère': { nom: 'La vallée de la Sère', x: 345, y: 300, r: 85 },
       'Plaine': { nom: 'La plaine de Valdrance', x: 140, y: 270, r: 80 },
+      'Morvel': { nom: 'La pointe de Morvel', x: 540, y: 352, r: 55 },
     },
 
     // Sites (E = Empreinte retirée à la clôture ; g = contribution à la croissance, %/min)
@@ -183,6 +187,51 @@
         E: 0, K: 150, M: 1800, dur: 315, g: 0, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
         court: 'Centres de formation', x: 0, y: 0,
         desc: 'Des formateurs, des ateliers, des places : deux lots en formation à la fois. Ne fait rien baisser.' },
+
+      // ---- Acte IV : le legs (issue #16). Chaque élément retire une part de l'Empreinte qui reste. Sans Capacité,
+      //      un élément de l'acte se fait à bras : deux fois plus de Mains, ou de gardiens.
+      //      garde : ce qui ne se démantèle pas. Tant qu'elle n'est pas instituée, la charge fuit (g, %/min).
+      //        M = gardiens d'une garde réduite (le double pour une garde pleine), formés sur une place de formation
+      //        pendant dur, puis perdus pour toujours ; ans = durée de la garde, affichée.
+      //      sol : dépollution au temps réel seul, hors ligne compris ; rien ne l'accélère. seulementSi : n'existe que
+      //        si ce site de l'acte II a été démoli trop vite.
+      //      finCapacite : après lui, la Capacité ne se renouvelle plus, et le rebond du réseau s'arrête. ----
+      { id: 'combustibles', acte: 4, garde: true, ans: 100000, nom: 'Combustibles usés de la pointe de Morvel', region: 'Morvel',
+        g: 0.25, part: 0.7, K: 400, M: 3000, dur: 540, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
+        court: 'Pointe de Morvel', x: 546, y: 352,
+        desc: "Une centrale qu'aucune liste de chantiers n'a jamais montrée. Son réacteur s'arrête ; ses combustibles usés resteront dangereux cent mille ans." },
+      { id: 'galeries', acte: 4, garde: true, ans: 10000, nom: 'Galeries du bassin de Cherbaix', region: 'Cherbaix',
+        g: 0.15, part: 0.55, K: 250, M: 1500, dur: 420, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
+        court: 'Galeries', x: 530, y: 125,
+        desc: "Trois cents kilomètres de galeries, noyées une à une. L'eau qui remonte se charge de métaux : il faudra la pomper et la traiter tant qu'il y aura de l'eau." },
+      { id: 'digues', acte: 4, garde: true, ans: 300, nom: 'Digues de la Sère', region: 'Vallée de la Sère',
+        g: 0.1, part: 0.4, K: 150, M: 800, dur: 300, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
+        court: 'Digues', x: 270, y: 236,
+        desc: 'Quarante kilomètres de levées de terre et de béton. Sans entretien, la Sère reprend la plaine à la première grande crue.' },
+      { id: 'reseau', acte: 4, finCapacite: true, nom: 'Réseau national', region: 'Vallée de la Sère', categorie: 'reseau',
+        part: 0.6, K: 300, M: 2500, dur: 420, g: 0, deplaces: 1500, co: 5, T: 3, regen: 900, kBack: 0,
+        court: 'Réseau', x: 270, y: 296,
+        desc: 'Lignes à très haute tension, pylônes, le poste de la Sère. Après lui, les villes ne tiennent plus qu\'au barrage, en direct.' },
+      { id: 'decharges', acte: 4, sol: true, nom: 'Décharges de Valdrance', region: 'Valdrance',
+        part: 0.65, K: 0, M: 400, dur: 1200, g: 0, deplaces: 0, co: 0, T: 8, regen: 900, kBack: 0,
+        court: 'Décharges', x: 290, y: 80,
+        desc: 'Cinquante ans de déchets des deux villes, de mâchefers et de boues. Des plantes et des champignons les fixent, à leur rythme.' },
+      { id: 'pfas', acte: 4, sol: true, nom: 'PFAS de la Sère', region: 'Vallée de la Sère',
+        part: 0.7, K: 0, M: 400, dur: 1500, g: 0, deplaces: 0, co: 0, T: 9, regen: 900, kBack: 0,
+        court: 'PFAS', x: 330, y: 346,
+        desc: "Les polluants éternels des berges, en aval de la chimie. Les filtres et les roselières les retiennent lentement." },
+      { id: 'nitrates', acte: 4, sol: true, nom: 'Nitrates de la plaine', region: 'Plaine',
+        part: 0.65, K: 0, M: 400, dur: 900, g: 0, deplaces: 0, co: 0, T: 8, regen: 900, kBack: 0,
+        court: 'Nitrates', x: 152, y: 196,
+        desc: 'Vingt ans d\'engrais dans les nappes. Des haies, des prairies, et des années d\'eau qui passe.' },
+      { id: 'sol-acierie', acte: 4, sol: true, seulementSi: 'acierie', carte: false, nom: "Sols de l'aciérie de Cherbaix", region: 'Cherbaix',
+        part: 0.3, K: 0, M: 300, dur: 600, g: 0, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
+        court: 'Sols de l\'aciérie', x: 0, y: 0,
+        desc: "Le sol que la démolition rapide de l'aciérie a pollué. Une fois dépollué, il se régénère enfin." },
+      { id: 'sol-chimie', acte: 4, sol: true, seulementSi: 'chimie', carte: false, nom: 'Sols de la chimie de la Sère', region: 'Vallée de la Sère',
+        part: 0.3, K: 0, M: 300, dur: 600, g: 0, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
+        court: 'Sols de la chimie', x: 0, y: 0,
+        desc: 'Le sol que la démolition rapide de la chimie a pollué. Une fois dépollué, il se régénère enfin.' },
     ],
 
     // Nœuds qui ne sont pas des chantiers mais dépendent de sites
@@ -240,6 +289,7 @@
       elevages: [['éleveur', 'éleveuse'], ['technicien sanitaire', 'technicienne sanitaire']],
       serres: [['ouvrier de serre', 'ouvrière de serre'], ['chauffagiste', 'chauffagiste']],
       peche: [['marin pêcheur', 'marin pêcheuse'], ['mareyeur', 'mareyeuse']],
+      reseau: [['monteur de lignes', 'monteuse de lignes'], ['électricien', 'électricienne'], ['agent de poste', 'agente de poste']],
     },
     METIERS_COMMUNS: [['ouvrier', 'ouvrière'], ['technicien', 'technicienne'], ['opérateur', 'opératrice'], ['magasinier', 'magasinière']],
 

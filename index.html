@@ -20,6 +20,8 @@
       <div class="compteur-ligne">
         <span id="tendance" class="tendance">▲ +2,4 % / min</span>
         <span id="sci" class="sci" hidden>1,00·10⁹</span>
+        <span id="plancher" class="plancher" hidden title="Le plancher irréductible : l'Empreinte ne descendra jamais en dessous. Chaque relance le double."></span>
+        <span id="a-garder" class="a-garder" hidden title="La part de ce qui reste qui ne se démantèle pas : elle ne sortira de l'Empreinte qu'en étant gardée."></span>
       </div>
     </div>
     <div class="haut-droite">
@@ -74,6 +76,8 @@
         <span class="leg-acte2" hidden><i class="pastille deleste"></i> délesté</span>
         <span class="leg-acte2" hidden><i class="pastille pollue"></i> sol pollué</span>
         <span class="leg-acte3" hidden><i class="pastille isole"></i> isolé</span>
+        <span class="leg-acte4" hidden><i class="pastille garde"></i> à garder</span>
+        <span class="leg-acte4" hidden><i class="pastille gardee"></i> gardé</span>
       </div>
     </section>
 
@@ -148,6 +152,15 @@
         <p id="gens-note" class="gens-note" hidden></p>
       </section>
 
+      <section id="garde" class="garde" hidden>
+        <div class="reseau-tete">
+          <h2>La Garde</h2>
+          <span id="garde-etat" class="reseau-etat"></span>
+        </div>
+        <p class="reseau-ordre">Ce qui ne se démantèle pas se garde. Une garde coûte de la Capacité une fois, et des gardiens pour toujours : ils se forment sur une place de formation, puis ne reviennent jamais. Tant qu'une charge n'est pas gardée, elle fuit. Sans Capacité, la garde se fait à bras, avec deux fois plus de gardiens.</p>
+        <div id="liste-gardes"></div>
+      </section>
+
       <section class="chantiers">
         <h2>Chantiers <small class="muted" id="g-detail"></small></h2>
         <div id="liste-chantiers"></div>
@@ -171,7 +184,7 @@
   <div id="intro" class="voile">
     <div class="carton">
       <h1>Décroissance</h1>
-      <p class="petit muted">Prototype — actes I à III : l'inventaire, le réseau, les gens</p>
+      <p class="petit muted">Prototype — actes I à IV : l'inventaire, le réseau, les gens, le legs</p>
       <p>Vous héritez. Pas d'une conquête, d'une passation : l'Ostrane, pays industriel de taille moyenne — une côte, un fleuve, un bassin minier, deux métropoles — et un mandat, de durée non précisée, pour le démanteler proprement.</p>
       <p>Vous n'avez ni nom ni parti. Vous avez un inventaire, une carte, et le droit d'arbitrer. Personne ne vous demandera si c'est une bonne idée. La question est la manière.</p>
       <p class="petit">L'Empreinte est en haut. Elle monte. Chaque site fermé libère des gens à reconvertir, et la carte indique ce qu'un site alimente. Le son fait partie du jeu.</p>

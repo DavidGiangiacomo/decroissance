@@ -319,3 +319,33 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
   .carte-zone { height: 60vh; border-right: 0; border-bottom: 1px solid var(--bord); }
   .panneau { overflow: visible; }
 }
+
+/* ---- acte IV : le legs ---- */
+.compteur-ligne { flex-wrap: wrap; }
+.plancher { font-family: var(--mono); color: #c9b48a; }
+.a-garder { color: #9cc3e0; }
+#garde { border: 1px solid #3a4a5a; border-radius: 6px; padding: 10px 12px; background: var(--panneau-2); display: flex; flex-direction: column; gap: 6px; }
+#garde h2 { color: #9cc3e0; }
+#liste-gardes { display: flex; flex-direction: column; gap: 8px; }
+.garde-carte .duree-note { grid-column: 1 / -1; font-size: 12px; color: #9cc3e0; }
+.garde-carte .action .pleine { margin-left: 0; }
+.chantier .abras-note { grid-column: 1 / -1; font-size: 12px; color: #e2c48f; }
+.chantier .sol-note { grid-column: 1 / -1; font-size: 12px; color: #9fc79a; }
+.chantier .noretour-note { grid-column: 1 / -1; font-size: 12px; color: #f0a49c; }
+.chantier .noretour-note::before { content: "⚠ "; }
+.formations li.gardiens .lot-tete span:first-child { color: #9cc3e0; }
+.formations li.gardiens .barre i { background: #6a8fb0; }
+/* Les charges sur la carte : un hexagone, et la durée de leur garde */
+.site.garde .disque { fill: #3a2d1c; stroke: #e0a458; stroke-width: 1.6; }
+.site.garde.actif .halo { fill: #e0a458; animation: fuite 1.8s ease-in-out infinite; }
+.site.garde.chantier .disque { fill: #1f2a35; stroke: #6a8fb0; stroke-dasharray: 3 2; animation: none; }
+.site.garde.chantier.attend .disque { stroke-dasharray: 1 3; }
+.site.garde.eteint .disque { fill: #23303a; stroke: #9cc3e0; }
+.site.garde.eteint .halo { fill: none; stroke: #6a8fb0; stroke-width: 1; opacity: .7; }
+.site.garde .duree { fill: #9cc3e0; font-size: 9px; letter-spacing: .04em; }
+.site.garde.actif .duree { fill: #e0a458; }
+@keyframes fuite { 0%, 100% { opacity: .1; } 50% { opacity: .35; } }
+.site.sol.actif .disque { fill: #6b4a2a; stroke: #a0703c; }
+.site.sol.actif .halo { animation: none; opacity: .06; }
+.pastille.garde { background: transparent; border: 1.5px solid #e0a458; border-radius: 2px; transform: rotate(45deg) scale(.85); }
+.pastille.gardee { background: #23303a; border: 1.5px solid #9cc3e0; border-radius: 2px; transform: rotate(45deg) scale(.85); }
