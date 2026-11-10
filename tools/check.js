@@ -9,7 +9,7 @@ const D = E.D;
 const SEUILS = {
   I1: 25 * 60,   // secondes : jamais plus longtemps sans chiffre perdu (#4)
   I2: 2,         // aucun multiplicateur permanent au-delà, cumul compris
-  I5: 20,        // % de la Terre rendue finale : écart maximal à la droite la plus proche. La cible du §9 s'en écarte de 6 %.
+  I5: 20,        // % de la Terre rendue finale : écart maximal à la droite la plus proche. La cible du §9 s'en écarte de 4 %.
 };
 
 // Les parties jouées : chaque joueur du simulateur à 10, 30 et 45 s de réaction, et la relance continue.
@@ -28,12 +28,12 @@ const ECARTS_CONNUS = [
   { inv: 'I1', partie: 'vite 45 s', plafond: 33 * 60, ref: 'joueurs très lents, docs/acte-2.md' },
   { inv: 'I1', partie: 'relance-1 45 s', plafond: 37 * 60, ref: 'joueurs très lents, docs/acte-2.md' },
   { inv: 'I1', partie: 'vite 30 s', plafond: 26 * 60, ref: "transition vers l'acte IV, docs/acte-4.md" },
-  { inv: 'I5', partie: 'vite 45 s', plafond: 26, ref: 'joueurs très lents, docs/design-doc.md §9' },
 ];
 
 // ---- mesures ----
 
-// I1 : le plus long moment sans chiffre perdu, du début de la partie à sa fin.
+// I1 : le plus long moment sans chiffre perdu, du début de la partie à `fin` : le dernier instant où un chiffre
+// pouvait encore tomber. Une fois l'Empreinte au plancher, il n'en reste plus à perdre.
 function plusLongSansChiffre(pertes, fin) {
   const bornes = [0, ...pertes, fin];
   let duree = 0, rang = 0;
@@ -60,6 +60,7 @@ function mesurer(partie) {
   const terre = [[0, 0]];                // I5 : la Terre rendue, toutes les 10 s de temps réel
   const relance = { essais: 0, actes: new Set(), echecs: [] };   // I6
   let ticks = 0, casse = 0;
+  let finChiffres = 0;                   // I1 : le dernier instant où un chiffre pouvait encore tomber
   const acteDuSite = (id) => E.acteDe(E.defs[id]);
   const ajouter = (o, acte, n) => { o[acte] = (o[acte] || 0) + n; };
   const suivreCasse = (s) => { if (s.X < casse) baisses.push(s.t); casse = s.X; };
@@ -74,12 +75,14 @@ function mesurer(partie) {
   }
   const suivi = {
     engage(s, id, c) {
-      ajouter(cout, acteDuSite(id), c.K + c.M);
+      // Un geste de l'acte V demande son équipe, que ce soient des Mains ou, faute de Mains, les habitants.
+      ajouter(cout, acteDuSite(id), c.K + (E.defs[id].geste ? E.defs[id].M : c.M));
       suivreCasse(s);
     },
     pas(s, evs) {
       ticks++;
       suivreCasse(s);
+      if (E.digitsOf(s.E) > E.digitsOf(s.plancher)) finChiffres = s.t;   // au plancher, plus rien ne peut tomber
       if (ticks % 100 === 0) terre.push([ticks * dt, E.T(s)]);
       if (ticks === 1 || ticks % 150 === 0 || evs.length) essayerRelance(s);
       for (const ev of evs) {
@@ -100,16 +103,17 @@ function mesurer(partie) {
   const horsLigne = !!recharge && recharge.X >= s.X;
 
   // I6 : les relances que le joueur ou le Conseil ont vraiment faites comptent aussi, chacune dans son acte.
-  const acteA = (t) => 1 + [2, 3, 4].filter(a => s.ms['acte' + a] !== null && s.ms['acte' + a] <= t).length;
+  const acteA = (t) => 1 + Object.keys(E.TITRES_ACTES).filter(a => a > 1 && s.ms['acte' + a] != null && s.ms['acte' + a] <= t).length;
   for (const e of s.chrono) if (e.type === 'relance') relance.actes.add(acteA(e.t));
 
   const pertes = s.chrono.filter(e => e.type === 'chiffre').map(e => e.t);
   const actes = [];
-  for (let a = 1; a <= E.DERNIER_ACTE; a++) actes.push(retire[a] > 0 ? (cout[a] || 0) / retire[a] * 1e6 : null);
+  // Un acte qui coûte sans plus rien retirer, parce que l'Empreinte est au plancher : un coût par point sans borne.
+  for (let a = 1; a <= E.DERNIER_ACTE; a++) actes.push(retire[a] > 0 ? (cout[a] || 0) / retire[a] * 1e6 : cout[a] > 0 ? Infinity : null);
   return {
     nom: nomPartie(partie), autreJeu: !!partie.autreJeu,
     finie: s.ms['fin' + (E.DERNIER_ACTE === 1 ? '' : E.DERNIER_ACTE)] !== null, duree: s.t,
-    pertes, sansChiffre: plusLongSansChiffre(pertes, s.t),
+    pertes, sansChiffre: plusLongSansChiffre(pertes, Math.max(finChiffres, pertes.length ? pertes[pertes.length - 1] : 0)),
     coutParActe: actes,
     casse: { baisses, sauvegarde, horsLigne },
     terre: { ecart: ecartDroite(terre), fin: E.T(s) },
@@ -190,8 +194,9 @@ function juger(mesures, opts) {
   ligne = section("I3 — le coût d'un point d'Empreinte croît d'acte en acte (Capacité et Mains engagées par million de points retirés)");
   for (const m of mesures) {
     if (m.autreJeu) { ligne('info', m.nom, 'sans objet : la relance continue est un autre jeu (§8)'); continue; }
-    const c = m.coutParActe, suite = c.map(x => (x === null ? '—' : nombre(x))).join(' → ');
-    const recul = c.findIndex((x, i) => i > 0 && (x === null || c[i - 1] === null || x <= c[i - 1]));
+    const c = m.coutParActe, suite = c.map(x => (x === null ? '—' : x === Infinity ? 'sans borne' : nombre(x))).join(' → ');
+    // Au plancher, le coût par point n'a plus de borne : il ne recule pas, même deux actes de suite.
+    const recul = c.findIndex((x, i) => i > 0 && (x === null || c[i - 1] === null || (x <= c[i - 1] && x !== Infinity)));
     if (recul > 0) ligne('echec', m.nom, `${suite} : l'acte ${recul + 1} ne coûte pas plus cher par point que l'acte ${recul}`);
     else ligne('ok', m.nom, suite);
   }

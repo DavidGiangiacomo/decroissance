@@ -44,6 +44,11 @@
           <marker id="fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" class="fleche"/>
           </marker>
+          <radialGradient id="vert-region">
+            <stop offset="0" stop-color="#5f9a55" stop-opacity=".55"/>
+            <stop offset=".65" stop-color="#5f9a55" stop-opacity=".3"/>
+            <stop offset="1" stop-color="#5f9a55" stop-opacity="0"/>
+          </radialGradient>
           <radialGradient id="ombre-region">
             <stop offset="0" stop-color="#05060a" stop-opacity=".82"/>
             <stop offset=".7" stop-color="#05060a" stop-opacity=".5"/>
@@ -63,6 +68,7 @@
         <g class="ville"><rect x="98" y="412" width="8" height="8"/><text x="112" y="420">Méraud</text></g>
         <g class="ville"><rect x="452" y="248" width="8" height="8"/><text x="446" y="256" text-anchor="end">Cherbaix</text></g>
         <g id="regions"></g>
+        <g id="rendues"></g>
         <g id="reseau-lignes"></g>
         <g id="liens"></g>
         <g id="sites"></g>
@@ -78,6 +84,7 @@
         <span class="leg-acte3" hidden><i class="pastille isole"></i> isolé</span>
         <span class="leg-acte4" hidden><i class="pastille garde"></i> à garder</span>
         <span class="leg-acte4" hidden><i class="pastille gardee"></i> gardé</span>
+        <span class="leg-acte5" hidden><i class="pastille rendue"></i> région rendue</span>
       </div>
     </section>
 
@@ -104,6 +111,15 @@
           <div class="barre"><i id="co-barre" style="width:100%"></i><b id="co-seuil-marque" class="seuil-marque" style="left:20%"></b></div>
           <div id="co-seuil" class="co-seuil">Sous 20 %, le Conseil relance la croissance sans vous.</div>
         </div>
+      </section>
+
+      <section id="rendre" class="rendre" hidden>
+        <div class="reseau-tete">
+          <h2>Rendre</h2>
+          <span id="rendre-etat" class="reseau-etat"></span>
+        </div>
+        <p id="rendre-regle" class="reseau-ordre"></p>
+        <div id="liste-gestes"></div>
       </section>
 
       <section id="reseau" class="reseau" hidden>
@@ -161,7 +177,7 @@
         <div id="liste-gardes"></div>
       </section>
 
-      <section class="chantiers">
+      <section id="chantiers" class="chantiers">
         <h2>Chantiers <small class="muted" id="g-detail"></small></h2>
         <div id="liste-chantiers"></div>
       </section>
@@ -184,7 +200,7 @@
   <div id="intro" class="voile">
     <div class="carton">
       <h1>Décroissance</h1>
-      <p class="petit muted">Prototype — actes I à IV : l'inventaire, le réseau, les gens, le legs</p>
+      <p class="petit muted">Prototype — actes I à V : l'inventaire, le réseau, les gens, le legs, rendre</p>
       <p>Vous héritez. Pas d'une conquête, d'une passation : l'Ostrane, pays industriel de taille moyenne — une côte, un fleuve, un bassin minier, deux métropoles — et un mandat, de durée non précisée, pour le démanteler proprement.</p>
       <p>Vous n'avez ni nom ni parti. Vous avez un inventaire, une carte, et le droit d'arbitrer. Personne ne vous demandera si c'est une bonne idée. La question est la manière.</p>
       <p class="petit">L'Empreinte est en haut. Elle monte. Chaque site fermé libère des gens à reconvertir, et la carte indique ce qu'un site alimente. Le son fait partie du jeu.</p>

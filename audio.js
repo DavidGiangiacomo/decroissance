@@ -3,6 +3,8 @@
 // Acte II : le bourdonnement du réseau, puis la rivière au deuxième chiffre perdu.
 // Acte III : le fret (camions, port), puis les insectes au troisième chiffre perdu et les voix au quatrième.
 // Acte IV : le bourdonnement grave du poste, qui s'éteint avec le réseau national ; puis la pluie, et presque le silence.
+// Acte V : aucune couche nouvelle. Les oiseaux, les insectes et les voix reviennent à mesure que la terre est rendue,
+// la pluie s'éloigne ; chaque geste achevé fait un bruit de terre.
 // Le volume de chaque couche est piloté par l'état du jeu, crossfade lent.
 (function (root) {
   const FADE = 3.5;
@@ -248,6 +250,17 @@
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(38, t + 1.8);
       const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.04); g.gain.exponentialRampToValueAtTime(0.0005, t + 2.4);
       o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 2.6);
+    }
+    // Ponctuel : un geste achevé — de la terre qu'on retourne, deux coups mats et courts
+    geste() {
+      if (!this.ctx || this.mute) return;
+      const ctx = this.ctx, t = ctx.currentTime;
+      for (const [quand, f, v] of [[0, 520, 0.16], [0.22, 380, 0.11]]) {
+        const src = this._bruit(0.3, false);
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = f;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.setValueAtTime(0.0001, t + quand); g.gain.exponentialRampToValueAtTime(v, t + quand + 0.02); g.gain.exponentialRampToValueAtTime(0.0005, t + quand + 0.24);
+        src.connect(lp); lp.connect(g); g.connect(this.master); src.stop(t + quand + 0.3);
+      }
     }
     // Ponctuel : coupure — un claquement sec puis une alarme brève
     coupure() {

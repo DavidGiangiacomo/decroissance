@@ -149,7 +149,7 @@ En haut de l'écran, dès la première seconde, un bouton lisible : **Relancer**
 
 - Il fonctionne. Vraiment. Il rend `g` positif, K explose, les chantiers deviennent triviaux, les compteurs montent, la notation scientifique apparaît, la musique reprend.
 - Il est **optimal à court terme** dans à peu près toutes les situations. Relancer 4 minutes pour financer trois chantiers difficiles est un bon calcul, et le jeu ne le punit pas immédiatement.
-- Chaque relance rehausse le plancher irréductible de façon permanente : il double. Trois relances le font passer à deux chiffres, et coûtent donc un chiffre perdu sur la partie.
+- Chaque relance rehausse le plancher irréductible de façon permanente : il double. Trois relances le font passer à deux chiffres, et coûtent donc un chiffre perdu sur la partie. Si l'Empreinte se retrouve sous le nouveau plancher, elle y remonte.
 
 Trois usages, trois lectures :
 
@@ -192,7 +192,7 @@ I5 est l'invariant maître, comme dans *La langue morte* : la vraie barre de pro
 
 - Compter la croissance arrêtée ne tranche rien : il faudrait fixer sur combien de minutes on la compte, et ce nombre déciderait du résultat.
 - N'appliquer I3 qu'à partir de l'acte II ne suffit pas : site par site, l'acte II et l'acte IV ne sont pas monotones non plus.
-- La moyenne par acte, elle, monte toujours : 12 par million de points à l'acte I, 15 à 21 à l'acte II, de 400 à 23 000 à l'acte III, de 14 000 à un million à l'acte IV. À partir de l'acte III, chaque site retire une part de ce qui reste : le coût par point monte de lui-même.
+- La moyenne par acte, elle, monte toujours : 12 par million de points à l'acte I, 15 à 21 à l'acte II, de 400 à 23 000 à l'acte III, de 14 000 à un million à l'acte IV, de 16 millions à 3 milliards à l'acte V. À partir de l'acte III, chaque site retire une part de ce qui reste : le coût par point monte de lui-même. Au plancher, plus rien ne se retire : le coût d'un point n'a plus de borne.
 
 ### Vérification automatique
 
@@ -200,27 +200,26 @@ I5 est l'invariant maître, comme dans *La langue morte* : la vraie barre de pro
 
 | Invariant | Ce qui est mesuré | Seuil |
 |---|---|---|
-| I1 | Le plus long moment sans chiffre perdu, du début à la fin de la partie | 25 min |
+| I1 | Le plus long moment sans chiffre perdu, du début de la partie au dernier instant où un chiffre peut encore tomber. Une fois l'Empreinte au plancher, il n'en reste plus à perdre | 25 min |
 | I2 | Les multiplicateurs permanents en faveur du joueur. Aujourd'hui, un seul : les places de formation, que les centres doublent | ×2 |
-| I3 | La Capacité et les Mains engagées par point d'Empreinte retiré, en moyenne sur chaque acte | plus qu'à l'acte précédent |
+| I3 | La Capacité et les Mains engagées par point d'Empreinte retiré, en moyenne sur chaque acte. Un geste de l'acte V compte pour son équipe, même fait par les habitants | plus qu'à l'acte précédent |
 | I4 | La Casse d'un pas à l'autre, puis après une relance, une sauvegarde rechargée et douze heures hors ligne | aucune baisse |
 | I5 | L'écart de la courbe de Terre rendue à la droite la plus proche, en temps réel | 20 % de la Terre rendue à la fin |
 | I6 | La relance, essayée toutes les 15 s et à chaque événement, hors relance en cours : elle répond, et la croissance repart | à chaque essai, dans chaque acte |
 
 Ce que la vérification ne couvre pas :
 
-- **La moyenne d'I1**, 20 à 25 min. Les bots jouent plus vite qu'un humain, et le prototype s'arrête à l'acte IV : ils perdent un chiffre toutes les 10 à 15 min, pour la plupart. Le script affiche cette moyenne sans la juger.
+- **La moyenne d'I1**, 20 à 25 min. Les bots jouent plus vite qu'un humain : ils perdent un chiffre toutes les 12 à 16 min, pour la plupart. Le script affiche cette moyenne sans la juger.
 - **Les décisions du §7**, pour I2 : elles ne sont pas encore dans le jeu.
 - **Le rendu**, pour I4 et I6. Le script vérifie que le compteur de Casse et le bouton Relancer sont dans la page et que le code ne les masque pas. Il n'ouvre pas de navigateur.
 - **La relance continue**, pour I1 et I3 : c'est un autre jeu (§8).
 
-Le seuil d'I5 est une garde contre les régressions, pas une cible. La courbe du tableau de rythme s'écarte elle-même de 6 % d'une droite ; celles des bots, de 8 à 16 %.
+Le seuil d'I5 est une garde contre les régressions, pas une cible. La courbe du tableau de rythme s'écarte elle-même de 4 % d'une droite ; celles des bots, de 9 à 16 %, et de 19,5 % pour le rapide à 45 s.
 
-**Écarts connus.** Le réglage actuel casse déjà I1 et I5 pour quelques joueurs. Le script les tient dans une liste, chacun avec un plafond : il échoue si l'un d'eux s'aggrave, et aussi s'il se résorbe, pour que sa ligne soit retirée.
+**Écarts connus.** Le réglage actuel casse déjà I1 pour quelques joueurs. Le script les tient dans une liste, chacun avec un plafond : il échoue si l'un d'eux s'aggrave, et aussi s'il se résorbe, pour que sa ligne soit retirée.
 
 - Les joueurs à 45 s de réaction passent 27 à 37 min sans chiffre perdu, à l'acte II ou à l'acte III ([acte-2.md](acte-2.md), [acte-3.md](acte-3.md)).
 - Le rapide à 30 s passe 25 min 46 sans chiffre perdu, à l'ouverture de l'acte IV ([acte-4.md](acte-4.md)).
-- La Terre rendue du rapide à 45 s s'écarte de 25 % d'une droite : elle monte peu jusqu'à la fin de l'acte II, puis vite.
 
 ### Hors-ligne
 
@@ -251,6 +250,8 @@ Le message est mécanique, jamais énoncé : *ce qui répare marche mieux quand 
 *Prototype : l'acte IV, validé et réglé, est décrit dans [acte-4.md](acte-4.md).*
 
 **Acte V — Rendre.** Capacité résiduelle quasi nulle, chaque geste compte, tout est manuel. La carte est presque verte. Le compteur descend par dizaines, puis par unités. Et il s'arrête sur le plancher, qui n'est pas zéro et ne le sera jamais.
+
+*Prototype : l'acte V, validé et réglé, est décrit dans [acte-5.md](acte-5.md).*
 
 ---
 
