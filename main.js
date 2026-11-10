@@ -1,4 +1,4 @@
-// Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I à IV.
+// Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I à V.
 (function () {
   const E = window.Engine, D = E.D;
   const CLE = 'decroissance.mvp.v1';
@@ -58,10 +58,12 @@
   const reseauVisible = (x) => E.acteDe(x) >= 2;
 
   function construireCarte() {
-    for (const id of ['regions', 'reseau-lignes', 'liens', 'sites']) $(id).innerHTML = '';
+    for (const id of ['regions', 'rendues', 'reseau-lignes', 'liens', 'sites']) $(id).innerHTML = '';
     // Régions : l'ombre qui tombe quand une région s'éteint (§10)
     for (const [cle, r] of Object.entries(D.regions)) {
       el['region-' + cle] = svgEl('circle', { cx: r.x, cy: r.y, r: r.r, class: 'ombre', fill: 'url(#ombre-region)' }, $('regions'));
+      // Acte V : le vert qui revient sur une région à mesure qu'on la rend
+      el['rendue-' + cle] = svgEl('circle', { cx: r.x, cy: r.y, r: r.r, class: 'rendue-region', fill: 'url(#vert-region)' }, $('rendues'));
     }
     // Le réseau de l'acte II : une ligne de chaque producteur ou consommateur vers le poste
     const gl = $('reseau-lignes'), P = D.POSTE;
@@ -186,10 +188,23 @@
         el['desserte-' + x.id + '-' + h].setAttribute('class', `lien desserte${vivant ? '' : ' mort'}${enDanger ? ' menace' : ''}${acte3 ? '' : ' futur'}`);
       }
     }
-    for (const cle of Object.keys(D.regions)) el['region-' + cle].setAttribute('class', `ombre${s.regionsEteintes.includes(cle) ? ' eteinte' : ''}`);
+    // Acte V : une région reverdit à mesure que ses gestes sont faits et que sa terre repousse ; son ombre se lève.
+    for (const cle of Object.keys(D.regions)) {
+      let rendu = 0, tout = 0;
+      for (const d of E.GESTES) {
+        if (d.region !== cle) continue;
+        tout += d.T;
+        if (s.sites[d.id].state === 'eteint') rendu += d.T * s.sites[d.id].regen;
+      }
+      const part = s.acte >= 5 && tout ? rendu / tout : 0, eteinte = s.regionsEteintes.includes(cle);
+      el['region-' + cle].setAttribute('class', `ombre${eteinte ? ' eteinte' : ''}`);
+      el['region-' + cle].style.opacity = eteinte && part > 0 ? (1 - 0.6 * part).toFixed(2) : '';
+      el['rendue-' + cle].style.opacity = part.toFixed(2);
+    }
     document.querySelectorAll('.leg-acte2').forEach(x => { x.hidden = !acte2; });
     document.querySelectorAll('.leg-acte3').forEach(x => { x.hidden = !acte3; });
     document.querySelectorAll('.leg-acte4').forEach(x => { x.hidden = s.acte < 4; });
+    document.querySelectorAll('.leg-acte5').forEach(x => { x.hidden = s.acte < 5; });
   }
 
   // ---------- panneau ----------
@@ -213,7 +228,7 @@
   function construireChantiers() {
     const box = $('liste-chantiers'); box.innerHTML = '';
     for (const d of D.sites) {
-      if (d.garde) continue;   // ce qui se garde n'apparaît jamais dans la liste des chantiers (§5) : c'est la Garde
+      if (d.garde || d.geste) continue;   // ni ce qui se garde (§5 : c'est la Garde), ni les gestes de l'acte V
       const c = document.createElement('div');
       c.className = 'chantier'; c.dataset.id = d.id;
       const effet = d.part ? `−${Math.round(d.part * 100)} %` : d.E > 0 ? `−${E.fmt(d.E)}` : d.E < 0 ? `+${E.fmt(-d.E)}` : '0';
@@ -275,8 +290,9 @@
 
   function rendreChantiers() {
     const speed = E.relanceActive(s) ? D.RELANCE.speedMul : 1;
+    $('chantiers').hidden = s.acte >= 5;   // à l'acte V, il n'y a plus de chantiers : il reste des gestes
     for (const d of D.sites) {
-      if (d.garde) continue;
+      if (d.garde || d.geste) continue;
       const c = el['ch-' + d.id], st = s.sites[d.id];
       c.hidden = E.acteDe(d) !== s.acte || !E.existe(s, d);   // seules les cartes de l'acte en cours restent ouvertes
       if (c.hidden) continue;
@@ -405,6 +421,69 @@
     }
   }
 
+  // ---------- rendre (acte V) ----------
+  // Une carte par geste, et sur chacune un bouton par région : un clic lance le geste, un seul à la fois.
+  function construireGestes() {
+    const box = $('liste-gestes'); box.innerHTML = '';
+    $('rendre-regle').textContent = `Ce qui reste se rend à la main, un geste à la fois, sans Capacité. Chaque geste retire une part de ce qui reste. ` +
+      `Son équipe reste sur la terre qu'elle a rendue : elle ne revient pas. Faute de Mains, les habitants s'y mettent : ` +
+      `${D.HABITANTS.lent === 2 ? 'deux' : D.HABITANTS.lent} fois plus long, consentement −${D.HABITANTS.co}.`;
+    for (const g of D.GESTES) {
+      const c = document.createElement('div');
+      c.className = 'chantier geste-carte';
+      c.innerHTML = `
+        <div class="nom">${g.nom}</div>
+        <div class="effet moins">−${Math.round(g.part * 100)} %</div>
+        <div class="retrait"></div>
+        <div class="desc">${g.desc}</div>
+        <div class="cout"><span>équipe <b class="cm">${E.fmt(g.M)}</b></span><span><b class="duree"></b></span><span>terre rendue <b>+${String(g.T).replace('.', ',')}</b></span></div>
+        <div class="habitants-note" hidden></div>
+        <div class="conseil-note" hidden></div>
+        <div class="regions-gestes"></div>`;
+      for (const d of E.GESTES.filter(x => x.geste === g.cle)) {
+        const b = document.createElement('button');
+        b.className = 'btn geste'; b.title = d.nom;
+        b.innerHTML = '<i></i><span></span>';
+        b.addEventListener('click', () => engager(d.id));
+        c.querySelector('.regions-gestes').appendChild(b); el['geste-' + d.id] = b;
+      }
+      box.appendChild(c); el['gestes-' + g.cle] = c;
+    }
+  }
+  function rendreGestes() {
+    const sec = $('rendre');
+    sec.hidden = s.acte < 5;
+    if (sec.hidden) return;
+    const faits = E.gestesFaits(s), enCours = E.gesteEnCours(s), plancher = E.auPlancher(s);
+    const speed = E.relanceActive(s) ? D.RELANCE.speedMul : 1;
+    $('rendre-etat').textContent = faits >= E.GESTES.length ? `tout est rendu · ${E.fmt(s.installes)} personnes restées sur place`
+      : `${faits} geste${faits > 1 ? 's' : ''} sur ${E.GESTES.length}${s.installes ? ` · ${E.fmt(s.installes)} personnes restées sur place` : ''}`;
+    for (const g of D.GESTES) {
+      const c = el['gestes-' + g.cle], gestes = E.GESTES.filter(d => d.geste === g.cle);
+      const prochain = gestes.find(d => s.sites[d.id].state === 'actif');   // tous les gestes d'une carte se valent
+      const can = prochain ? E.canEngage(s, prochain.id) : null, habitants = !!can && can.habitants;
+      c.className = `chantier geste-carte${prochain || gestes.some(d => s.sites[d.id].state === 'chantier') ? '' : ' eteint'}`;
+      c.querySelector('.retrait').textContent = !prochain ? '' : plancher ? "l'Empreinte est au plancher : ce geste ne rend plus que de la terre"
+        : `≈ −${E.fmtFin(E.retraitPrevu(s, prochain))} aujourd'hui`;
+      c.querySelector('.cm').className = 'cm' + (habitants ? ' manque' : '');
+      c.querySelector('.duree').textContent = E.fmtDur(g.dur * (habitants ? D.HABITANTS.lent : 1) / speed);
+      const hn = c.querySelector('.habitants-note'), cn = c.querySelector('.conseil-note');
+      hn.hidden = !habitants;
+      if (habitants) hn.textContent = `Il ne reste pas ${E.fmt(g.M)} Mains : les habitants le feront, deux fois plus lentement, et le consentement perdra ${D.HABITANTS.co} points.`;
+      const risque = prochain && !enCours ? E.risqueConseil(s, prochain.id, can) : null;   // sous le seuil, le Conseil relance (R4)
+      cn.hidden = !risque;
+      if (risque) cn.textContent = texteConseil(risque, false);
+      for (const d of gestes) {
+        const b = el['geste-' + d.id], st = s.sites[d.id];
+        b.className = `btn geste ${st.state}${st.habitants ? ' habitants' : ''}`;
+        b.disabled = st.state !== 'actif' || !!enCours;
+        b.firstElementChild.style.width = st.state === 'chantier' ? (st.progress * 100).toFixed(1) + '%' : st.state === 'eteint' ? '100%' : '0%';
+        const reste = st.state === 'chantier' ? Math.ceil(E.dureeChantier(d, st) * (1 - st.progress) / speed) : 0;
+        b.lastElementChild.textContent = d.region + (st.state === 'chantier' ? ` · ${E.fmtDur(reste)}` : st.state === 'eteint' ? ' ✓' : '');
+      }
+    }
+  }
+
   function rendreReseau() {
     const sec = $('reseau');
     sec.hidden = s.acte < 2 || E.capaciteFinie(s);   // sans réseau national, le barrage alimente les villes en direct
@@ -519,15 +598,16 @@
 
   let dernierNb = '';
   function rendreCompteur() {
-    const nb = E.fmt(s.E);
+    const nb = E.fmtFin(s.E);   // sous 100, à la décimale : le plancher n'est pas un nombre rond
     const c = $('compteur');
     if (performance.now() > animPerte && nb !== dernierNb) { c.textContent = nb; dernierNb = nb; }
     const rel = E.relanceActive(s), g = E.gEff(s);
     const k = g > 0.005 ? 'monte' : g < -0.005 ? 'descend' : 'stable';
-    c.className = 'compteur ' + k + (rel ? ' relance' : '') + (performance.now() < animPerte ? ' perte' : '');
+    const arrete = s.acte >= 4 && E.auPlancher(s) && g <= 0.005;   // arrêté sur le plancher, qui n'est pas zéro
+    c.className = 'compteur ' + k + (arrete ? ' au-plancher' : '') + (rel ? ' relance' : '') + (performance.now() < animPerte ? ' perte' : '');
     const t = $('tendance'); t.className = 'tendance ' + k;
     const rebond = E.gRebond(s) > 0.005 && !rel, fuite = s.acte >= 4 && E.gSites(s) > 0 && !rel;
-    t.textContent = g > 0.005 ? `▲ +${(g < 1 ? g.toFixed(2) : g.toFixed(1)).replace('.', ',')} % / min${fuite ? ' · les charges fuient' : rebond ? ' · rebond du réseau' : ''}` : 'stable — plus rien ne monte';
+    t.textContent = g > 0.005 ? `▲ +${(g < 1 ? g.toFixed(2) : g.toFixed(1)).replace('.', ',')} % / min${fuite ? ' · les charges fuient' : rebond ? ' · rebond du réseau' : ''}` : arrete ? 'au plancher — il ne descendra plus' : 'stable — plus rien ne monte';
     if (s.ms.stabilise === null && g <= 0.005) t.textContent = 'stable';
     $('sci').hidden = !rel; if (rel) $('sci').textContent = E.fmtSci(s.E);
     const acte4 = s.acte >= 4, ag = E.aGarder(s);
@@ -549,7 +629,7 @@
   function rendreRessources() {
     $('k').textContent = Math.floor(s.K); $('krate').textContent = E.capaciteFinie(s) ? ' · ne se renouvelle plus' : ` +${E.kRate(s).toFixed(1).replace('.', ',')} / s`;
     const enForm = E.enFormation(s);
-    $('m').textContent = E.fmt(s.M); $('meng').textContent = ` · ${E.fmt(s.Meng)} engagées${s.acte >= 3 && enForm ? ` · ${E.fmt(enForm)} en formation` : ''}${s.gardiens ? ` · ${E.fmt(s.gardiens)} gardiens` : ''}`;
+    $('m').textContent = E.fmt(s.M); $('meng').textContent = ` · ${E.fmt(s.Meng)} engagées${s.acte >= 3 && enForm ? ` · ${E.fmt(enForm)} en formation` : ''}${s.gardiens ? ` · ${E.fmt(s.gardiens)} gardiens` : ''}${s.installes ? ` · ${E.fmt(s.installes)} restés sur place` : ''}`;
     const T = E.T(s); $('t').textContent = T.toFixed(1).replace('.', ','); $('t-barre').style.width = Math.min(100, T) + '%';
     $('co').textContent = Math.round(s.Co); $('co-barre').style.width = s.Co + '%'; $('co-barre').className = s.Co < 30 ? 'bas' : '';
     $('co-seuil').className = 'co-seuil' + (s.Co < D.RELANCE.autoSeuil + 5 ? ' proche' : '');
@@ -582,7 +662,7 @@
     $('horloge').textContent = E.fmtDur(s.t);
   }
 
-  function rendre() { rendreCompteur(); rendreRessources(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
+  function rendre() { rendreCompteur(); rendreRessources(); rendreGestes(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
 
   // ---------- son : niveaux selon l'état ----------
   const PROD_FOSSILE = D.sites.reduce((a, d) => a + (d.prod || 0), 0);
@@ -599,9 +679,11 @@
     // de l'acte, la pluie arrive ; au deuxième, presque le silence : il ne reste que le vent, l'eau et la pluie (§12).
     const acte4 = s.acte >= 4, perdus4 = acte4 && s.digitsActe4 ? s.digitsActe4 - s.digitsMin : 0;
     const poste = acte4 && !E.capaciteFinie(s) ? 1 : 0, pluie = perdus4 >= 1 ? (perdus4 >= 2 ? 0.7 : 1) : 0, silence = perdus4 >= 2;
+    // Acte V : la terre rendue ramène les oiseaux, les insectes et des voix, et la pluie s'éloigne, à mesure des gestes.
+    const retour = s.acte >= 5 ? Math.round(E.gestesFaits(s) / E.GESTES.length * 10) / 10 : 0;
     if (rel) return { trafic: 1, turbines: 1, reseau: acte2 ? 1 : 0, fret: acte3 ? 1 : 0, vent: 0.15, oiseaux: 0, eau: apres2 ? 0.3 : 0, insectes: 0, voix: apres4 ? 0.3 : 0, poste, pluie: pluie * 0.3 };
-    return { trafic: stab ? 0 : 1, turbines: chiffre ? 0 : 1, reseau, fret: silence ? 0 : fret, vent: stab ? (silence ? 0.7 : 1) : 0, oiseaux: chiffre && !silence ? 1 : 0, eau: apres2 ? 1 : 0,
-      insectes: apres3 && !silence ? 1 : 0, voix: apres4 && !silence ? 1 : 0, poste, pluie };
+    return { trafic: stab ? 0 : 1, turbines: chiffre ? 0 : 1, reseau, fret: silence ? 0 : fret, vent: stab ? (silence ? 0.7 : 1) : 0, oiseaux: chiffre && !silence ? 1 : retour, eau: apres2 ? 1 : 0,
+      insectes: apres3 && !silence ? 1 : retour, voix: apres4 && !silence ? 1 : retour / 2, poste, pluie: Math.round(pluie * (1 - retour) * 10) / 10 };
   }
   let dernierNiv = '';
   function majSon(fade) { const n = niveauxSon(); const j = JSON.stringify(n); if (j !== dernierNiv || fade != null) { dernierNiv = j; son.applique(n, fade); } }
@@ -630,6 +712,12 @@
       if (ev.type === 'penurie-fin') toast(ev.import ? `La relance importe : plus de pénurie tant qu'elle dure. ${E.fmt(ev.casse)} personnes touchées.` : `Fin de la pénurie. ${E.fmt(ev.casse)} personnes touchées.`);
       if (ev.type === 'garde') toast(`Gardée : ${nomDe(ev.id)}, pour ${E.fmt(E.defs[ev.id].ans)} ans. ${E.fmt(ev.gardiens)} gardiens, pour toujours.`);
       if (ev.type === 'ferme' && E.defs[ev.id] && E.defs[ev.id].sol) toast(`Dépollué : ${nomDe(ev.id)}.`);
+      if (ev.type === 'ferme' && E.defs[ev.id] && E.defs[ev.id].geste) son.geste();
+      if (ev.type === 'plancher') {   // l'arrêt sur le plancher : le jeu marque un temps, comme à la stabilisation
+        son.silence(D.PAUSE_PLANCHER); document.getElementById('app').classList.add('pause'); setTimeout(() => document.getElementById('app').classList.remove('pause'), D.PAUSE_PLANCHER * 1000);
+        toast(`Le nombre s'est arrêté sur le plancher : ${E.fmtPlancher(ev.plancher)}. Il ne descendra plus.`);
+      }
+      if (ev.type === 'relance' && ev.remontee && s.acte >= 4) toast(`Le plancher double : ${E.fmtPlancher(ev.plancher)}. L'Empreinte y remonte.`);
       if (ev.type === 'non-retour') { son.extinction(); toast('Le réseau national est démantelé. La Capacité ne se renouvellera plus.'); }
       if (ev.type === 'fin' && ev.acte === E.DERNIER_ACTE) montrerJalon('fin');
     }
@@ -653,7 +741,7 @@
 
   function perteDeChiffre() {
     // Le nombre se recentre, le chiffre de tête tombe, l'écran se resserre d'un cran.
-    const c = $('compteur'), avant = dernierNb, apres = E.fmt(s.E);
+    const c = $('compteur'), avant = dernierNb, apres = E.fmtFin(s.E);
     animPerte = performance.now() + D.PAUSE_CHIFFRE * 1000;
     c.innerHTML = `<span class="digit-perdu">${avant.slice(0, 1)}</span>${avant.slice(1)}`;
     son.chute();
@@ -672,25 +760,25 @@
       ['Relances, 20 premières minutes', String(E.rapport(s, VERSION).relances20min)],
       ['Relances au total', `${s.relances}${s.relancesAuto ? ` (+${s.relancesAuto} sans vous)` : ''}`],
       ['Casse', E.texteCasse(s)],
-      ['Plancher irréductible', E.fmt(s.plancher)],
+      ['Plancher irréductible', E.fmtPlancher(s.plancher)],
     ];
     let titre = 'Acte I — premier chiffre perdu', note = 'Le reste de la carte est là. Rien ne vous oblige à continuer.';
-    if (kind === 'fin') {   // fin du dernier acte du prototype : l'acte IV
+    if (kind === 'fin') {   // fin du dernier acte du prototype : l'acte V. Ce qui reste : le plancher, les gardes, la Casse (§11).
       const r = E.rapport(s, VERSION);
-      const pertes4 = r.chiffresPerdus.filter(t => r.acte4 !== null && t >= r.acte4);
       lignes.splice(0, lignes.length,
-        ['Acte IV ouvert', E.fmtDur(r.acte4)],
-        ['Chiffres perdus dans l\'acte', pertes4.length ? pertes4.map(E.fmtDur).join(', ') : 'aucun'],
+        ['Empreinte', E.fmtFin(s.E)],
+        ['Plancher irréductible', E.fmtPlancher(s.plancher)],
+        ['Le nombre s\'est arrêté sur le plancher', r.plancherAtteint !== null ? E.fmtDur(r.plancherAtteint) : 'pas encore'],
+        ['Chiffres perdus', `${r.chiffresPerdus.length} sur 9`],
         ...r.gardes.map(g => [E.defs[g.id].nom, `${E.fmt(E.defs[g.id].ans)} ans · garde ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}${g.aBras ? ', à bras' : ''} · ${E.fmt(g.gardiens)} gardiens par an`]),
         ['Gardiens, pour toujours', E.fmt(r.gardiens)],
-        ['Réseau national démantelé', r.reseauNational !== null ? E.fmtDur(r.reseauNational) : 'non'],
+        ['Restés sur la terre rendue', E.fmt(r.installes)],
+        ['Gestes faits par les habitants', `${r.gestesHabitants} sur ${r.gestes}`],
         ['Casse', E.texteCasse(s)],
         ['Relances au total', `${s.relances}${s.relancesAuto ? ` (+${s.relancesAuto} sans vous)` : ''}`],
-        ['Empreinte restante', E.fmt(s.E)],
-        ['Plancher irréductible', E.fmtPlancher(s.plancher)],
-        ['Terre rendue', `${E.T(s).toFixed(1).replace('.', ',')} % — continue sans vous`]);
-      titre = 'Fin de l\'acte IV — le prototype s\'arrête là';
-      note = 'Ce qui reste se rendra à la main, jusqu\'au plancher. Ce sera l\'acte V.';
+        ['Terre rendue', `${E.T(s).toFixed(1).replace('.', ',')} % — elle finit de repousser`]);
+      titre = 'Fin de l\'acte V — le prototype s\'arrête là';
+      note = 'Tout est rendu. Il reste à choisir comment finir : ce sera la suite.';
     }
     j.innerHTML = `<h3>${titre}</h3>
       <table>${lignes.map(l => `<tr><td>${l[0]}</td><td>${l[1]}</td></tr>`).join('')}</table>
@@ -754,7 +842,7 @@
     histoCo = [];
     if (!s.versions.includes(VERSION)) s.versions.push(VERSION);
     document.documentElement.style.setProperty('--resserre', (8 * (10 - s.digitsMin)) + 'px');
-    construireCarte(); construireChantiers(); construireGardes();
+    construireCarte(); construireChantiers(); construireGardes(); construireGestes();
     dernierNb = ''; rendre(); rendreJournal();
     son.init(); son.setMute(!s.son); majSon(0.1);
     $('btn-son').textContent = `son : ${s.son ? 'oui' : 'non'}`;

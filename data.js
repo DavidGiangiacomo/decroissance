@@ -1,5 +1,5 @@
 // Décroissance — données (géographie fictive : l'Ostrane). Acte I : le MVP ; acte II : le réseau (issue #14) ;
-// acte III : les gens (issue #15) ; acte IV : le legs (issue #16).
+// acte III : les gens (issue #15) ; acte IV : le legs (issue #16) ; acte V : rendre (issue #17).
 // Valeurs de réglage. Toutes les durées sont en secondes de jeu réelles.
 (function (root) {
   const DATA = {
@@ -28,6 +28,7 @@
     PAUSE_STABILISE: 3,
     PAUSE_CHIFFRE: 2.2,
     PAUSE_ACTE: 4,       // carton d'ouverture d'un acte
+    PAUSE_PLANCHER: 3,   // l'Empreinte s'arrête sur le plancher
 
     // Acte II : le réseau. Production et demande en MW ; la marge entre les deux fait tout.
     REBOND: 1,           // %/min de croissance quand toute la production est en trop (marge / production = 1)
@@ -47,15 +48,32 @@
     // Acte IV : le legs. Sans Capacité, un élément de l'acte se fait à bras : ce facteur sur ses Mains ou ses gardiens.
     A_BRAS: 2,
 
+    // Acte V : rendre. Ce qui reste se rend à la main, un geste à la fois, région par région. Chaque région demande
+    // les quatre gestes. part = part de l'Empreinte restante que le geste retire ; M = l'équipe, qui reste ensuite sur
+    // la terre rendue et sort du jeu ; T = points de Terre rendue, repoussés en regen s. Durées et repousses tiennent
+    // R3 : aucun geste de plus de 90 s, même fait par les habitants, aucune repousse de plus de 4 min.
+    GESTES: [
+      { cle: 'demonter', nom: 'Démonter', part: 0.10, M: 400, dur: 35, T: 0.4, regen: 120,
+        desc: 'Les dernières lignes, les clôtures, les glissières, les panneaux.' },
+      { cle: 'debitumer', nom: 'Débitumer', part: 0.15, M: 900, dur: 45, T: 0.9, regen: 240,
+        desc: 'Les routes, les parkings, les dalles : le sol dessous revoit la pluie.' },
+      { cle: 'rouvrir', nom: 'Rouvrir', part: 0.12, M: 600, dur: 40, T: 0.7, regen: 180,
+        desc: "Les ruisseaux busés, les seuils, les berges : l'eau reprend son lit." },
+      { cle: 'planter', nom: 'Planter', part: 0.08, M: 300, dur: 30, T: 0.6, regen: 240,
+        desc: 'Des haies, des vergers, des bois. Le reste viendra seul.' },
+    ],
+    // Sans assez de Mains pour une équipe, les habitants font le geste : `lent` fois plus long, et `co` points de Consentement.
+    HABITANTS: { lent: 2, co: 3 },
+
     // Régions de la carte. Au deuxième chiffre perdu, la plus démantelée s'éteint.
     regions: {
-      'Valdrance': { nom: 'Valdrance', x: 250, y: 150, r: 125 },
-      'Cherbaix': { nom: 'Le bassin de Cherbaix', x: 485, y: 250, r: 95 },
-      'Méraud': { nom: 'Méraud', x: 120, y: 375, r: 85 },
-      'Orvenne': { nom: 'Orvenne', x: 265, y: 425, r: 90 },
-      'Vallée de la Sère': { nom: 'La vallée de la Sère', x: 345, y: 300, r: 85 },
-      'Plaine': { nom: 'La plaine de Valdrance', x: 140, y: 270, r: 80 },
-      'Morvel': { nom: 'La pointe de Morvel', x: 540, y: 352, r: 55 },
+      'Valdrance': { code: 'valdrance', nom: 'Valdrance', x: 250, y: 150, r: 125 },
+      'Cherbaix': { code: 'cherbaix', nom: 'Le bassin de Cherbaix', x: 485, y: 250, r: 95 },
+      'Méraud': { code: 'meraud', nom: 'Méraud', x: 120, y: 375, r: 85 },
+      'Orvenne': { code: 'orvenne', nom: 'Orvenne', x: 265, y: 425, r: 90 },
+      'Vallée de la Sère': { code: 'sere', nom: 'La vallée de la Sère', x: 345, y: 300, r: 85 },
+      'Plaine': { code: 'plaine', nom: 'La plaine de Valdrance', x: 140, y: 270, r: 80 },
+      'Morvel': { code: 'morvel', nom: 'La pointe de Morvel', x: 540, y: 352, r: 55 },
     },
 
     // Sites (E = Empreinte retirée à la clôture ; g = contribution à la croissance, %/min)
@@ -298,6 +316,17 @@
     COUPURE_SITE_E: 0.5, // fraction de l'Empreinte du site tout de même retirée (il s'arrête, il n'est pas démantelé)
     RETRAIT_MAX: 0.95,   // une fermeture ne retire jamais plus que cette part de ce qui reste : l'Empreinte ne passe pas sous zéro
   };
+
+  // ---- Acte V : rendre (issue #17). Les gestes de chaque région, tirés de GESTES : « demonter-valdrance », etc.
+  //      Ils n'ont pas de repère sur la carte : c'est leur région qui reverdit. ----
+  for (const [cle, r] of Object.entries(DATA.regions)) {
+    const lieu = /^(Le|La) /.test(r.nom) ? r.nom[0].toLowerCase() + r.nom.slice(1) : r.nom;
+    for (const g of DATA.GESTES) {
+      DATA.sites.push({ id: `${g.cle}-${r.code}`, acte: 5, geste: g.cle, carte: false, nom: `${g.nom}, ${lieu}`, region: cle,
+        part: g.part, K: 0, M: g.M, dur: g.dur, g: 0, deplaces: 0, co: 0, T: g.T, regen: g.regen, kBack: 0,
+        court: g.nom, x: r.x, y: r.y, desc: g.desc });
+    }
+  }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DATA;
   else root.DATA = DATA;

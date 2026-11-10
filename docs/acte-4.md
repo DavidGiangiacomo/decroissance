@@ -22,7 +22,7 @@ Les sept points validés :
   - le plancher irréductible, 2,4 doublé par chaque relance du joueur ou du Conseil ;
   - la part « à garder », par exemple 92 %.
 
-  L'Empreinte ne descend jamais sous le plancher : le moteur l'interdit. Le joueur découvre que zéro n'est pas possible, et pourquoi (R5).
+  L'Empreinte ne descend jamais sous le plancher : le moteur l'interdit. Si une relance fait passer le plancher au-dessus d'elle, elle y remonte ([acte-5.md](acte-5.md)). Le joueur découvre que zéro n'est pas possible, et pourquoi (R5).
 - **Ce qui reste fuit.** Trois charges apparaissent sur la carte, avec la durée de leur garde : les digues de la Sère, les galeries du bassin de Cherbaix, et les combustibles usés de la pointe de Morvel, une centrale qu'aucune liste de chantiers n'avait montrée (§5). Tant qu'une charge n'est pas gardée, elle fait remonter l'Empreinte, comme les sites de l'acte I : +0,5 % par minute pour les trois. Le compteur, qui tombait par moitiés à l'acte III, s'arrête net, voire remonte.
 - **La part « à garder »** est ce que les gardes pas encore instituées retireront ensemble de l'Empreinte d'aujourd'hui. Les parts se multiplient : 1 − 0,3 × 0,45 × 0,6, soit 92 % à l'ouverture.
 - **La Garde est un panneau à part.** Ce qui se garde n'apparaît jamais dans la liste des chantiers (§5).
@@ -55,7 +55,7 @@ Les sept points validés :
   - À l'ouverture, un dernier bourdonnement grave arrive, celui du poste de la Sère. Il s'éteint avec le réseau national.
   - Au premier chiffre perdu de l'acte, la pluie arrive.
   - Au deuxième, presque le silence : les oiseaux, les insectes, les voix et le fret se taisent. Il ne reste que le vent, l'eau et la pluie (§12).
-- **La fin.** L'acte finit quand les trois charges sont gardées, le réseau national démantelé et les sols dépollués. Un panneau « Fin de l'acte IV — le prototype s'arrête là » en reprend les données : chaque garde, sa durée, son dosage, ses gardiens par an ; le réseau national ; la Casse, les relances, l'Empreinte restante, le plancher et la Terre rendue. Le rapport de session les contient aussi.
+- **La fin.** L'acte finit quand les trois charges sont gardées, le réseau national démantelé et les sols dépollués. Son dernier élément ouvre directement l'acte V. Les données de l'acte, chaque garde, sa durée, son dosage et ses gardiens par an, sont reprises par le panneau de fin de l'acte V et par le rapport de session.
 - **L'acte III** ne montre plus son panneau de fin : son dernier chantier ouvre directement l'acte IV.
 
 ## Contenu
@@ -118,7 +118,7 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les bots prud
 4. **Le Consentement qui remonte hors ligne** est gardé tel quel (point 7). Avec les sols, partir devient une stratégie : à observer.
 5. **Le rapide à 30 s dépasse I1 de 46 s**, hors du tableau ci-dessus. Il finit l'acte III à 11 259, juste au-dessus de 10⁴, et son premier sol n'est dépollué que 15 min après l'ouverture de l'acte IV : 25 min 46 séparent son cinquième et son sixième chiffre. `tools/check.js`, qui l'a trouvé, le tient pour un écart connu (§9 du design doc).
 6. **Hors de cet acte :**
-   - l'acte V, « Rendre » ([#17](https://github.com/DavidGiangiacomo/decroissance/issues/17)), où le compteur descend jusqu'au plancher ;
+   - l'acte V, « Rendre », où le compteur descend jusqu'au plancher : il est décrit dans [acte-5.md](acte-5.md) ;
    - l'épilogue et les fins ([#20](https://github.com/DavidGiangiacomo/decroissance/issues/20)), où se paiera le dosage ;
    - les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)), dont la crédibilité « en acte IV » de la branche Dette ;
    - passer l'acte II en parts ([#31](https://github.com/DavidGiangiacomo/decroissance/issues/31), point 1), qui reste à faire.

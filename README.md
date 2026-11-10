@@ -1,6 +1,6 @@
-# Décroissance — prototype (actes I à IV)
+# Décroissance — prototype (actes I à V)
 
-Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md). L'acte III, « Les gens », s'ouvre quand le réseau est démantelé ; il est décrit dans [docs/acte-3.md](docs/acte-3.md). L'acte IV, « Le legs », s'ouvre quand la carte de l'acte III est vidée ; il est décrit dans [docs/acte-4.md](docs/acte-4.md).
+Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md). L'acte III, « Les gens », s'ouvre quand le réseau est démantelé ; il est décrit dans [docs/acte-3.md](docs/acte-3.md). L'acte IV, « Le legs », s'ouvre quand la carte de l'acte III est vidée ; il est décrit dans [docs/acte-4.md](docs/acte-4.md). L'acte V, « Rendre », s'ouvre quand tout est gardé, démantelé et dépollué ; il est décrit dans [docs/acte-5.md](docs/acte-5.md).
 
 Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `python3 -m http.server` puis http://localhost:8000). Le son est synthétisé en WebAudio, il n'y a aucun fichier audio.
 
@@ -59,7 +59,17 @@ Détail, contenu, arbitrages et réglages dans [docs/acte-4.md](docs/acte-4.md).
 - **Le réseau national**, point de non-retour : après lui, la Capacité ne se renouvelle plus, et le rebond s'arrête.
 - **Les sols** se dépolluent au temps réel seul, hors ligne compris : rien ne les accélère. S'y ajoutent les sols pollués par les démolitions rapides de l'acte II.
 - Sans Capacité, tout se fait à bras : deux fois plus de gardiens ou de Mains.
-- Le son ajoute le bourdonnement du poste, qui s'éteint avec le réseau national, puis la pluie, puis presque le silence. Un panneau de fin d'acte et le rapport de session reprennent les gardes, leur dosage, les gardiens et le plancher.
+- Le son ajoute le bourdonnement du poste, qui s'éteint avec le réseau national, puis la pluie, puis presque le silence. Le rapport de session reprend les gardes, leur dosage, les gardiens et le plancher.
+
+## L'acte V : rendre
+
+Détail, contenu, arbitrages et réglages dans [docs/acte-5.md](docs/acte-5.md).
+
+- **Des gestes, pas des chantiers** : démonter, débitumer, rouvrir, planter, dans chacune des sept régions. Vingt-huit gestes, un clic chacun, un seul à la fois, sans Capacité. Chacun retire 8 à 15 % de ce qui reste.
+- **Les Mains restent sur la terre rendue** : l'équipe d'un geste, 300 à 900 personnes, ne revient pas. Faute de Mains, les habitants font le geste : deux fois plus long, et 3 points de Consentement.
+- **L'Empreinte s'arrête sur le plancher**, qui n'est pas zéro. Le jeu marque un temps, le compteur se fige, et les gestes qui restent ne rendent plus que de la terre, jusqu'à 100 %. Sous 100, l'Empreinte se lit à la décimale.
+- **La relance** double toujours le plancher. Si l'Empreinte se retrouve dessous, elle y remonte.
+- La carte reverdit région par région. Le son ramène les oiseaux, les insectes et des voix à mesure des gestes. Un panneau de fin énumère ce qui reste : le plancher, les gardes, les gens restés sur place, la Casse.
 
 ## Fichiers
 
@@ -69,14 +79,15 @@ Détail, contenu, arbitrages et réglages dans [docs/acte-4.md](docs/acte-4.md).
 | `docs/acte-2.md` | l'acte II tel que validé et réglé : règles, contenu, écarts, rythme mesuré |
 | `docs/acte-3.md` | l'acte III proposé et réglé : règles, contenu, piège, rythme mesuré, points à trancher |
 | `docs/acte-4.md` | l'acte IV tel que validé et réglé : règles, contenu, arbitrages, écarts, rythme mesuré |
-| `data.js` | toutes les valeurs de réglage : sites, graphe, réseau, vivres, gardes et sols, régions, noms et métiers, constantes |
-| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, relance, hors-ligne, formats) |
+| `docs/acte-5.md` | l'acte V tel que validé et réglé : règles, contenu, arbitrages, écarts, rythme mesuré, points ouverts |
+| `data.js` | toutes les valeurs de réglage : sites, graphe, réseau, vivres, gardes et sols, gestes, régions, noms et métiers, constantes |
+| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, gestes, plancher, relance, hors-ligne, formats) |
 | `audio.js` | couches sonores synthétisées et sons ponctuels |
 | `main.js` | rendu, carte SVG, sauvegarde, boucle |
 | `index.html`, `style.css` | l'écran unique |
 | `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur |
 | `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
-| `tools/test.js` | tests du moteur : actes II à IV, reprise des sauvegardes, rapport de session, jugement des invariants |
+| `tools/test.js` | tests du moteur : actes II à V, reprise des sauvegardes, rapport de session, jugement des invariants |
 | `tools/check.js` | vérifie les invariants I1 à I6 du §9 sur treize parties jouées par les bots, et sort en erreur si l'un d'eux est cassé |
 | `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
 | `.github/workflows/tests.yml` | lance les tests et la vérification des invariants sur chaque pull request, et sur `main` |
@@ -89,12 +100,12 @@ node tools/simulate.js relance-1 10   # une relance à 2 min
 node tools/simulate.js croissance     # relance en continu
 DOSAGE=pleine node tools/simulate.js prudent 10   # gardes pleines à l'acte IV
 node tools/test.js                    # tests du moteur
-node tools/check.js                   # invariants I1 à I6 du §9, sur treize parties (20 s environ)
+node tools/check.js                   # invariants I1 à I6 du §9, sur treize parties (45 s environ)
 ```
 
 Les deux dernières commandes tournent sur chaque pull request. Ce que `tools/check.js` mesure, ses seuils et les écarts connus du réglage actuel sont décrits au §9 du [design doc](docs/design-doc.md), « Vérification automatique ».
 
-Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 01, puis trois chiffres et la fin de l'acte IV vers 1 h 26. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois premiers, un peu plus de 2 h pour les quatre.
+Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 01, trois chiffres et la fin de l'acte IV vers 1 h 26, puis le dernier chiffre, le plancher et la fin de l'acte V vers 1 h 48. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois premiers, un peu plus de 2 h pour les quatre, 2 h 40 environ pour les cinq.
 
 Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`.
 
@@ -105,7 +116,8 @@ Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.enga
 3. Récupérer le rapport de session : bouton « rapport » en pied de page, puis « Copier le rapport ». Il compte les appuis sur **Relancer** des 20 premières minutes. Zéro = bouton pas assez tentant ; dix = pas d'autre stratégie viable.
 4. Coller le rapport en commentaire de [l'issue des playtests](https://github.com/DavidGiangiacomo/decroissance/issues/8).
 5. Pour l'acte II, noter la réaction à la première coupure et au deuxième chiffre perdu, quand une région s'éteint.
-6. Pour l'acte III, laisser jouer jusqu'au panneau de fin d'acte, et noter si le testeur lit les noms, s'il regarde la jauge des vivres avant de fermer une exploitation, et s'il appuie sur Relancer quand le Consentement baisse.
+6. Pour l'acte III, noter si le testeur lit les noms, s'il regarde la jauge des vivres avant de fermer une exploitation, et s'il appuie sur Relancer quand le Consentement baisse.
+7. Pour l'acte V, noter la réaction quand le compteur s'arrête sur le plancher, et si le testeur fait encore les gestes qui restent une fois le compteur figé.
 
 ## Écarts avec le design doc, et pourquoi
 
@@ -115,3 +127,4 @@ Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.enga
 - Le plancher irréductible est affiché dans le panneau de fin d'acte, pas dans l'interface courante (il n'est révélé qu'à l'acte IV).
 - Pour l'acte II, les écarts avec la proposition validée et le rythme mesuré sont dans [docs/acte-2.md](docs/acte-2.md).
 - Pour l'acte III, le design, ses écarts avec le §9 et les points à trancher sont dans [docs/acte-3.md](docs/acte-3.md).
+- Pour les actes IV et V, les écarts avec les propositions validées sont dans [docs/acte-4.md](docs/acte-4.md) et [docs/acte-5.md](docs/acte-5.md).

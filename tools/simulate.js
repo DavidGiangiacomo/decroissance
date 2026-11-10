@@ -1,4 +1,4 @@
-// Simulation hors navigateur : un joueur automatique joue les actes I à IV.
+// Simulation hors navigateur : un joueur automatique joue les actes I à V.
 // node tools/simulate.js [profil] [réaction en s]     DOSAGE=pleine : gardes pleines à l'acte IV (réduites sinon)
 //   profils : prudent (par défaut), pressé, vite (prudent, mais démolit vite à l'acte II),
 //             relance-1 (une relance à 2 min), croissance (relance en continu)
@@ -91,6 +91,23 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
 
   let coMin3 = Infinity, mainsMax = 0, finDeux = null;   // finDeux : Casse, rebond et régions à la fin de l'acte II
   let coMin4 = Infinity, finTrois = null;               // finTrois : Empreinte et chiffres à la fin de l'acte III
+  let coMin5 = Infinity, finQuatre = null;              // finQuatre : Empreinte, plancher et Mains à la fin de l'acte IV
+
+  // Acte V. Un geste à la fois. Prudent : les plus petites équipes d'abord, pour que les Mains aillent le plus loin ;
+  // quand elles manquent, il laisse faire les habitants, sans jamais descendre sous 25 de Consentement.
+  // Pressé : la plus grosse part d'abord, sans rien regarder.
+  function choixActe5() {
+    if (E.gesteEnCours(s)) return null;
+    const restants = E.GESTES.filter(d => s.sites[d.id].state === 'actif');
+    restants.sort(profil === 'pressé' ? (a, b) => b.part - a.part : (a, b) => a.M - b.M);
+    for (const d of restants) {
+      const c = E.canEngage(s, d.id);
+      if (!c.ok) continue;
+      if (profil !== 'pressé' && c.habitants && s.Co - D.HABITANTS.co < 25) continue;
+      return { id: d.id };
+    }
+    return null;
+  }
   for (let i = 0; i < 240 * 60 * 10; i++) {
     // Un clic remplit toutes les places libres. À l'acte III, le prudent ne lance pas de lot qui ferait passer
     // le Consentement sous le seuil du Conseil.
@@ -101,14 +118,14 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
       if (lots) prochainAction = s.t + reaction;
     }
     while (s.t >= prochainAction) {
-      const choix = s.acte === 1 ? choixActe1() : s.acte === 2 ? choixActe2() : s.acte === 3 ? choixActe3() : choixActe4();
+      const choix = s.acte === 1 ? choixActe1() : s.acte === 2 ? choixActe2() : s.acte === 3 ? choixActe3() : s.acte === 4 ? choixActe4() : choixActe5();
       if (!choix) break;
       const cout = E.canEngage(s, choix.id, choix.opts).cout;
       const ev = E.engage(s, choix.id, choix.opts);
       if (suivi.engage) suivi.engage(s, choix.id, cout, ev);
       prochainAction = s.t + reaction;
       const casse = ev.filter(e => e.type === 'coupure' || e.type === 'delestage' || e.type === 'privation' || e.type === 'isolement');
-      marks.push(`${quand(s.t)}  ${choix.opts && choix.opts.vite ? 'démolition rapide' : choix.opts && choix.opts.dosage ? `garde ${choix.opts.dosage}${s.sites[choix.id].aBras ? ' à bras' : ''}` : 'engage'} ${choix.id}  E=${E.fmt(s.E)}  K=${Math.floor(s.K)} M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)}` +
+      marks.push(`${quand(s.t)}  ${choix.opts && choix.opts.vite ? 'démolition rapide' : choix.opts && choix.opts.dosage ? `garde ${choix.opts.dosage}${s.sites[choix.id].aBras ? ' à bras' : ''}` : E.defs[choix.id].geste ? `geste${s.sites[choix.id].habitants ? ', par les habitants' : ''}` : 'engage'} ${choix.id}  E=${E.fmtFin(s.E)}  K=${Math.floor(s.K)} M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)}` +
         (casse.length ? `  ${casse.map(e => `${e.type.toUpperCase()} ${e.id || e.dep || e.ids.join('+')}`).join(', ')}` : ''));
     }
     if (profil === 'relance-1' && s.t > 120 && !relanceFaite) { E.relancer(s); relanceFaite++; marks.push(`${quand(s.t)}  RELANCE`); }
@@ -118,8 +135,10 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
     if (suivi.pas) suivi.pas(s, evs);
     if (s.paused <= 0 && gReb > 0) rebond += avant * (Math.exp(gReb / 100 / 60 * dt) - 1);
     for (const ev of evs) {
-      if (['stabilise', 'chiffre', 'acte', 'fin', 'relance', 'ferme', 'garde', 'non-retour', 'pollution', 'region', 'arret', 'retour', 'penurie', 'penurie-fin'].includes(ev.type))
-        marks.push(`${quand(s.t)}  ${ev.type.toUpperCase()} ${ev.id || ev.region || ev.digits || ev.n || ''}${ev.reembauche ? ` réembauche ${ev.reembauche}` : ''}  E=${E.fmt(s.E)}  K=${Math.floor(s.K)} M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)} X=${E.fmt(s.X)}`);
+      // Acte V : un geste à la fois. Le joueur réagit à la fin du geste, pas à son lancement.
+      if (ev.type === 'ferme' && E.defs[ev.id].geste) prochainAction = Math.max(prochainAction, s.t + reaction);
+      if (['stabilise', 'chiffre', 'acte', 'fin', 'relance', 'ferme', 'garde', 'non-retour', 'plancher', 'pollution', 'region', 'arret', 'retour', 'penurie', 'penurie-fin'].includes(ev.type))
+        marks.push(`${quand(s.t)}  ${ev.type.toUpperCase()} ${ev.id || ev.region || ev.digits || ev.n || ''}${ev.reembauche ? ` réembauche ${ev.reembauche}` : ''}  E=${E.fmtFin(s.E)}  K=${Math.floor(s.K)} M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)} X=${E.fmt(s.X)}`);
     }
     if (s.E > maxE) maxE = s.E;
     if (s.ms.stabilise === null && s.E < minEavantStab) minEavantStab = s.E;
@@ -127,13 +146,16 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
     if (s.ms.fin2 !== null && !finDeux) finDeux = { casse: s.X, rebond, regions: [...s.regionsEteintes] };
     if (s.acte >= 4) coMin4 = Math.min(coMin4, s.Co);
     if (s.ms.fin3 !== null && !finTrois) finTrois = { E: s.E, T: E.T(s) };
-    if (E.DERNIER_ACTE >= 4 ? s.ms.fin4 !== null && s.t - s.ms.fin4 > 5 : s.ms.fin3 !== null && s.t - s.ms.fin3 > 5) break;
+    if (s.acte >= 5) coMin5 = Math.min(coMin5, s.Co);
+    if (s.ms.fin4 !== null && !finQuatre) finQuatre = { E: s.E, plancher: s.plancher, M: s.M, T: E.T(s) };
+    const fin = s.ms['fin' + E.DERNIER_ACTE];
+    if (fin !== null && s.t - fin > 5) break;
   }
-  return { profil, reaction, s, marks, maxE, minEavantStab, rebond, coMin3, mainsMax, finDeux, coMin4, finTrois };
+  return { profil, reaction, s, marks, maxE, minEavantStab, rebond, coMin3, mainsMax, finDeux, coMin4, finTrois, coMin5, finQuatre };
 }
 
 // Le résumé d'une partie : les jalons, puis les mesures de chaque acte.
-function resumer({ profil, reaction, s, marks, maxE, minEavantStab, rebond, coMin3, mainsMax, finDeux, coMin4, finTrois }) {
+function resumer({ profil, reaction, s, marks, maxE, minEavantStab, rebond, coMin3, mainsMax, finDeux, coMin4, finTrois, coMin5, finQuatre }) {
   const r = E.rapport(s, 'simulation');
   const pertes = s.chrono.filter(e => e.type === 'chiffre').map(e => e.t);
   console.log(marks.join('\n'));
@@ -157,14 +179,22 @@ function resumer({ profil, reaction, s, marks, maxE, minEavantStab, rebond, coMi
       `  relances du Conseil dans l'acte=${s.chrono.filter(e => e.type === 'relance' && e.auto && e.t >= r.acte3 && (r.acte4 === null || e.t < r.acte4)).length}`);
   }
   if (r.acte4 !== null) {
-    const p4 = pertes.filter(t => t >= r.acte4), avant = pertes.filter(t => t < r.acte4).pop();
+    const p4 = pertes.filter(t => t >= r.acte4 && (r.acte5 === null || t < r.acte5)), avant = pertes.filter(t => t < r.acte4).pop();
     const ecarts4 = p4.map((t, i) => E.fmtDur(t - (i ? p4[i - 1] : avant)));
     console.log(`acte IV  ouvert=${E.fmtDur(r.acte4)} à E=${E.fmt(finTrois.E)}  fin=${r.finActe4 !== null ? E.fmtDur(r.finActe4) : '—'}  durée de l'acte=${r.finActe4 !== null ? E.fmtDur(r.finActe4 - r.acte4) : '—'}` +
       `  chiffres perdus dans l'acte=${p4.map(E.fmtDur).join(', ') || '—'}  écarts (depuis le précédent)=${ecarts4.join(', ') || '—'}`);
     console.log(`         gardes=${r.gardes.map(g => `${g.id} ${g.dosage}${g.aBras ? ' à bras' : ''}`).join(', ')}  gardiens=${E.fmt(r.gardiens)}  réseau national=${r.reseauNational !== null ? E.fmtDur(r.reseauNational) : '—'}` +
-      `  Co min acte IV=${coMin4.toFixed(0)}  relances du Conseil dans l'acte=${s.chrono.filter(e => e.type === 'relance' && e.auto && e.t >= r.acte4).length}  plancher=${E.fmtPlancher(s.plancher)}`);
+      `  Co min acte IV=${coMin4.toFixed(0)}  relances du Conseil dans l'acte=${s.chrono.filter(e => e.type === 'relance' && e.auto && e.t >= r.acte4 && (r.acte5 === null || e.t < r.acte5)).length}  plancher=${E.fmtPlancher(finQuatre ? finQuatre.plancher : s.plancher)}`);
   }
-  console.log(`fin      E=${E.fmt(s.E)}  Co=${s.Co.toFixed(0)}  T=${E.T(s).toFixed(1)}/${E.Tmax().toFixed(1)}  relances=${r.relances}  relances du Conseil=${r.relancesConseil}`);
+  if (r.acte5 !== null) {
+    const p5 = pertes.filter(t => t >= r.acte5), avant = pertes.filter(t => t < r.acte5).pop();
+    const ecarts5 = p5.map((t, i) => E.fmtDur(t - (i ? p5[i - 1] : avant)));
+    console.log(`acte V   ouvert=${E.fmtDur(r.acte5)} à E=${E.fmtFin(finQuatre.E)}, plancher ${E.fmtPlancher(finQuatre.plancher)}, ${E.fmt(finQuatre.M)} Mains  fin=${r.finActe5 !== null ? E.fmtDur(r.finActe5) : '—'}  durée de l'acte=${r.finActe5 !== null ? E.fmtDur(r.finActe5 - r.acte5) : '—'}` +
+      `  chiffres perdus dans l'acte=${p5.map(E.fmtDur).join(', ') || '—'}  écarts (depuis le précédent)=${ecarts5.join(', ') || '—'}`);
+    console.log(`         plancher atteint=${r.plancherAtteint !== null ? E.fmtDur(r.plancherAtteint) : '—'}  gestes=${r.gestes}, dont ${r.gestesHabitants} par les habitants  restés sur place=${E.fmt(r.installes)}  Mains à la fin=${E.fmt(s.M)}` +
+      `  Co min acte V=${coMin5.toFixed(0)}  relances du Conseil dans l'acte=${s.chrono.filter(e => e.type === 'relance' && e.auto && e.t >= r.acte5).length}  plancher=${E.fmtPlancher(s.plancher)}`);
+  }
+  console.log(`fin      E=${E.fmtFin(s.E)}  Co=${s.Co.toFixed(0)}  T=${E.T(s).toFixed(1)}/${E.Tmax().toFixed(1)}  relances=${r.relances}  relances du Conseil=${r.relancesConseil}`);
 }
 
 if (require.main === module) {

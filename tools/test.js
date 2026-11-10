@@ -1,4 +1,4 @@
-// Tests du moteur, sans navigateur : actes II à IV, reprise des sauvegardes, rapport de session,
+// Tests du moteur, sans navigateur : actes II à V, reprise des sauvegardes, rapport de session,
 // et le jugement de la vérification des invariants (tools/check.js).
 // Usage : node tools/test.js
 const assert = require('assert');
@@ -687,7 +687,7 @@ test('l\'acte IV finit quand tout est gardé, démantelé et dépollué, et le r
   for (const t of ['Acte IV ouvert', 'Gardes : Combustibles usés de la pointe de Morvel, réduite', `Gardiens, pour toujours : ${E.fmt(5300)}`, 'Réseau national démantelé', 'Acte IV achevé', 'Garde instituée', 'Dépollué', 'Point de non-retour'])
     assert.ok(texte.includes(t), t);
   const json = JSON.parse(texte.split('```json\n')[1].split('\n```')[0]);
-  assert.ok(json.acte === 4 && json.finActe4 !== null && json.gardes.length === 3 && json.gardiens === 5300);
+  assert.ok(json.acte === 5 && json.finActe4 !== null && json.gardes.length === 3 && json.gardiens === 5300);   // l'acte V s'est ouvert
 });
 
 test('une sauvegarde d\'avant l\'acte IV se reprend, et une garde en cours aussi', () => {
@@ -707,6 +707,201 @@ test('une sauvegarde d\'avant l\'acte IV se reprend, et une garde en cours aussi
   assert.strictEqual(r.digitsActe4, 5);
 });
 
+// ---- Acte V : rendre ----
+// Un état de début d'acte V : tout est fermé, gardé, dépollué et repoussé ; il reste les gestes.
+function etatActe5(extra) {
+  const s = Object.assign(E.create(), { started: true });
+  for (const d of E.D.sites) if (E.acteDe(d) <= 4) Object.assign(s.sites[d.id], { state: d.mesure ? 'fait' : 'eteint', regen: 1 });
+  s.hopital = 'autonome';
+  Object.assign(s, { acte: 4, E: 60, digits: 2, digitsMin: 2, digitsActe4: 5 });
+  Object.assign(s.ms, { stabilise: 1, chiffre: 2, fin: 3, acte2: 3, fin2: 4, acte3: 4, fin3: 5, acte4: 5 });
+  E.tick(s, 0.1);          // l'acte IV est fini, l'acte V s'ouvre
+  Object.assign(s, { paused: 0, K: 0, M: 20000, Co: 60 }, extra || {});
+  return s;
+}
+const GESTES = E.GESTES.map(d => d.id);
+const faire = (s, id) => { const ev = E.engage(s, id); return ev.concat(jusquA(s, () => s.sites[id].state === 'eteint', 3000)); };
+
+test('l\'acte V s\'ouvre quand l\'acte IV est achevé : vingt-huit gestes, quatre par région', () => {
+  const s = etatActe5();
+  assert.ok(s.acte === 5 && s.ms.fin4 !== null && s.ms.acte5 !== null);
+  assert.strictEqual(E.DERNIER_ACTE, 5);
+  assert.strictEqual(GESTES.length, 28);
+  for (const r of Object.keys(E.D.regions)) assert.strictEqual(E.GESTES.filter(d => d.region === r).length, 4, r);
+  for (const id of GESTES) assert.ok(E.canEngage(s, id).ok, id);
+  assert.ok(Math.abs(E.Tmax() - 100) < 1e-6, `la Terre rendue possible atteint 100 % : ${E.Tmax()}`);
+  assert.ok(s.chrono.some(e => e.type === 'acte' && e.n === 5));
+});
+
+test('un geste à la fois ; la relance le fait aller deux fois plus vite', () => {
+  const s = etatActe5();
+  E.engage(s, 'planter-valdrance');
+  const c = E.canEngage(s, 'planter-orvenne');
+  assert.ok(!c.ok && c.raisons.includes('un geste à la fois'));
+  assert.deepStrictEqual(E.engage(s, 'planter-orvenne'), []);
+  jusquA(s, () => s.sites['planter-valdrance'].state === 'eteint', 3000);
+  assert.ok(Math.abs(s.t - s.ms.acte5 - 30) < 0.3, `30 s : ${s.t - s.ms.acte5}`);
+  assert.ok(E.canEngage(s, 'planter-orvenne').ok);
+  const t0 = s.t;
+  E.relancer(s); E.engage(s, 'planter-orvenne');
+  jusquA(s, () => s.sites['planter-orvenne'].state === 'eteint', 3000);
+  assert.ok(Math.abs(s.t - t0 - 15) < 0.3, `15 s pendant une relance : ${s.t - t0}`);
+});
+
+test('un geste retire sa part de ce qui reste, et son équipe reste sur la terre rendue', () => {
+  const s = etatActe5();
+  const ev = faire(s, 'debitumer-cherbaix');
+  assert.ok(Math.abs(s.E - 60 * 0.85) < 1e-9, `−15 % : ${s.E}`);
+  assert.ok(s.M === 19100 && s.Meng === 0 && s.installes === 900, 'les 900 ne reviennent pas');
+  assert.ok(ev.some(e => e.type === 'ferme' && e.id === 'debitumer-cherbaix'));
+  assert.ok(s.log.some(l => l.msg.includes('900 personnes restent sur place')));
+  for (let i = 0; i < 2500; i++) E.tick(s, 0.1);   // la terre repousse en quatre minutes
+  assert.ok(Math.abs(E.T(s) - (E.Tmax() - 18.2 + 0.9)) < 1e-6, `+0,9 point : ${E.T(s)}`);
+});
+
+test('sans assez de Mains, les habitants font le geste : deux fois plus long, et le Consentement paie', () => {
+  const s = etatActe5({ M: 500 });
+  const c = E.canEngage(s, 'rouvrir-meraud');
+  assert.ok(c.ok && c.habitants && c.cout.M === 0 && c.cout.K === 0);
+  assert.ok(!E.canEngage(s, 'planter-meraud').habitants, 'une équipe de 300 est encore possible');
+  const t0 = s.t;
+  E.engage(s, 'rouvrir-meraud');
+  assert.ok(Math.abs(s.Co - 57) < 1e-9 && s.M === 500 && s.Meng === 0, 'consentement −3, aucune Main engagée');
+  jusquA(s, () => s.sites['rouvrir-meraud'].state === 'eteint', 3000);
+  assert.ok(Math.abs(s.t - t0 - 80) < 0.3, `80 s au lieu de 40 : ${s.t - t0}`);
+  assert.ok(s.M === 500 && s.installes === 0 && Math.abs(s.E - 60 * 0.88) < 1e-9, 'la part est retirée, personne ne s\'installe');
+  assert.ok(s.chrono.some(e => e.type === 'engage' && e.id === 'rouvrir-meraud' && e.habitants));
+  assert.ok(E.rapportTexte(s, 'test').includes('Geste lancé par les habitants : Rouvrir, Méraud'));
+});
+
+test('R3 : jamais bloqué, aucun geste de plus de 90 s, aucune repousse de plus de 4 min', () => {
+  for (const d of E.GESTES) {
+    assert.ok(d.dur * E.D.HABITANTS.lent <= 90, `${d.id} : ${d.dur * E.D.HABITANTS.lent} s par les habitants`);
+    assert.ok(d.regen <= 240, `${d.id} : repousse en ${d.regen} s`);
+    assert.strictEqual(d.K, 0, 'sans Capacité');
+  }
+  const s = etatActe5({ M: 0, K: 0, Co: 0 });   // plus rien : ni Mains, ni Capacité, ni Consentement
+  for (const id of GESTES) {
+    assert.ok(E.canEngage(s, id).ok, `${id} doit rester possible`);
+    faire(s, id);
+  }
+  assert.ok(s.ms.fin5 !== null);
+});
+
+test('le Conseil est annoncé avant un geste que feraient les habitants', () => {
+  const s = etatActe5({ M: 0, Co: 22 });
+  const r = E.risqueConseil(s, 'planter-plaine');
+  assert.ok(r && r.quand === 'lancement' && r.co === 3 && r.seuil === 20);
+  assert.strictEqual(E.risqueConseil(etatActe5({ Co: 22 }), 'planter-plaine'), null, 'avec une équipe, rien à craindre');
+});
+
+test('l\'Empreinte s\'arrête sur le plancher, qui n\'est pas zéro ; les gestes suivants ne rendent plus que de la terre', () => {
+  const s = etatActe5({ E: 2.6 });
+  assert.ok(Math.abs(E.retraitPrevu(s, 'x' && E.defs['debitumer-sere']) - 0.2) < 1e-9, 'la carte annonce ce qui sera vraiment retiré');
+  let ev = faire(s, 'debitumer-sere');
+  ev = ev.concat(E.tick(s, 0.1));
+  assert.strictEqual(s.E, 2.4);
+  assert.ok(E.auPlancher(s) && s.ms.plancher !== null && s.paused > 0, 'le jeu marque un temps');
+  assert.strictEqual(ev.filter(e => e.type === 'plancher').length, 1);
+  s.paused = 0;
+  const T0 = E.T(s);
+  ev = faire(s, 'planter-sere');
+  for (let i = 0; i < 2500; i++) ev = ev.concat(E.tick(s, 0.1));
+  assert.strictEqual(s.E, 2.4);
+  assert.ok(E.T(s) > T0 + 1.4, 'la terre, elle, continue de revenir');
+  assert.ok(!ev.some(e => e.type === 'plancher'), 'l\'arrêt ne se marque qu\'une fois');
+  assert.ok(s.log.some(l => l.msg.includes("L'Empreinte ne bouge plus")));
+});
+
+test('le dernier geste retire tout ce qui dépasse encore du plancher', () => {
+  const s = etatActe5({ E: 1000 });
+  for (const id of GESTES.slice(0, -1)) faire(s, id);
+  const dernier = GESTES[GESTES.length - 1];
+  assert.ok(s.E > s.plancher * 5, `les parts seules n'y suffisent pas : ${s.E}`);
+  assert.ok(E.dernierGeste(s, E.defs[dernier]));
+  assert.ok(Math.abs(E.retraitPrevu(s, E.defs[dernier]) - (s.E - 2.4)) < 1e-9);
+  faire(s, dernier);
+  assert.strictEqual(s.E, 2.4);
+});
+
+test('une relance double le plancher ; si l\'Empreinte se retrouve dessous, elle y remonte', () => {
+  const s = etatActe5({ E: 3 });
+  const ev = E.relancer(s);
+  assert.ok(s.plancher === 4.8 && s.E === 4.8 && ev.plancher === 4.8);
+  assert.ok(s.chrono.some(e => e.type === 'remontee' && e.de === 3 && e.a === 4.8));
+  assert.ok(s.log.some(l => l.msg.includes("L'Empreinte y remonte")));
+  const haut = etatActe5({ E: 500 });
+  E.relancer(haut);
+  assert.ok(haut.E === 500 && !haut.chrono.some(e => e.type === 'remontee'), 'au-dessus du plancher, rien ne change');
+  const debut = Object.assign(E.create(), { started: true });
+  E.relancer(debut);
+  assert.strictEqual(debut.E, E.D.E0);
+  // Tant que le plancher n'est pas révélé, la remontée ne se dit pas.
+  const cache = Object.assign(E.create(), { started: true, E: 3 });
+  E.relancer(cache);
+  assert.ok(cache.E === 4.8 && !cache.log.some(l => l.msg.includes('plancher')));
+});
+
+test('l\'acte V finit quand tout est rendu : l\'Empreinte est au plancher, la Terre rendue à 100 %, et le rapport le décrit', () => {
+  const s = etatActe5({ M: 9000 });   // de quoi faire une partie des gestes ; les habitants font le reste
+  let ev = [];
+  const parEquipe = [...E.GESTES].sort((a, b) => a.M - b.M).map(d => d.id);
+  for (const id of parEquipe) ev = ev.concat(faire(s, id));
+  ev = ev.concat(E.tick(s, 0.1));
+  assert.ok(ev.some(e => e.type === 'fin' && e.acte === 5) && s.ms.fin5 !== null);
+  assert.ok(E.auPlancher(s) && s.E === s.plancher);
+  assert.ok(s.M === 500 && s.installes === 8500, `les Mains sont restées sur place : ${s.M}, ${s.installes}`);   // 7 × 300, 7 × 400, 6 × 600
+  for (let i = 0; i < 2500; i++) E.tick(s, 0.1);
+  assert.ok(Math.abs(E.T(s) - 100) < 1e-6, `Terre rendue : ${E.T(s)}`);
+  const texte = E.rapportTexte(s, 'test');
+  const habitants = s.chrono.filter(e => e.type === 'engage' && e.habitants).length;
+  assert.ok(habitants > 0 && habitants < 28);
+  for (const t of ['Acte V ouvert', `Gestes faits : 28 sur 28, dont ${habitants} par les habitants`, `Restés sur la terre rendue : ${E.fmt(s.installes)}`,
+    'Empreinte arrêtée sur le plancher', 'Acte V achevé', 'Rendu : Planter, Valdrance', 'Tout est rendu', `- Empreinte : ${E.fmtFin(s.E)}`])
+    assert.ok(texte.includes(t), t);
+  const json = JSON.parse(texte.split('```json\n')[1].split('\n```')[0]);
+  assert.ok(json.acte === 5 && json.finActe5 !== null && json.gestes === 28 && json.gestesHabitants === habitants && json.installes === s.installes && json.plancherAtteint !== null);
+});
+
+test('hors ligne, un geste n\'avance pas ; la terre rendue, elle, repousse', () => {
+  const s = etatActe5();
+  faire(s, 'planter-morvel');
+  E.engage(s, 'rouvrir-morvel');
+  for (let i = 0; i < 100; i++) E.tick(s, 0.1);
+  const p = s.sites['rouvrir-morvel'].progress, E0 = s.E;
+  E.applyOffline(s, 3600);
+  assert.strictEqual(s.sites['rouvrir-morvel'].progress, p);
+  assert.strictEqual(s.E, E0);
+  assert.strictEqual(s.sites['planter-morvel'].regen, 1);
+});
+
+test('une sauvegarde d\'avant l\'acte V se reprend, et un geste des habitants en cours aussi', () => {
+  const ancienne = allerRetour(etatActe5());
+  Object.assign(ancienne, { acte: 4 });
+  for (const k of ['installes']) delete ancienne[k];
+  for (const k of ['acte5', 'fin5', 'plancher']) delete ancienne.ms[k];
+  for (const id of GESTES) delete ancienne.sites[id];
+  const a = E.migrer(ancienne);
+  assert.ok(a && a.acte === 4 && a.installes === 0 && a.sites['planter-valdrance'].state === 'actif');
+  const ev = E.tick(a, 0.1);
+  assert.ok(a.acte === 5 && ev.some(e => e.type === 'acte' && e.n === 5), 'la partie finie à l\'acte IV reprend à l\'acte V');
+  const s = etatActe5({ M: 0 });
+  E.engage(s, 'debitumer-plaine');
+  for (let i = 0; i < 100; i++) E.tick(s, 0.1);
+  const r = E.migrer(allerRetour(s));
+  assert.ok(r.acte === 5 && r.sites['debitumer-plaine'].habitants && r.Meng === 0);
+  jusquA(r, () => r.sites['debitumer-plaine'].state === 'eteint', 3000);
+  assert.ok(Math.abs(r.t - r.ms.acte5 - 90) < 0.3, `90 s en tout : ${r.t - r.ms.acte5}`);
+});
+
+test('sous 100, l\'Empreinte se lit à la décimale', () => {
+  assert.strictEqual(E.fmtFin(2.4), '2,4');
+  assert.strictEqual(E.fmtFin(2.4 * 2 * 2 * 2 * 2), '38,4');
+  assert.strictEqual(E.fmtFin(9.96), '9,9');
+  assert.strictEqual(E.fmtFin(0.04), '0,0');
+  assert.strictEqual(E.fmtFin(1234.5), `1${' '}234`);
+});
+
 // ---- Vérification des invariants (tools/check.js) : le jugement, sur des mesures fabriquées ----
 const C = require('./check.js');
 const PAGE = { 'index.html': '<button id="btn-relancer" class="btn-relancer">Relancer</button><div id="casse-bloc" class="casse"><span id="casse">0</span></div>', 'main.js': '' };
@@ -715,10 +910,10 @@ function partieSaine(extra) {
   return Object.assign({
     nom: 'témoin', autreJeu: false, finie: true, duree: 5400,
     pertes: [600, 1800, 3000, 4200, 5400], sansChiffre: C.plusLongSansChiffre([600, 1800, 3000, 4200, 5400], 5400),
-    coutParActe: [12, 19, 9000, 400000],
+    coutParActe: [12, 19, 9000, 400000, 5e8],
     casse: { baisses: [], sauvegarde: true, horsLigne: true },
     terre: { ecart: 12, fin: 65 },
-    relance: { essais: 400, actes: 4, echecs: [] },
+    relance: { essais: 400, actes: 5, echecs: [] },
   }, extra);
 }
 const jugement = (extra, opts) => C.juger([partieSaine(extra)], Object.assign({ fichiers: PAGE, connus: [], multiplicateurs: [{ nom: 'témoin', facteur: 2 }] }, opts));
@@ -732,20 +927,27 @@ test('chaque invariant cassé fait échouer la vérification', () => {
   const pertes = [600, 1800, 3400, 4200, 5400];   // 26 min 40 entre le 2e et le 3e chiffre
   assert.deepStrictEqual(enEchec(jugement({ pertes, sansChiffre: C.plusLongSansChiffre(pertes, 5400) })), ['I1']);
   assert.deepStrictEqual(enEchec(jugement({}, { multiplicateurs: [{ nom: 'témoin', facteur: 2.5 }] })), ['I2']);
-  assert.deepStrictEqual(enEchec(jugement({ coutParActe: [12, 11, 9000, 400000] })), ['I3']);
+  assert.deepStrictEqual(enEchec(jugement({ coutParActe: [12, 11, 9000, 400000, 5e8] })), ['I3']);
+  assert.deepStrictEqual(enEchec(jugement({ coutParActe: [12, 19, 9000, 400000, 3e5] })), ['I3']);
   assert.deepStrictEqual(enEchec(jugement({ casse: { baisses: [1200], sauvegarde: true, horsLigne: true } })), ['I4']);
   assert.deepStrictEqual(enEchec(jugement({ casse: { baisses: [], sauvegarde: false, horsLigne: true } })), ['I4']);
   assert.deepStrictEqual(enEchec(jugement({ terre: { ecart: 21, fin: 65 } })), ['I5']);
-  assert.deepStrictEqual(enEchec(jugement({ relance: { essais: 400, actes: 4, echecs: [3000] } })), ['I6']);
-  assert.deepStrictEqual(enEchec(jugement({ relance: { essais: 400, actes: 3, echecs: [] } })), ['I6']);
+  assert.deepStrictEqual(enEchec(jugement({ relance: { essais: 400, actes: 5, echecs: [3000] } })), ['I6']);
+  assert.deepStrictEqual(enEchec(jugement({ relance: { essais: 400, actes: 4, echecs: [] } })), ['I6']);
   assert.deepStrictEqual(enEchec(jugement({ finie: false })), ['Pa']);   // une partie qui ne finit pas
 });
 
 test('la relance continue est un autre jeu : I1 et I3 ne s\'y appliquent pas', () => {
   const pertes = [600];
-  const m = { autreJeu: true, pertes, sansChiffre: C.plusLongSansChiffre(pertes, 5400), coutParActe: [12, 19, 60, null] };
+  const m = { autreJeu: true, pertes, sansChiffre: C.plusLongSansChiffre(pertes, 5400), coutParActe: [12, 19, 60, null, null] };
   assert.deepStrictEqual(enEchec(jugement(m)), []);
   assert.deepStrictEqual(enEchec(jugement(Object.assign(m, { terre: { ecart: 30, fin: 65 } }))), ['I5']);
+});
+
+test('au plancher, le coût d\'un point n\'a plus de borne : I3 tient, même deux actes de suite', () => {
+  assert.deepStrictEqual(enEchec(jugement({ coutParActe: [12, 19, 9000, 400000, Infinity] })), []);
+  assert.deepStrictEqual(enEchec(jugement({ coutParActe: [12, 19, 9000, Infinity, Infinity] })), []);
+  assert.deepStrictEqual(enEchec(jugement({ coutParActe: [12, 19, 9000, Infinity, 5e8] })), ['I3']);
 });
 
 test('un écart connu passe sous son plafond, échoue s\'il s\'aggrave, et aussi s\'il se résorbe', () => {
