@@ -324,5 +324,5 @@ Test secondaire, presque aussi important : **combien de fois le testeur appuie s
 
 1. **Géographie fictive ou réelle ?** Nommer de vraies centrales ancre le propos mais expose le jeu à la lecture pamphlétaire (R1) et à des ennuis. Recommandation : pays fictif, sites plausibles, aucune référence nommée. **Tranché** : pays fictif, l'Ostrane.
 2. **Valeur du plancher irréductible** et son barème de rehaussement par relance. C'est le paramètre qui décide de tout l'équilibrage de l'acte V. **Tranché** (issue #4) : plancher ≈ 2,4, doublé à chaque relance.
-3. **Le bouton Croissance : visible dès t=0 ou débloqué à l'acte II ?** Dès t=0 est plus fort thématiquement, plus risqué en tutoriel.
+3. **Le bouton Croissance : visible dès t=0 ou débloqué à l'acte II ?** Dès t=0 est plus fort thématiquement, plus risqué en tutoriel. **Tranché** (issue #12) : visible dès t=0. Aux trois premiers playtests, un seul testeur a relancé avant l'arrêt du compteur, et voir le nombre monter lui a servi de leçon. I6 ne change pas.
 4. **Prototyper le MVP §14 avant toute autre chose** — et le tester à côté du MVP *Langue morte* pour choisir lequel des deux concepts va au bout. **Fait** : MVP joué, go pour Décroissance le 2026-10-24 (issue #13).
