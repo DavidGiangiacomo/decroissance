@@ -1,4 +1,4 @@
-// Tests du moteur, sans navigateur : actes II à V, reprise des sauvegardes, rapport de session,
+// Tests du moteur, sans navigateur : actes II à V, les fins, reprise des sauvegardes, rapport de session,
 // et le jugement de la vérification des invariants (tools/check.js).
 // Usage : node tools/test.js
 const assert = require('assert');
@@ -394,7 +394,7 @@ test('le rapport sépare la Casse par cause', () => {
   E.engage(s, 'chimie', { vite: true });                 // l'eau d'Orvenne est coupée : 400
   for (let i = 0; i < E.defs.chimie.dur * 5 + 5; i++) E.tick(s, 0.1);   // la démolition rapide pollue : 500
   const c = E.casseParCause(s);
-  assert.deepStrictEqual(c, { coupures: 400, pollutions: 500, penuries: 0 });
+  assert.deepStrictEqual(c, { coupures: 400, pollutions: 500, penuries: 0, gardes: 0 });
   assert.strictEqual(c.coupures + c.pollutions + c.penuries, s.X);
   const texte = E.rapportTexte(s, 'test');
   assert.ok(texte.includes('- Casse : 900 personnes (coupures et délestages 400, pollutions 500)'), texte.split('\n').find(l => l.includes('Casse')));
@@ -902,6 +902,236 @@ test('sous 100, l\'Empreinte se lit à la décimale', () => {
   assert.strictEqual(E.fmtFin(1234.5), `1${' '}234`);
 });
 
+// ---- Les fins : Clore, Poursuivre, l'épilogue ----
+// Tout est rendu : les vingt-huit gestes sont faits, l'Empreinte est sur le plancher. Les gardes sont réduites.
+function etatFin(extra) {
+  const s = etatActe5();
+  for (const id of GESTES) Object.assign(s.sites[id], { state: 'eteint', regen: 1 });
+  s.E = s.plancher;
+  E.tick(s, 0.1);
+  Object.assign(s, { paused: 0 }, extra || {});
+  return s;
+}
+const { simuler } = require('./simulate.js');
+
+test('quand tout est rendu, le choix s\'ouvre, l\'Empreinte bloquée au plancher : pas pendant une relance', () => {
+  const s = etatFin();
+  assert.ok(s.ms.fin5 !== null && E.toutRendu(s) && E.peutChoisir(s) && s.issue === null);
+  assert.ok(!E.toutRendu(etatActe5()) && !E.peutChoisir(etatActe5()));
+  E.relancer(s);
+  assert.ok(!E.peutChoisir(s));
+  assert.strictEqual(E.clore(s), null);
+  assert.strictEqual(E.poursuivre(s), null);
+  assert.strictEqual(s.issue, null);
+});
+
+test('après le dernier geste, ce qu\'une relance ajoute reste : le plancher monte jusqu\'à l\'Empreinte', () => {
+  const s = etatFin();
+  E.relancer(s);
+  assert.ok(s.plancher === 4.8 && s.E === 4.8, 'le plancher double, l\'Empreinte y remonte');
+  for (let i = 0; i < 950; i++) E.tick(s, 0.1);
+  assert.ok(!E.relanceActive(s) && s.E > 5 && s.E < 5.2, `la relance a ajouté 6 % : ${s.E}`);
+  assert.ok(s.plancher === s.E && E.auPlancher(s) && E.peutChoisir(s));
+  assert.ok(s.chrono.some(e => e.type === 'plancher-monte'));
+  const r = E.migrer(allerRetour(s));
+  assert.ok(Math.abs(r.plancher - s.E) < 1e-9 && E.auPlancher(r), 'le plancher monté survit à une sauvegarde');
+  E.relancer(r);
+  assert.ok(Math.abs(r.plancher - 2 * s.E) < 1e-9, 'la relance suivante double ce plancher-là');
+  // Tant qu'il reste des gestes, ils peuvent encore retirer ce qu'une relance ajoute : le plancher ne bouge pas.
+  const avant = etatActe5();
+  E.relancer(avant);
+  for (let i = 0; i < 950; i++) E.tick(avant, 0.1);
+  assert.ok(avant.plancher === 4.8 && avant.plancherSurcroit === 1);
+});
+
+test('Clore scelle la partie : plus de relance, plus rien à lancer, le temps s\'arrête ; la terre finit de repousser', () => {
+  const s = etatFin();
+  s.sites['planter-morvel'].regen = 0.5;
+  const ev = E.clore(s);
+  assert.ok(ev && ev.type === 'clore' && s.issue === 'clore' && s.ms.clore === s.t);
+  assert.strictEqual(E.relancer(s), null);
+  assert.strictEqual(E.poursuivre(s), null);
+  assert.strictEqual(E.clore(s), null);
+  s.deplaces = 600; s.attente = [{ de: null, n: 600, t0: s.t }];
+  assert.strictEqual(E.reconvertir(s), false);
+  for (const d of E.D.sites) assert.ok(!E.canEngage(s, d.id).ok, d.id);
+  const t0 = s.t, E0 = s.E, Co = s.Co;
+  let evs = [];
+  for (let i = 0; i < 1300; i++) evs = evs.concat(E.tick(s, 0.1));
+  assert.ok(s.t === t0 && s.E === E0 && s.Co === Co && evs.length === 0);
+  assert.strictEqual(s.sites['planter-morvel'].regen, 1);
+});
+
+test('à Clore, chaque garde réduite ajoute sa Casse, que le jeu n\'avait pas dite ; une garde pleine n\'ajoute rien', () => {
+  const s = etatFin({ X: 400 });
+  assert.deepStrictEqual(E.inventaire(s).gardes.map(g => g.casse), [1200, 600, 300]);
+  assert.ok(E.inventaire(s).casseAvant === 400 && E.inventaire(s).casseFinale === 2500);
+  assert.strictEqual(E.clore(s).casseGarde, 2100);
+  assert.ok(s.X === 2500 && s.casseGarde === 2100);
+  assert.strictEqual(E.casseParCause(s).gardes, 2100);
+  assert.ok(E.texteCasse(s).includes(`gardes réduites ${E.fmt(2100)}`));
+  const inv = E.inventaire(s);
+  assert.ok(inv.casseAvant === 400 && inv.casseGardes === 2100 && inv.casseFinale === 2500, 'l\'inventaire dit la même chose avant et après Clore');
+  assert.strictEqual(s.chrono.filter(e => e.type === 'sous-dosage').length, 3);
+  const mixte = etatFin();
+  mixte.sites.combustibles.dosage = 'pleine';
+  assert.strictEqual(E.clore(mixte).casseGarde, 900);
+  const pleines = etatFin();
+  for (const id of ['combustibles', 'galeries', 'digues']) pleines.sites[id].dosage = 'pleine';
+  assert.ok(E.clore(pleines).casseGarde === 0 && pleines.X === 0);
+  assert.ok(E.rapportTexte(s, 'test').includes('Issue : Clore'));
+});
+
+test('avant de clore, une garde réduite peut devenir pleine avec les Mains qui restent ; elle n\'ajoute alors plus de Casse', () => {
+  const s = etatFin({ M: 2400 });
+  assert.deepStrictEqual(E.peutRenforcer(s, 'digues'), { ok: true, cout: 800 });
+  assert.deepStrictEqual(E.peutRenforcer(s, 'combustibles'), { ok: false, cout: 3000 }, 'pas assez de Mains');
+  assert.ok(!E.peutRenforcer(etatActe5({ M: 20000 }), 'digues').ok, 'pas avant que tout soit rendu');
+  const ev = E.renforcer(s, 'digues');
+  assert.ok(ev && ev.type === 'renfort' && ev.gardiens === 800);
+  assert.ok(s.M === 1600 && s.gardiens === 800 && s.sites.digues.dosage === 'pleine' && s.sites.digues.renforcee);
+  assert.strictEqual(E.renforcer(s, 'digues'), null, 'une garde pleine ne se renforce plus');
+  assert.ok(E.renforcer(s, 'galeries') && s.M === 100);
+  assert.strictEqual(E.renforcer(s, 'combustibles'), null);
+  assert.ok(E.peutChoisir(s), 'le choix reste ouvert');
+  const inv = E.inventaire(s);
+  assert.deepStrictEqual(inv.gardes.map(g => [g.id, g.dosage, g.casse, !!g.renforcee]),
+    [['combustibles', 'reduite', 1200, false], ['galeries', 'pleine', 0, true], ['digues', 'pleine', 0, true]]);
+  assert.strictEqual(inv.actes[4].lignes.filter(l => l.type === 'renfort').length, 2, 'l\'inventaire le dit, à sa place');
+  assert.strictEqual(E.clore(s).casseGarde, 1200);
+  assert.strictEqual(E.renforcer(s, 'combustibles'), null, 'plus rien après Clore');
+  assert.ok(E.rapportTexte(s, 'test').includes('Garde renforcée : Digues de la Sère, 800 gardiens de plus'));
+  const r = E.migrer(allerRetour(s));
+  assert.ok(r.sites.digues.renforcee && r.sites.digues.dosage === 'pleine' && !r.sites.combustibles.renforcee);
+  const suite = etatFin({ M: 9000 });
+  E.poursuivre(suite);
+  assert.ok(!E.peutRenforcer(suite, 'digues').ok, 'ni en poursuivant : il n\'y aura pas d\'épilogue');
+});
+
+test('chaque garde dit ce que fait chaque dosage, sans dire ce qu\'il coûte', () => {
+  for (const d of E.D.sites.filter(x => x.garde)) {
+    assert.ok(d.dosages && d.dosages.reduite && d.dosages.pleine && d.incident && d.sousDosage > 0, d.id);
+    for (const t of [d.dosages.reduite, d.dosages.pleine]) assert.ok(!/\d|personne|Casse/.test(t), `${d.id} : ${t}`);
+  }
+});
+
+test('Poursuivre : chaque pas retire un dixième de ce qui reste et dure le double du précédent ; plus de Clore', () => {
+  const s = etatFin();
+  assert.strictEqual(E.lancerPas(s), false, 'pas de pas sans avoir choisi');
+  assert.ok(E.poursuivre(s) && s.issue === 'poursuivre');
+  assert.strictEqual(E.clore(s), null);
+  assert.ok(E.dureePas(s) === 60 && Math.abs(E.retraitPas(s) - 0.24) < 1e-12);
+  assert.ok(E.lancerPas(s) && !E.lancerPas(s), 'un pas à la fois');
+  let t0 = s.t;
+  const ev = jusquA(s, () => !s.pasEnCours, 3000);
+  assert.ok(Math.abs(s.t - t0 - 60) < 0.3 && ev.some(e => e.type === 'pas' && e.n === 1));
+  assert.ok(Math.abs(s.E - 2.16) < 1e-12 && s.pasFaits === 1 && E.dureePas(s) === 120);
+  E.relancer(s);   // rien n'accélère un pas, pas même la relance
+  s.E = 2.16; s.plancher = 2.4;
+  t0 = s.t; E.lancerPas(s);
+  jusquA(s, () => !s.pasEnCours, 3000);
+  assert.ok(Math.abs(s.t - t0 - 120) < 0.3 && s.pasFaits === 2 && E.dureePas(s) === 240);
+  assert.ok(E.rapportTexte(s, 'test').includes('Issue : Poursuivre') && E.rapportTexte(s, 'test').includes('2 pas faits sous le plancher'));
+});
+
+test('Poursuivre : le pas avance hors ligne ; une relance ramène l\'Empreinte au plancher, doublé', () => {
+  const s = etatFin();
+  E.poursuivre(s); E.lancerPas(s);
+  E.applyOffline(s, 30);
+  assert.ok(s.pasEnCours && Math.abs(s.pasProgress - 0.5) < 1e-9);
+  const a = E.applyOffline(s, 3600);
+  assert.ok(!s.pasEnCours && s.pasFaits === 1 && a.pas === 1 && Math.abs(s.E - 2.16) < 1e-12, 'le pas finit ; le suivant attend le joueur');
+  E.relancer(s);
+  assert.ok(s.plancher === 4.8 && s.E === 4.8, 'tout le chemin fait est perdu');
+});
+
+test('l\'ordre sans Casse est celui du joueur, réparé au plus juste', () => {
+  const ids = (o) => o.map(x => x.id + (x.ajoute ? '+' : '') + (x.retarde ? '↓' : '') + (x.sansVite ? '~' : '') + (x.inevitable ? '!' : ''));
+  // Acte I : la centrale à charbon d'abord, sans jamais rendre l'hôpital autonome.
+  const acte1 = ['charbon', 'gaz', 'pub', 'credit', 'aero', 'suv', 'dc', 'ciment'].map(id => ({ id }));
+  assert.deepStrictEqual(ids(E.ordrePropre(1, acte1)), ['gaz', 'pub', 'credit', 'aero', 'suv', 'dc', 'ciment', 'autonomie+', 'charbon↓']);
+  // Un ordre déjà propre revient tel quel.
+  const propre1 = ['pub', 'credit', 'aero', 'suv', 'dc', 'ciment', 'charbon', 'autonomie', 'gaz'];
+  assert.deepStrictEqual(ids(E.ordrePropre(1, propre1.map(id => ({ id })))), propre1);
+  // Acte II : la production d'abord, sans mesures. Un ordre sans Casse existe, avec les mêmes sites.
+  const acte2 = ['thermique', 'raffinerie', 'acierie', 'chimie', 'commerce', 'ski', 'ecrans'].map(id => ({ id }));
+  const o2 = E.ordrePropre(2, acte2);
+  assert.ok(!o2.some(x => x.inevitable), ids(o2).join(' '));
+  for (const x of acte2) assert.ok(o2.some(y => y.id === x.id), x.id);
+  assert.ok(o2.findIndex(x => x.id === 'uv') < o2.findIndex(x => x.id === 'chimie'), 'la filtration UV avant la chimie');
+  // Démolir vite : le même site, sans la pollution.
+  assert.deepStrictEqual(ids(E.ordrePropre(2, [{ id: 'uv' }, { id: 'sobriete' }, { id: 'commerce' }, { id: 'ecrans' }, { id: 'ski' }, { id: 'chimie', vite: true }, { id: 'acierie', vite: true }, { id: 'raffinerie' }, { id: 'thermique' }])),
+    ['uv', 'sobriete', 'commerce', 'ecrans', 'ski', 'chimie~', 'acierie~', 'raffinerie', 'thermique']);
+  // Acte III : le port d'abord isolerait ce qu'il dessert ; les céréales sans les ceintures feraient une pénurie.
+  const o3 = E.ordrePropre(3, ['port', 'cereales', 'elevages', 'peche', 'autoroute', 'entrepots', 'centrales', 'serres'].map(id => ({ id })));
+  assert.ok(!o3.some(x => x.inevitable), ids(o3).join(' '));
+  assert.ok(o3.findIndex(x => x.id === 'port') > o3.findIndex(x => x.id === 'peche'), 'le port après ce qu\'il dessert');
+  assert.ok(o3.some(x => x.id === 'ceintures' && x.ajoute));
+});
+
+test('l\'inventaire reprend tout ce qui a été fait, acte par acte, avec la Casse à sa place', () => {
+  const { s } = simuler({ profil: 'pressé', reaction: 10 });
+  jusquA(s, () => E.peutChoisir(s), 2000);
+  const inv = E.inventaire(s);
+  assert.strictEqual(inv.actes.length, 5);
+  assert.ok(inv.actes[0].identique && inv.actes[0].casse === 0, 'acte I : rien à redire');
+  const a2 = inv.actes[1], a3 = inv.actes[2];
+  assert.ok(a2.casse === 3400 && a2.coupures === 3 && !a2.identique && a2.inevitables === 0);
+  assert.strictEqual(a2.propre.filter(x => !x.ajoute).length, 7, 'les sept sites de l\'acte, restes compris');
+  assert.ok(a2.lignes.some(l => l.type === 'engage' && l.notes.some(n => n.quoi === 'delestage' && n.casse > 0)), 'un délestage est rangé sous le lancement qui l\'a causé');
+  assert.ok(a3.casse === s.penurieX && a3.lignes.filter(l => l.type === 'penurie').length === 3 && a3.aBras === 6);
+  assert.ok(inv.actes[1].lignes.concat(a3.lignes).some(l => l.type === 'relance' && l.auto), 'les relances du Conseil y sont');
+  assert.ok(inv.actes[3].propre === undefined && inv.actes[4].propre === undefined && inv.actes[4].lignes.length === 28);
+  assert.ok(inv.actes[4].lignes.some(l => l.habitants));
+  assert.strictEqual(inv.actes.reduce((t, a) => t + a.casse, 0), s.X, 'toute la Casse de la partie y est');
+  assert.ok(inv.casseAvant === s.X && inv.casseFinale === s.X + 2100);
+  assert.ok(E.clore(s) && s.X === inv.casseFinale);
+  // Le joueur prudent : aucun ordre à redire, aucune Casse, sauf celle des gardes réduites.
+  const p = simuler({ profil: 'prudent', reaction: 10 }).s;
+  const ip = E.inventaire(p);
+  assert.ok(ip.actes.slice(0, 3).every(a => a.identique && a.casse === 0) && ip.casseAvant === 0 && ip.casseFinale === 2100);
+});
+
+test('une partie close ou poursuivie se reprend ; une sauvegarde d\'avant les fins aussi', () => {
+  const clos = etatFin(); E.clore(clos);
+  const c = E.migrer(allerRetour(clos));
+  assert.ok(c.issue === 'clore' && c.casseGarde === 2100 && c.X === 2100 && c.ms.clore === clos.ms.clore);
+  assert.strictEqual(E.relancer(c), null);
+  const suite = etatFin(); E.poursuivre(suite); E.lancerPas(suite);
+  for (let i = 0; i < 300; i++) E.tick(suite, 0.1);
+  const p = E.migrer(allerRetour(suite));
+  assert.ok(p.issue === 'poursuivre' && p.pasEnCours && Math.abs(p.pasProgress - 0.5) < 0.01 && p.pasFaits === 0);
+  const ancienne = allerRetour(etatFin());
+  for (const k of ['issue', 'casseGarde', 'plancherSurcroit', 'pasFaits', 'pasEnCours', 'pasProgress']) delete ancienne[k];
+  for (const k of ['clore', 'poursuivre']) delete ancienne.ms[k];
+  const a = E.migrer(ancienne);
+  assert.ok(a.issue === null && a.casseGarde === 0 && a.plancherSurcroit === 1 && a.pasFaits === 0 && !a.pasEnCours && E.peutChoisir(a));
+  assert.strictEqual(E.migrer(Object.assign(allerRetour(etatFin()), { issue: 'autre' })).issue, null);
+});
+
+test('sous le plancher, l\'Empreinte se lit à trois chiffres', () => {
+  assert.strictEqual(E.fmtPas(2.16), '2,16');
+  assert.strictEqual(E.fmtPas(0.08712), '0,0871');
+  assert.strictEqual(E.fmtPas(38.4), '38,4');
+});
+
+// ---- Ce que les cartes annoncent, le moteur le fait (issue #35) ----
+test('aucun site n\'annonce d\'ajouter de l\'Empreinte : le moteur ne le ferait pas', () => {
+  for (const d of E.D.sites) assert.ok(d.part > 0 || d.E >= 0, `${d.id} : E = ${d.E}`);
+});
+
+test('l\'autonomie de l\'hôpital ne retire rien et n\'ajoute rien à l\'Empreinte', () => {
+  const s = Object.assign(E.create(), { started: true, K: 900, M: 5000 });
+  for (const d of E.D.sites) if (d.g) s.sites[d.id].state = 'eteint';   // plus de croissance : seule la mesure peut faire bouger l'Empreinte
+  assert.strictEqual(E.defs.autonomie.E, 0);
+  E.engage(s, 'autonomie');
+  const avant = s.E;
+  for (let i = 0; i < 2000 && s.sites.autonomie.state === 'chantier'; i++) E.tick(s, 0.1);
+  assert.ok(s.sites.autonomie.state === 'fait' && s.hopital === 'autonome');
+  assert.strictEqual(s.E, avant);
+  assert.strictEqual(s.sites.autonomie.Eretire, 0);
+});
+
 // ---- Vérification des invariants (tools/check.js) : le jugement, sur des mesures fabriquées ----
 const C = require('./check.js');
 const PAGE = { 'index.html': '<button id="btn-relancer" class="btn-relancer">Relancer</button><div id="casse-bloc" class="casse"><span id="casse">0</span></div>', 'main.js': '' };
@@ -911,7 +1141,7 @@ function partieSaine(extra) {
     nom: 'témoin', autreJeu: false, finie: true, duree: 5400,
     pertes: [600, 1800, 3000, 4200, 5400], sansChiffre: C.plusLongSansChiffre([600, 1800, 3000, 4200, 5400], 5400),
     coutParActe: [12, 19, 9000, 400000, 5e8],
-    casse: { baisses: [], sauvegarde: true, horsLigne: true },
+    casse: { baisses: [], sauvegarde: true, horsLigne: true, cloture: true },
     terre: { ecart: 12, fin: 65 },
     relance: { essais: 400, actes: 5, echecs: [] },
   }, extra);
@@ -931,6 +1161,7 @@ test('chaque invariant cassé fait échouer la vérification', () => {
   assert.deepStrictEqual(enEchec(jugement({ coutParActe: [12, 19, 9000, 400000, 3e5] })), ['I3']);
   assert.deepStrictEqual(enEchec(jugement({ casse: { baisses: [1200], sauvegarde: true, horsLigne: true } })), ['I4']);
   assert.deepStrictEqual(enEchec(jugement({ casse: { baisses: [], sauvegarde: false, horsLigne: true } })), ['I4']);
+  assert.deepStrictEqual(enEchec(jugement({ casse: { baisses: [], sauvegarde: true, horsLigne: true, cloture: false } })), ['I4']);
   assert.deepStrictEqual(enEchec(jugement({ terre: { ecart: 21, fin: 65 } })), ['I5']);
   assert.deepStrictEqual(enEchec(jugement({ relance: { essais: 400, actes: 5, echecs: [3000] } })), ['I6']);
   assert.deepStrictEqual(enEchec(jugement({ relance: { essais: 400, actes: 4, echecs: [] } })), ['I6']);

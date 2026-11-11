@@ -1,6 +1,6 @@
 # Décroissance — prototype (actes I à V)
 
-Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md). L'acte III, « Les gens », s'ouvre quand le réseau est démantelé ; il est décrit dans [docs/acte-3.md](docs/acte-3.md). L'acte IV, « Le legs », s'ouvre quand la carte de l'acte III est vidée ; il est décrit dans [docs/acte-4.md](docs/acte-4.md). L'acte V, « Rendre », s'ouvre quand tout est gardé, démantelé et dépollué ; il est décrit dans [docs/acte-5.md](docs/acte-5.md).
+Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md). L'acte III, « Les gens », s'ouvre quand le réseau est démantelé ; il est décrit dans [docs/acte-3.md](docs/acte-3.md). L'acte IV, « Le legs », s'ouvre quand la carte de l'acte III est vidée ; il est décrit dans [docs/acte-4.md](docs/acte-4.md). L'acte V, « Rendre », s'ouvre quand tout est gardé, démantelé et dépollué ; il est décrit dans [docs/acte-5.md](docs/acte-5.md). Deux des trois fins, Clore et Poursuivre, sont décrites dans [docs/fins.md](docs/fins.md).
 
 Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `python3 -m http.server` puis http://localhost:8000). Le son est synthétisé en WebAudio, il n'y a aucun fichier audio.
 
@@ -15,7 +15,7 @@ Prérequis, une seule fois : dans les réglages du dépôt, *Pages → Build and
 ## L'acte I : ce que le MVP contient
 
 - **L'Empreinte en chiffres pleins, en hausse au lancement** (+2,4 %/min). Elle a son propre taux de croissance `g`, somme des contributions des sites encore actifs. L'objectif de l'acte I est de la faire *s'arrêter*, pas de la faire baisser.
-- **8 sites** démantelables une fois chacun, plus une **mesure** (autonomie de l'hôpital) qui ne retire rien et ajoute même un peu d'Empreinte.
+- **8 sites** démantelables une fois chacun, plus une **mesure** (autonomie de l'hôpital) qui ne retire rien : elle coûte du temps, de la Capacité et des Mains.
 - **Graphe minimal, 3 dépendances** : la centrale à charbon alimente l'usine de SUV et l'hôpital régional ; la centrale au gaz est le secours de l'hôpital. Le graphe est dessiné sur la carte ; sélectionner un site fait clignoter en rouge ce qu'il couperait maintenant.
 - **Coupure → Casse** : fermer une centrale alors que quelque chose en dépend encore coupe le dépendant. La Casse compte les personnes touchées pour de bon. Elle est en haut à droite, en permanence, et ne redescend jamais. Chaque carte en donne le prix avant le lancement, et le journal la définit à sa première apparition.
 - **Capacité** dérivée de l'Empreinte : `K/s = K₀ × (E/E₀)^0,6`. **Mains** jamais exponentielles : elles viennent des gens déplacés par les fermetures, à reconvertir par lots de 300 en 45 s réelles, contre un peu de Consentement.
@@ -69,7 +69,19 @@ Détail, contenu, arbitrages et réglages dans [docs/acte-5.md](docs/acte-5.md).
 - **Les Mains restent sur la terre rendue** : l'équipe d'un geste, 300 à 900 personnes, ne revient pas. Faute de Mains, les habitants font le geste : deux fois plus long, et 3 points de Consentement.
 - **L'Empreinte s'arrête sur le plancher**, qui n'est pas zéro. Le jeu marque un temps, le compteur se fige, et les gestes qui restent ne rendent plus que de la terre, jusqu'à 100 %. Sous 100, l'Empreinte se lit à la décimale.
 - **La relance** double toujours le plancher. Si l'Empreinte se retrouve dessous, elle y remonte.
-- La carte reverdit région par région. Le son ramène les oiseaux, les insectes et des voix à mesure des gestes. Un panneau de fin énumère ce qui reste : le plancher, les gardes, les gens restés sur place, la Casse.
+- La carte reverdit région par région. Le son ramène les oiseaux, les insectes et des voix à mesure des gestes.
+
+## Les fins : Clore, Poursuivre
+
+Détail, contenu et points ouverts dans [docs/fins.md](docs/fins.md). La troisième fin, Croissance, reste à faire.
+
+- **Ce qui reste** : au dernier geste, une section énumère le plancher, les gardes, les gens restés sur place et la Casse, et propose deux choix sans retour.
+- **Clore** scelle la partie : plus rien ne se lance ni ne se relance. Un écran énumère ce qui reste, puis vient l'épilogue, puis il ne reste que la carte.
+- **L'épilogue, « L'inventaire »** : tout ce qui a été fait, dans l'ordre, une ligne toutes les 4 s. Pour les actes I à III, l'ordre du joueur réparé au plus juste pour ne faire aucune Casse, et ce qu'il aurait épargné.
+- **Le prix des gardes réduites**, que le jeu n'avait jamais dit : 300, 600 et 1 200 personnes de Casse, comptées à la clôture et révélées à la fin de l'épilogue.
+- **Renforcer une garde** : avant de choisir, une garde réduite peut devenir pleine avec les Mains qui restent. La carte de chaque garde dit ce que fait chaque dosage, pas ce qu'il coûte.
+- **Poursuivre** refuse le plancher : chaque pas retire un dixième de ce qui reste et dure le double du précédent, hors ligne compris. Il n'y a plus de Clore, ni d'écran de fin.
+- **Quand tout est rendu, ce qu'une relance ajoute reste** : le plancher monte jusqu'à l'Empreinte.
 
 ## Fichiers
 
@@ -80,14 +92,15 @@ Détail, contenu, arbitrages et réglages dans [docs/acte-5.md](docs/acte-5.md).
 | `docs/acte-3.md` | l'acte III proposé et réglé : règles, contenu, piège, rythme mesuré, points à trancher |
 | `docs/acte-4.md` | l'acte IV tel que validé et réglé : règles, contenu, arbitrages, écarts, rythme mesuré |
 | `docs/acte-5.md` | l'acte V tel que validé et réglé : règles, contenu, arbitrages, écarts, rythme mesuré, points ouverts |
+| `docs/fins.md` | Clore, Poursuivre et l'épilogue tels que validés : règles, contenu, écarts, ce que disent les bots, points ouverts |
 | `data.js` | toutes les valeurs de réglage : sites, graphe, réseau, vivres, gardes et sols, gestes, régions, noms et métiers, constantes |
-| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, gestes, plancher, relance, hors-ligne, formats) |
+| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, gestes, plancher, fins et inventaire de l'épilogue, relance, hors-ligne, formats) |
 | `audio.js` | couches sonores synthétisées et sons ponctuels |
 | `main.js` | rendu, carte SVG, sauvegarde, boucle |
 | `index.html`, `style.css` | l'écran unique |
-| `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur |
+| `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur ; il dit aussi ce que dirait l'épilogue |
 | `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
-| `tools/test.js` | tests du moteur : actes II à V, reprise des sauvegardes, rapport de session, jugement des invariants |
+| `tools/test.js` | tests du moteur : actes II à V, fins, reprise des sauvegardes, rapport de session, jugement des invariants |
 | `tools/check.js` | vérifie les invariants I1 à I6 du §9 sur treize parties jouées par les bots, et sort en erreur si l'un d'eux est cassé |
 | `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
 | `.github/workflows/tests.yml` | lance les tests et la vérification des invariants sur chaque pull request, et sur `main` |
@@ -107,7 +120,7 @@ Les deux dernières commandes tournent sur chaque pull request. Ce que `tools/ch
 
 Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 01, trois chiffres et la fin de l'acte IV vers 1 h 26, puis le dernier chiffre, le plancher et la fin de l'acte V vers 1 h 48. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois premiers, un peu plus de 2 h pour les quatre, 2 h 40 environ pour les cinq.
 
-Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`.
+Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`, `Jeu.inventaire()`.
 
 ## Protocole de test (§14)
 
@@ -118,6 +131,7 @@ Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.enga
 5. Pour l'acte II, noter la réaction à la première coupure et au deuxième chiffre perdu, quand une région s'éteint.
 6. Pour l'acte III, noter si le testeur lit les noms, s'il regarde la jauge des vivres avant de fermer une exploitation, et s'il appuie sur Relancer quand le Consentement baisse.
 7. Pour l'acte V, noter la réaction quand le compteur s'arrête sur le plancher, et si le testeur fait encore les gestes qui restent une fois le compteur figé.
+8. Pour les fins, noter laquelle le testeur choisit et pourquoi, s'il lit l'inventaire ou l'affiche d'un coup, et sa réaction à la Casse des gardes réduites.
 
 ## Écarts avec le design doc, et pourquoi
 

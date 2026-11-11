@@ -91,6 +91,36 @@
     <aside class="panneau">
       <div id="jalon" class="jalon" hidden></div>
 
+      <section id="issue" class="issue" hidden>
+        <div class="reseau-tete">
+          <h2>Ce qui reste</h2>
+          <span id="issue-etat" class="reseau-etat"></span>
+        </div>
+        <table id="issue-table"></table>
+        <div id="issue-renforts" class="renforts" hidden>
+          <p class="reseau-ordre">Avant de finir, une garde réduite peut encore devenir pleine, avec les Mains qui restent : autant de gardiens de plus, pour toujours.</p>
+          <div id="liste-renforts"></div>
+        </div>
+        <p class="reseau-ordre">Tout est rendu. Il reste à dire comment finir. Clore scelle la partie : plus rien ne se lancera, ni ne se relancera. Poursuivre refuse le plancher : chaque pas coûtera le double du précédent, et il n'y aura plus rien à clore. Aucun des deux choix ne se reprend.</p>
+        <div class="carton-boutons">
+          <button id="btn-clore" class="btn">Clore</button>
+          <button id="btn-poursuivre" class="btn">Poursuivre</button>
+        </div>
+      </section>
+
+      <section id="poursuite" class="issue" hidden>
+        <div class="reseau-tete">
+          <h2>Poursuivre</h2>
+          <span id="poursuite-etat" class="reseau-etat"></span>
+        </div>
+        <p class="reseau-ordre">Sous le plancher. Chaque pas retire un dixième de ce qui reste, et dure le double du précédent. Rien ne l'accélère ; il avance aussi quand vous n'êtes pas là. Une relance ramènerait l'Empreinte au plancher, doublé.</p>
+        <div class="mains-ligne">
+          <div id="poursuite-detail" class="muted"></div>
+          <button id="btn-pas" class="btn">Faire un pas</button>
+        </div>
+        <div class="barre fine"><i id="pas-barre" style="width:0%"></i></div>
+      </section>
+
       <section class="ressources">
         <div class="res">
           <div class="res-label">Capacité</div>
@@ -192,6 +222,7 @@
         <button id="btn-son" class="lien">son : oui</button>
         <button id="btn-reset" class="lien">recommencer</button>
         <button id="btn-rapport" class="lien">rapport</button>
+        <button id="btn-inventaire" class="lien" hidden>l'inventaire</button>
         <span id="version" class="muted version"></span>
       </footer>
     </aside>
@@ -200,7 +231,7 @@
   <div id="intro" class="voile">
     <div class="carton">
       <h1>Décroissance</h1>
-      <p class="petit muted">Prototype — actes I à V : l'inventaire, le réseau, les gens, le legs, rendre</p>
+      <p class="petit muted">Prototype — actes I à V, et deux des trois fins</p>
       <p>Vous héritez. Pas d'une conquête, d'une passation : l'Ostrane, pays industriel de taille moyenne — une côte, un fleuve, un bassin minier, deux métropoles — et un mandat, de durée non précisée, pour le démanteler proprement.</p>
       <p>Vous n'avez ni nom ni parti. Vous avez un inventaire, une carte, et le droit d'arbitrer. Personne ne vous demandera si c'est une bonne idée. La question est la manière.</p>
       <p class="petit">L'Empreinte est en haut. Elle monte. Chaque site fermé libère des gens à reconvertir, et la carte indique ce qu'un site alimente. Le son fait partie du jeu.</p>
@@ -216,6 +247,14 @@
   <div id="carton-acte" class="carton-acte" hidden aria-live="polite">
     <div class="carton-acte-num" id="carton-acte-num">Acte II</div>
     <div class="carton-acte-titre" id="carton-acte-titre">Le réseau</div>
+  </div>
+
+  <div id="fin" class="voile" hidden>
+    <div class="carton carton-fin" role="dialog" aria-modal="true" aria-labelledby="fin-titre">
+      <h2 id="fin-titre"></h2>
+      <div id="fin-corps"></div>
+      <div id="fin-boutons" class="carton-boutons"></div>
+    </div>
   </div>
 
   <div id="rapport" class="voile" hidden>
