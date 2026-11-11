@@ -158,7 +158,6 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .chantier.eteint .desc, .chantier.fait .desc, .chantier.eteint .cout, .chantier.fait .cout { display: none; }
 .chantier .effet { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13px; }
 .chantier .effet.moins { color: var(--vert); }
-.chantier .effet.plus { color: var(--chaud); }
 .chantier .cout { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); display: flex; gap: 4px 10px; flex-wrap: wrap; }
 .chantier .cout b { color: var(--texte); font-weight: 500; }
 .chantier .cout .manque { color: var(--rouge); }

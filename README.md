@@ -15,7 +15,7 @@ Prérequis, une seule fois : dans les réglages du dépôt, *Pages → Build and
 ## L'acte I : ce que le MVP contient
 
 - **L'Empreinte en chiffres pleins, en hausse au lancement** (+2,4 %/min). Elle a son propre taux de croissance `g`, somme des contributions des sites encore actifs. L'objectif de l'acte I est de la faire *s'arrêter*, pas de la faire baisser.
-- **8 sites** démantelables une fois chacun, plus une **mesure** (autonomie de l'hôpital) qui ne retire rien et ajoute même un peu d'Empreinte.
+- **8 sites** démantelables une fois chacun, plus une **mesure** (autonomie de l'hôpital) qui ne retire rien : elle coûte du temps, de la Capacité et des Mains.
 - **Graphe minimal, 3 dépendances** : la centrale à charbon alimente l'usine de SUV et l'hôpital régional ; la centrale au gaz est le secours de l'hôpital. Le graphe est dessiné sur la carte ; sélectionner un site fait clignoter en rouge ce qu'il couperait maintenant.
 - **Coupure → Casse** : fermer une centrale alors que quelque chose en dépend encore coupe le dépendant. La Casse compte les personnes touchées pour de bon. Elle est en haut à droite, en permanence, et ne redescend jamais. Chaque carte en donne le prix avant le lancement, et le journal la définit à sa première apparition.
 - **Capacité** dérivée de l'Empreinte : `K/s = K₀ × (E/E₀)^0,6`. **Mains** jamais exponentielles : elles viennent des gens déplacés par les fermetures, à reconvertir par lots de 300 en 45 s réelles, contre un peu de Consentement.

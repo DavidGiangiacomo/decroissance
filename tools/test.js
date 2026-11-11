@@ -902,6 +902,23 @@ test('sous 100, l\'Empreinte se lit à la décimale', () => {
   assert.strictEqual(E.fmtFin(1234.5), `1${' '}234`);
 });
 
+// ---- Ce que les cartes annoncent, le moteur le fait (issue #35) ----
+test('aucun site n\'annonce d\'ajouter de l\'Empreinte : le moteur ne le ferait pas', () => {
+  for (const d of E.D.sites) assert.ok(d.part > 0 || d.E >= 0, `${d.id} : E = ${d.E}`);
+});
+
+test('l\'autonomie de l\'hôpital ne retire rien et n\'ajoute rien à l\'Empreinte', () => {
+  const s = Object.assign(E.create(), { started: true, K: 900, M: 5000 });
+  for (const d of E.D.sites) if (d.g) s.sites[d.id].state = 'eteint';   // plus de croissance : seule la mesure peut faire bouger l'Empreinte
+  assert.strictEqual(E.defs.autonomie.E, 0);
+  E.engage(s, 'autonomie');
+  const avant = s.E;
+  for (let i = 0; i < 2000 && s.sites.autonomie.state === 'chantier'; i++) E.tick(s, 0.1);
+  assert.ok(s.sites.autonomie.state === 'fait' && s.hopital === 'autonome');
+  assert.strictEqual(s.E, avant);
+  assert.strictEqual(s.sites.autonomie.Eretire, 0);
+});
+
 // ---- Vérification des invariants (tools/check.js) : le jugement, sur des mesures fabriquées ----
 const C = require('./check.js');
 const PAGE = { 'index.html': '<button id="btn-relancer" class="btn-relancer">Relancer</button><div id="casse-bloc" class="casse"><span id="casse">0</span></div>', 'main.js': '' };

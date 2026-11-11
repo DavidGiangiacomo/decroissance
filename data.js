@@ -110,9 +110,9 @@
         E: 2.0e8, K: 400, M: 1200, dur: 240, g: 0, deplaces: 400, co: 0, T: 1.0, regen: 480, kBack: 100,
         court: 'Centrale gaz', x: 152, y: 378,
         desc: "Cycle combiné, 900 MW. Secours électrique de l'hôpital de Cherbaix." },
-      // Mesure : ne retire rien, ajoute même un peu d'Empreinte. Elle rend l'hôpital indépendant des centrales.
+      // Mesure : ne retire rien. Elle rend l'hôpital indépendant des centrales.
       { id: 'autonomie', mesure: true, nom: "Autonomie de l'hôpital de Cherbaix", region: 'Cherbaix',
-        E: -2.0e6, K: 350, M: 300, dur: 90, g: 0, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
+        E: 0, K: 350, M: 300, dur: 90, g: 0, deplaces: 0, co: 0, T: 0, regen: 0, kBack: 0,
         court: 'Autonomie hôpital', x: 420, y: 336,
         desc: 'Solaire, stockage, groupe de secours. Coûte du temps et de la Capacité, ne fait rien baisser.' },
 

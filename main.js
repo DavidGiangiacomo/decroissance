@@ -231,12 +231,12 @@
       if (d.garde || d.geste) continue;   // ni ce qui se garde (§5 : c'est la Garde), ni les gestes de l'acte V
       const c = document.createElement('div');
       c.className = 'chantier'; c.dataset.id = d.id;
-      const effet = d.part ? `−${Math.round(d.part * 100)} %` : d.E > 0 ? `−${E.fmt(d.E)}` : d.E < 0 ? `+${E.fmt(-d.E)}` : '0';
+      const effet = d.part ? `−${Math.round(d.part * 100)} %` : d.E > 0 ? `−${E.fmt(d.E)}` : '0';   // une mesure ne retire rien
       const deps = E.dependants(d.id).map(nomDe);
       const reseau = E.acteDe(d) === 2 && !d.mesure, acte3 = E.acteDe(d) >= 3;
       c.innerHTML = `
         <div class="nom">${d.nom}<small>${d.region}${d.mesure ? ' · mesure' : ''}</small></div>
-        <div class="effet ${d.part || d.E >= 0 ? 'moins' : 'plus'}">${effet}</div>
+        <div class="effet moins">${effet}</div>
         ${d.part ? '<div class="retrait"></div>' : ''}
         <div class="desc">${d.desc}</div>
         <div class="cout"><span>Capacité <b class="ck">${d.K}</b></span><span>Mains <b class="cm">${d.M}</b></span><span><b>${E.fmtDur(d.dur)}</b></span>${d.g ? `<span>croissance <b>+${d.g.toFixed(2).replace('.', ',')} %/min</b></span>` : ''}${d.deplaces ? `<span><b>${E.fmt(d.deplaces)}</b> personnes</span>` : ''}${d.co ? `<span>consentement <b>−${d.co}</b></span>` : ''}</div>
