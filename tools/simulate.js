@@ -202,6 +202,15 @@ function resumer({ profil, reaction, s, marks, maxE, minEavantStab, rebond, coMi
         `${a.aBras ? `, ${a.aBras} chantiers à bras` : ''}  ${a.identique ? 'ordre propre' : `sans Casse : ${a.propre.map(marque).join(', ')}`}`);
     }
     console.log(`         gardes : ${inv.gardes.map(g => `${g.id} ${g.dosage}${g.casse ? ` +${E.fmt(g.casse)}` : ''}`).join(', ')}  Casse ${E.fmt(inv.casseAvant)} + ${E.fmt(inv.casseGardes)} = ${E.fmt(inv.casseFinale)}`);
+    // Avant de clore, les Mains qui restent peuvent renforcer des gardes réduites : le meilleur choix, si le joueur savait.
+    const reduites = inv.gardes.filter(g => g.casse);
+    let mieux = { casse: 0, ids: [] };
+    for (let m = 1; m < (1 << reduites.length); m++) {
+      const choix = reduites.filter((g, i) => (m >> i) & 1);
+      const cout = choix.reduce((t, g) => t + E.peutRenforcer(s, g.id).cout, 0), casse = choix.reduce((t, g) => t + g.casse, 0);
+      if (cout <= s.M && casse > mieux.casse) mieux = { casse, ids: choix.map(g => g.id) };
+    }
+    console.log(`         avec les ${E.fmt(s.M)} Mains qui restent : ${mieux.ids.length ? `renforcer ${mieux.ids.join(', ')}  Casse ${E.fmt(inv.casseFinale - mieux.casse)}` : 'aucune garde à renforcer'}`);
   }
   console.log(`fin      E=${E.fmtFin(s.E)}  Co=${s.Co.toFixed(0)}  T=${E.T(s).toFixed(1)}/${E.Tmax().toFixed(1)}  relances=${r.relances}  relances du Conseil=${r.relancesConseil}`);
 }

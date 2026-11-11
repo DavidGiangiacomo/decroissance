@@ -219,21 +219,24 @@
       //      sol : dépollution au temps réel seul, hors ligne compris ; rien ne l'accélère. seulementSi : n'existe que
       //        si ce site de l'acte II a été démoli trop vite.
       //        sousDosage : la Casse qu'une garde réduite ajoute à l'épilogue, sans que le jeu l'ait dit avant (§7) ;
-      //        incident : ce qui l'a faite.
+      //        incident : ce qui l'a faite ; dosages : ce que fait chaque dosage, dit sur la carte, sans dire ce qu'il coûte.
       //      finCapacite : après lui, la Capacité ne se renouvelle plus, et le rebond du réseau s'arrête. ----
       { id: 'combustibles', acte: 4, garde: true, ans: 100000, nom: 'Combustibles usés de la pointe de Morvel', region: 'Morvel',
         g: 0.25, part: 0.7, K: 400, M: 3000, dur: 540, sousDosage: 1200, deplaces: 0,
-        incident: 'Une piscine de refroidissement mal suivie, faute de monde, et découverte trop tard.', co: 0, T: 0, regen: 0, kBack: 0,
+        incident: 'Une piscine de refroidissement mal suivie, faute de monde, et découverte trop tard.',
+        dosages: { reduite: 'une surveillance à distance, et une visite par saison', pleine: 'une présence permanente sur le site' }, co: 0, T: 0, regen: 0, kBack: 0,
         court: 'Pointe de Morvel', x: 546, y: 352,
         desc: "Une centrale qu'aucune liste de chantiers n'a jamais montrée. Son réacteur s'arrête ; ses combustibles usés resteront dangereux cent mille ans." },
       { id: 'galeries', acte: 4, garde: true, ans: 10000, nom: 'Galeries du bassin de Cherbaix', region: 'Cherbaix',
         g: 0.15, part: 0.55, K: 250, M: 1500, dur: 420, sousDosage: 600, deplaces: 0,
-        incident: "Une pompe arrêtée tout un hiver : l'eau des galeries a gagné la nappe de Cherbaix.", co: 0, T: 0, regen: 0, kBack: 0,
+        incident: "Une pompe arrêtée tout un hiver : l'eau des galeries a gagné la nappe de Cherbaix.",
+        dosages: { reduite: 'une équipe de pompage, et des relevés chaque mois', pleine: 'deux équipes qui se relaient, et des pompes de secours' }, co: 0, T: 0, regen: 0, kBack: 0,
         court: 'Galeries', x: 530, y: 125,
         desc: "Trois cents kilomètres de galeries, noyées une à une. L'eau qui remonte se charge de métaux : il faudra la pomper et la traiter tant qu'il y aura de l'eau." },
       { id: 'digues', acte: 4, garde: true, ans: 300, nom: 'Digues de la Sère', region: 'Vallée de la Sère',
         g: 0.1, part: 0.4, K: 150, M: 800, dur: 300, sousDosage: 300, deplaces: 0,
-        incident: "Une crue centennale, sur un tronçon que plus personne n'inspectait.", co: 0, T: 0, regen: 0, kBack: 0,
+        incident: "Une crue centennale, sur un tronçon que plus personne n'inspectait.",
+        dosages: { reduite: 'une inspection par an, après les crues', pleine: "des équipes sur chaque tronçon, toute l'année" }, co: 0, T: 0, regen: 0, kBack: 0,
         court: 'Digues', x: 270, y: 236,
         desc: 'Quarante kilomètres de levées de terre et de béton. Sans entretien, la Sère reprend la plaine à la première grande crue.' },
       { id: 'reseau', acte: 4, finCapacite: true, nom: 'Réseau national', region: 'Vallée de la Sère', categorie: 'reseau',

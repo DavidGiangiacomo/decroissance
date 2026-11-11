@@ -723,8 +723,27 @@
 
   // Clore : sceller. Les gardes réduites se paient alors, en Casse, sans que le jeu l'ait jamais dit (§7) :
   // elle entre dans X, et c'est l'épilogue qui la révèle.
-  const sousDosages = (s) => D.sites.filter(d => d.garde).map(d => ({ id: d.id, dosage: s.sites[d.id].dosage === 'pleine' ? 'pleine' : 'reduite',
-    casse: s.sites[d.id].dosage === 'pleine' ? 0 : (d.sousDosage || 0) }));
+  const sousDosages = (s) => D.sites.filter(d => d.garde).map(d => Object.assign({ id: d.id, dosage: s.sites[d.id].dosage === 'pleine' ? 'pleine' : 'reduite',
+    casse: s.sites[d.id].dosage === 'pleine' ? 0 : (d.sousDosage || 0) }, s.sites[d.id].renforcee ? { renforcee: true } : {}));
+  // Avant de choisir, une garde réduite peut encore devenir pleine, avec les Mains qui restent : autant de gardiens
+  // de plus, pour toujours. Le jeu ne dit pas davantage ce que cela change.
+  function peutRenforcer(s, id) {
+    const d = defs[id], st = s.sites[id];
+    if (!d || !d.garde || !toutRendu(s) || s.issue || st.state !== 'eteint' || st.dosage === 'pleine') return { ok: false, cout: d && d.garde ? d.M : 0 };
+    return { ok: s.M >= d.M, cout: d.M };
+  }
+  function renforcer(s, id) {
+    const c = peutRenforcer(s, id);
+    if (!c.ok) return null;
+    const d = defs[id], st = s.sites[id];
+    s.M -= c.cout; s.gardiens += c.cout;
+    st.mEng = (Number.isFinite(st.mEng) ? st.mEng : d.M) + c.cout;
+    st.dosage = 'pleine'; st.renforcee = true;
+    log(s, `Garde renforcée : ${d.nom}. ${fmt(c.cout)} gardiens de plus, pour toujours.`, 'ok');
+    trace(s, 'renfort', { id, gardiens: c.cout });
+    return { type: 'renfort', id, gardiens: c.cout };
+  }
+
   function clore(s) {
     if (!peutChoisir(s)) return null;
     s.issue = 'clore'; s.ms.clore = s.t;
@@ -833,6 +852,7 @@
         case 'reembauche': if (relance) relance.reembauche = e.n; break;
         case 'remontee': if (relance) relance.remontee = { de: e.de, a: e.a }; break;
         case 'reconversion': a.lots++; break;
+        case 'renfort': a.lignes.push({ t: e.t, type: 'renfort', id: e.id, gardiens: e.gardiens, notes: [] }); break;
         default: break;
       }
     }
@@ -1091,6 +1111,7 @@
         if (st.isole) s.sites[id].isole = true;
         if (st.aBras) s.sites[id].aBras = true;
         if (st.habitants) s.sites[id].habitants = true;
+        if (st.renforcee) s.sites[id].renforcee = true;
         if (st.dosage === 'reduite' || st.dosage === 'pleine') s.sites[id].dosage = st.dosage;
         if (st.attentePlace) s.sites[id].attentePlace = true;
       }
@@ -1176,7 +1197,8 @@
       finActe3: s.ms.fin3,
       acte4: s.ms.acte4,
       finActe4: s.ms.fin4,
-      gardes: s.chrono.filter(e => e.type === 'garde').map(e => Object.assign({ id: e.id, dosage: e.dosage, gardiens: e.gardiens, t: e.t }, e.aBras ? { aBras: true } : {})),
+      gardes: s.chrono.filter(e => e.type === 'garde').map(e => Object.assign({ id: e.id, dosage: e.dosage, gardiens: e.gardiens, t: e.t }, e.aBras ? { aBras: true } : {},
+        s.sites[e.id] && s.sites[e.id].renforcee ? { dosage: 'pleine', gardiens: s.sites[e.id].mEng, renforcee: true } : {})),
       gardiens: s.gardiens,
       acte5: s.ms.acte5,
       finActe5: s.ms.fin5,
@@ -1213,7 +1235,7 @@
     };
   }
 
-  const texteGarde = (g) => `${nomDe(g.id)}, ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}${g.aBras ? ' à bras' : ''} (${fmt(g.gardiens)} gardiens)`;
+  const texteGarde = (g) => `${nomDe(g.id)}, ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}${g.aBras ? ' à bras' : ''}${g.renforcee ? ', renforcée à la fin' : ''} (${fmt(g.gardiens)} gardiens)`;
   function ligneChrono(e) {
     switch (e.type) {
       case 'engage':
@@ -1248,6 +1270,7 @@
         e.acte === 2 ? 'Plus rien à démanteler sur le réseau' : 'Plus rien à démanteler sur cette carte';
       case 'absence': return `Absence de ${fmtDur(e.duree)}`;
       case 'plancher-monte': return `Plus rien à rendre : le plancher monte à ${fmtPlancher(e.plancher)}`;
+      case 'renfort': return `Garde renforcée : ${nomDe(e.id)}, ${fmt(e.gardiens)} gardiens de plus`;
       case 'clore': return 'Clore';
       case 'sous-dosage': return `Garde réduite : ${nomDe(e.id)}, ${fmt(e.casse)} personnes`;
       case 'poursuivre': return 'Poursuivre : le plancher est refusé';
@@ -1364,7 +1387,7 @@
     reconvertirTout, formerEnContinu, casseParCause, texteCasse,
     prixCoupure, prixLancement, risqueConseil, DEFINITION_CASSE,
     existe, capaciteFinie, aGarder, placesOccupees, gardeEnAttente, gardesEnFormation, fmtPlancher,
-    toutRendu, peutChoisir, clore, poursuivre, lancerPas, dureePas, retraitPas, inventaire, ordrePropre, fmtPas,
+    toutRendu, peutChoisir, peutRenforcer, renforcer, clore, poursuivre, lancerPas, dureePas, retraitPas, inventaire, ordrePropre, fmtPas,
     GESTES, gesteEnCours, gestesFaits, auPlancher, retraitPrevu, dernierGeste, fmtFin,
     DERNIER_ACTE, TITRES_ACTES,
     fmt, fmtDur, fmtSci, migrer, rapport, rapportTexte,

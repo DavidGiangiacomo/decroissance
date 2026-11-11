@@ -79,6 +79,7 @@ Détail, contenu et points ouverts dans [docs/fins.md](docs/fins.md). La troisi�
 - **Clore** scelle la partie : plus rien ne se lance ni ne se relance. Un écran énumère ce qui reste, puis vient l'épilogue, puis il ne reste que la carte.
 - **L'épilogue, « L'inventaire »** : tout ce qui a été fait, dans l'ordre, une ligne toutes les 4 s. Pour les actes I à III, l'ordre du joueur réparé au plus juste pour ne faire aucune Casse, et ce qu'il aurait épargné.
 - **Le prix des gardes réduites**, que le jeu n'avait jamais dit : 300, 600 et 1 200 personnes de Casse, comptées à la clôture et révélées à la fin de l'épilogue.
+- **Renforcer une garde** : avant de choisir, une garde réduite peut devenir pleine avec les Mains qui restent. La carte de chaque garde dit ce que fait chaque dosage, pas ce qu'il coûte.
 - **Poursuivre** refuse le plancher : chaque pas retire un dixième de ce qui reste et dure le double du précédent, hors ligne compris. Il n'y a plus de Clore, ni d'écran de fin.
 - **Quand tout est rendu, ce qu'une relance ajoute reste** : le plancher monte jusqu'à l'Empreinte.
 

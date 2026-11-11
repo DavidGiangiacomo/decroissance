@@ -376,6 +376,7 @@
         <div class="desc">${d.desc}</div>
         <div class="cout"><span>Capacité <b class="ck">${d.K}</b></span><span>formation <b>${semainesDe(d.dur)} semaines</b></span><span>fuite <b>+${String(d.g).replace('.', ',')} %/min</b></span></div>
         <div class="duree-note">${E.fmt(d.ans)} ans, ${echelle(d.ans)}. Chaque année : ${E.fmt(d.M)} gardiens pour une garde réduite, ${E.fmt(2 * d.M)} pour une garde pleine.</div>
+        <div class="dosage-note">Réduite&nbsp;: ${d.dosages.reduite}. Pleine&nbsp;: ${d.dosages.pleine}.</div>
         <div class="abras-note" hidden>Sans Capacité suffisante : à bras, deux fois plus de gardiens.</div>
         <div class="action"><button class="btn reduite">Garder réduit</button><button class="btn pleine">Garder plein</button><div class="prog" hidden><i></i></div><span class="etat"></span></div>`;
       c.querySelector('.reduite').addEventListener('click', (ev) => { ev.stopPropagation(); engager(d.id, { dosage: 'reduite' }); });
@@ -781,7 +782,7 @@
   // « Ce qui reste » : la section qui s'ouvre quand tout est rendu, et propose Clore ou Poursuivre.
   const ROMAINS = ['', 'I', 'II', 'III', 'IV', 'V'];
   const gardesInstituees = () => GARDES.filter(d => s.sites[d.id].state === 'eteint');
-  const ligneGarde = (d) => [d.nom, `${E.fmt(d.ans)} ans · garde ${s.sites[d.id].dosage === 'pleine' ? 'pleine' : 'réduite'} · ${E.fmt(s.sites[d.id].mEng || 0)} gardiens par an`];
+  const ligneGarde = (d) => [d.nom, `${E.fmt(d.ans)} ans · garde ${s.sites[d.id].dosage === 'pleine' ? 'pleine' : 'réduite'}${s.sites[d.id].renforcee ? ', renforcée' : ''} · ${E.fmt(s.sites[d.id].mEng || 0)} gardiens par an`];
   function ceQuiReste(casse) {
     return [
       ['Empreinte', `${E.fmtFin(s.E)}${E.auPlancher(s) && !E.relanceActive(s) ? ', bloquée au plancher' : ''}`],
@@ -805,8 +806,27 @@
       const ok = E.peutChoisir(s);
       $('btn-clore').disabled = $('btn-poursuivre').disabled = !ok;
       $('issue-etat').textContent = ok ? '' : 'une relance court encore : le choix attend qu\'elle finisse';
-      const lignes = ceQuiReste(s.X), cle = JSON.stringify(lignes);
-      if (cle !== dernierIssue) { dernierIssue = cle; $('issue-table').innerHTML = enTable(lignes); }
+      const reduites = gardesInstituees().filter(d => s.sites[d.id].dosage !== 'pleine');
+      const lignes = ceQuiReste(s.X), cle = JSON.stringify([lignes, reduites.map(d => [d.id, E.peutRenforcer(s, d.id).ok])]);
+      if (cle !== dernierIssue) {
+        dernierIssue = cle;
+        $('issue-table').innerHTML = enTable(lignes);
+        // Une garde réduite peut encore devenir pleine : la carte dit ce que fait une garde pleine, pas ce qu'elle évite.
+        $('issue-renforts').hidden = !reduites.length;
+        const box = $('liste-renforts'); box.innerHTML = '';
+        for (const d of reduites) {
+          const c = E.peutRenforcer(s, d.id), div = document.createElement('div');
+          div.className = 'renfort';
+          div.innerHTML = '<div><b></b><span class="muted"></span></div><button class="btn"></button>';
+          div.querySelector('b').textContent = d.nom;
+          div.querySelector('span').textContent = `Pleine\u00A0: ${d.dosages.pleine}.`;
+          const b = div.querySelector('button');
+          b.textContent = `Renforcer · ${E.fmt(c.cout)} Mains`; b.disabled = !c.ok;
+          b.title = c.ok ? '' : `Il reste ${E.fmt(s.M)} Mains.`;
+          b.addEventListener('click', () => renforcer(d.id));
+          box.appendChild(div);
+        }
+      }
     }
     const ps = $('poursuite');
     ps.hidden = s.issue !== 'poursuivre';
@@ -864,6 +884,7 @@
         else if (l.type === 'relance') ligne('relance', `${l.auto ? 'Le Conseil relance, sans vous' : 'Relance'} : le plancher double.` +
           (l.reembauche ? ` ${personnes(l.reembauche)} réembauchées, qui ne seront pas reconverties.` : '') +
           (l.remontee ? ` L'Empreinte remonte de ${E.fmtFin(l.remontee.de)} à ${E.fmtFin(l.remontee.a)}.` : ''), E.fmtDur(l.t));
+        else if (l.type === 'renfort') ligne('fait', `Garde renforcée : ${nomDe(l.id)}. ${E.fmt(l.gardiens)} gardiens de plus.`, E.fmtDur(l.t));
         else if (l.type === 'penurie') ligne('casse', `Pénurie : les vivres à ${l.vivres} % des besoins. ${personnes(l.casse)}.`, E.fmtDur(l.t));
         for (const n of l.notes) ligne(n.quoi === 'isolement' ? 'bras' : 'casse', texteNote(n), l.type === 'casse' ? E.fmtDur(l.t) : '');   // un isolement coûte des Mains, pas de la Casse
       }
@@ -880,7 +901,7 @@
       ligne('acte', 'Les gardes, ensuite');
       for (const g of inv.gardes) {
         const d = E.defs[g.id];
-        ligne(g.casse ? 'casse' : 'fait', `${d.nom}, garde ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}, ${E.fmt(d.ans)} ans. ` +
+        ligne(g.casse ? 'casse' : 'fait', `${d.nom}, garde ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}${g.renforcee ? ', renforcée à la fin' : ''}, ${E.fmt(d.ans)} ans. ` +
           (g.casse ? `${d.incident} ${personnes(g.casse)}.` : 'Rien à signaler.'));
       }
     }
@@ -965,6 +986,7 @@
     if (E.poursuivre(s)) { rendre(); rendreJournal(); sauver(); }
   }
   function pas() { if (E.lancerPas(s)) { rendre(); sauver(); } }
+  function renforcer(id) { if (E.renforcer(s, id)) { rendre(); rendreJournal(); sauver(); } }
   function relancer() { const ev = E.relancer(s, false); if (ev) { traiter([ev]); majSon(1.2); rendre(); sauver(); } }
 
   // ---------- boucle 10 Hz ----------

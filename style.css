@@ -396,3 +396,8 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .app.clos .panneau { overflow: visible; padding: 8px 18px; }
 .app.clos .pied { border-top: 0; padding-top: 0; }
 .app.clos #carte { min-height: 0; }
+.garde-carte .dosage-note { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.renforts { display: flex; flex-direction: column; gap: 6px; }
+.renfort { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px dotted #3f3b33; font-size: 12.5px; }
+.renfort b { display: block; font-weight: 600; }
+.renfort .btn { white-space: nowrap; }

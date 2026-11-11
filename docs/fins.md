@@ -15,10 +15,16 @@ Les six points validés :
 5. **Les pas de Poursuivre avancent hors ligne.** Une relance ramène l'Empreinte au plancher, doublé.
 6. **L'épilogue défile à une ligne toutes les 4 s**, avec un bouton pour tout afficher.
 
+Deux points ajoutés ensuite, pour que le prix du dosage pèse moins sur le joueur prudent :
+
+7. **Renforcer une garde avant de clore**, avec les Mains qui restent.
+8. **Dire ce que fait chaque dosage**, sur la carte de la garde, sans dire ce qu'il coûte.
+
 ## Les règles
 
 - **Ce qui reste.** Quand le dernier geste est fait, une section s'ouvre en haut de la colonne. Elle énumère l'Empreinte, chaque garde avec sa durée et ses gardiens par an, les gens restés sur la terre rendue, la Casse et la Terre rendue. Elle propose deux boutons : Clore, Poursuivre. Le bouton Relancer reste à sa place, comme toujours.
 - **Le choix se fait l'Empreinte bloquée au plancher.** Tant qu'une relance court, les deux boutons attendent.
+- **Renforcer une garde.** Tant que le joueur n'a pas choisi, une garde réduite peut encore devenir pleine. Elle prend autant de gardiens de plus qu'elle en avait demandé : 800 pour les digues, 1 500 pour les galeries, 3 000 pour les combustibles. Ils sortent des Mains qui restent, pour toujours, sans formation. La section rappelle ce que fait une garde pleine ; elle ne dit pas ce qu'elle évite.
 - **Quand tout est rendu, ce qu'une relance ajoute reste.** Plus aucun geste ne peut le retirer : à la fin de la relance, le plancher monte jusqu'à l'Empreinte. L'écran final montre donc toujours une Empreinte bloquée au plancher (§11).
 - **Clore** scelle la partie, après une confirmation.
   - Plus rien ne se lance ni ne se relance, et le temps de jeu s'arrête. Seule la terre finit de repousser.
@@ -35,7 +41,8 @@ Les six points validés :
   - Un site coupé puis démantelé en restes compte à la place où ses restes ont été lancés.
 
   L'inventaire donne cet ordre et ce qu'il aurait épargné, en personnes et en chantiers à bras. Si l'ordre du joueur était propre, il dit seulement : « Rien à redire à cet ordre. »
-- **Le prix du dosage.** Chaque garde réduite ajoute de la Casse, comptée à Clore et dite à la fin de l'épilogue, avec ce qui l'a faite. Une garde pleine n'ajoute rien. C'est l'erreur que le joueur n'a jamais su avoir commise (§11).
+- **Le prix du dosage.** Chaque garde réduite ajoute de la Casse, comptée à Clore et dite à la fin de l'épilogue, avec ce qui l'a faite. Une garde pleine n'ajoute rien, qu'elle l'ait été dès l'acte IV ou renforcée à la fin. C'est l'erreur que le joueur n'a jamais su avoir commise (§11).
+- **Ce que fait chaque dosage** est écrit sur la carte de la garde, dès l'acte IV : une inspection par an ou des équipes sur chaque tronçon, par exemple. Le jeu dit la différence, pas son prix (§7).
 - **Poursuivre** refuse le plancher, après une confirmation. Il n'y a plus de Clore, et aucun écran de fin.
   - Chaque pas retire un dixième de ce qui reste, sous le plancher, et dure le double du précédent : 1 min, 2 min, 4 min.
   - Un pas se lance d'un clic, un seul à la fois. Rien ne l'accélère, pas même la relance. Il avance hors ligne, comme les sols, dans la limite de douze heures ; le suivant attend le joueur.
@@ -44,13 +51,13 @@ Les six points validés :
 
 ## Contenu
 
-| Garde réduite | Casse à l'épilogue | Ce qui l'a faite |
-|---|---|---|
-| Combustibles usés de la pointe de Morvel, 100 000 ans | 1 200 personnes | une piscine de refroidissement mal suivie, faute de monde |
-| Galeries du bassin de Cherbaix, 10 000 ans | 600 personnes | une pompe arrêtée tout un hiver |
-| Digues de la Sère, 300 ans | 300 personnes | une crue centennale, sur un tronçon que plus personne n'inspectait |
+| Garde | Réduite | Pleine | Renfort | Casse d'une garde réduite | Ce qui l'a faite |
+|---|---|---|---|---|---|
+| Combustibles usés de la pointe de Morvel, 100 000 ans | une surveillance à distance, et une visite par saison | une présence permanente sur le site | 3 000 Mains | 1 200 personnes | une piscine de refroidissement mal suivie, faute de monde |
+| Galeries du bassin de Cherbaix, 10 000 ans | une équipe de pompage, et des relevés chaque mois | deux équipes qui se relaient, et des pompes de secours | 1 500 Mains | 600 personnes | une pompe arrêtée tout un hiver |
+| Digues de la Sère, 300 ans | une inspection par an, après les crues | des équipes sur chaque tronçon, toute l'année | 800 Mains | 300 personnes | une crue centennale, sur un tronçon que plus personne n'inspectait |
 
-Trois gardes réduites coûtent 2 100 personnes. Trois gardes pleines coûtent 5 300 gardiens de plus, pris sur les Mains de l'acte V.
+Trois gardes réduites coûtent 2 100 personnes. Les rendre pleines coûte 5 300 gardiens de plus : à l'acte IV, pris sur les Mains de l'acte V ; à la fin, pris sur celles qui restent.
 
 | Poursuivre | Durée du pas | Temps cumulé | Empreinte restante |
 |---|---|---|---|
@@ -65,22 +72,25 @@ Trois gardes réduites coûtent 2 100 personnes. Trois gardes pleines coûtent 5
 - **Le choix est une section de la colonne, pas un panneau qui s'ouvre.** Il reste là tant que le joueur n'a pas choisi, y compris après un rechargement.
 - **L'isolement n'est pas compté comme de la Casse.** Un site isolé se démantèle à bras, pour deux fois plus de Mains : l'ordre réparé l'évite, et l'inventaire le compte à part.
 - **Les pas de Poursuivre ne repartent pas de 1 min après une relance.** La relance fait perdre le chemin, pas le prix.
+- **Le renfort et les descriptions des dosages** ne figuraient pas dans la proposition. Sans eux, le joueur prudent finissait sans Casse et s'en voyait compter 2 100, sans avoir rien pu y faire en connaissance de cause.
 - **Le resserrement de l'écran est borné sur un écran étroit.** À neuf chiffres perdus, il prenait 144 px sur un téléphone de 390 px, et l'en-tête débordait pendant une relance.
 
 ## Ce que disent les bots
 
-`node tools/simulate.js` affiche, à la fin de chaque partie, ce que dirait l'épilogue.
+`node tools/simulate.js` affiche, à la fin de chaque partie, ce que dirait l'épilogue, et ce que les Mains qui restent permettraient de renforcer. Les bots, eux, ne renforcent rien.
 
-| Joueur | Casse à la clôture | Ordre à redire | Ce que l'ordre réparé aurait épargné | Avec les gardes réduites |
-|---|---|---|---|---|
-| Prudent, 10 s | 0 | aucun | — | 2 100 |
-| Relance à 2 min, 10 s | 0 | aucun | — | 2 100 |
-| Vite, 10 s | 800 | acte II : l'aciérie et la chimie, sans démolir vite | 800 personnes | 2 900 |
-| Pressé, 10 s | 5 202 | acte II : la filtration UV et la sobriété à faire, la centrale thermique et la raffinerie plus tard ; acte III : les ceintures maraîchères à faire, le port et l'autoroute plus tard | 3 400 personnes, puis 1 802 personnes et 6 chantiers à bras | 7 302 |
-| Pressé, 30 s | 4 917 | les mêmes actes | 3 400 personnes, puis 1 517 personnes et 5 chantiers à bras | 7 017 |
+| Joueur | Casse à la clôture | Ordre à redire | Ce que l'ordre réparé aurait épargné | Avec les gardes réduites | Mains qui restent | En renforçant au mieux |
+|---|---|---|---|---|---|---|
+| Prudent, 10 s | 0 | aucun | — | 2 100 | 1 430 | 1 800 : les digues |
+| Prudent, 30 s | 0 | aucun | — | 2 100 | 7 030 | 0 : les trois gardes |
+| Relance à 2 min, 10 s | 0 | aucun | — | 2 100 | 7 030 | 0 : les trois gardes |
+| Vite, 10 s | 800 | acte II : l'aciérie et la chimie, sans démolir vite | 800 personnes | 2 900 | 2 930 | 2 000 : les galeries et les digues |
+| Pressé, 10 s | 5 202 | acte II : la filtration UV et la sobriété à faire, la centrale thermique et la raffinerie plus tard ; acte III : les ceintures maraîchères à faire, le port et l'autoroute plus tard | 3 400 personnes, puis 1 802 personnes et 6 chantiers à bras | 7 302 | 30 | 7 302 : aucune |
+| Pressé, 30 s | 4 917 | les mêmes actes | 3 400 personnes, puis 1 517 personnes et 5 chantiers à bras | 7 017 | 1 000 | 6 717 : les digues |
 
 - Pour tous les bots, l'ordre réparé ne fait aucune Casse : toute la Casse d'ordre était évitable (R4).
 - L'inventaire compte 77 lignes pour le prudent et 90 pour le pressé : cinq et six minutes de défilement.
+- Le renfort récompense les Mains gardées : le prudent à 30 s peut finir sans Casse, le prudent à 10 s ne peut renforcer que les digues. Il avait gardé les galeries à bras, faute de Capacité, pour 3 000 gardiens au lieu de 1 500.
 
 ## Vérification
 
@@ -89,8 +99,8 @@ Trois gardes réduites coûtent 2 100 personnes. Trois gardes pleines coûtent 5
 
 ## Points ouverts
 
-1. **Le prix du dosage est rude pour le joueur prudent.** Il finit sans Casse, et l'épilogue lui en compte 2 100. C'est voulu, mais les trois nombres sont une première passe.
-2. **Garder plein reste un pari aveugle.** Rien, avant l'épilogue, ne dit ce qu'une garde pleine apporte. Un joueur qui rejoue le saura : à voir si la deuxième partie y gagne ou y perd.
+1. **Le prix du dosage reste rude pour qui n'a plus de Mains.** Le renfort l'efface pour le prudent à 30 s, pas pour le prudent à 10 s, à qui il reste 1 800 personnes. Les trois nombres sont une première passe ; les baisser reste possible après un playtest.
+2. **Renforcer reste un pari.** La carte dit ce que fait une garde pleine, pas ce qu'elle évite. Un joueur qui rejoue le saura : à voir si la deuxième partie y gagne ou y perd.
 3. **Poursuivre n'a pas d'autre contenu que l'attente.** Un pas par clic, de plus en plus long. Le §11 le veut ainsi ; un playtest dira si quelqu'un va au-delà du cinquième pas.
 4. **L'ordre réparé dépend de l'ordre du joueur.** Deux joueurs qui font la même Casse ne lisent pas le même ordre. Il ne dit pas non plus si un autre ordre aurait été plus rapide.
 5. **Les textes** des trois incidents et de l'inventaire sont provisoires ([#23](https://github.com/DavidGiangiacomo/decroissance/issues/23)).

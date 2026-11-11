@@ -982,6 +982,39 @@ test('à Clore, chaque garde réduite ajoute sa Casse, que le jeu n\'avait pas d
   assert.ok(E.rapportTexte(s, 'test').includes('Issue : Clore'));
 });
 
+test('avant de clore, une garde réduite peut devenir pleine avec les Mains qui restent ; elle n\'ajoute alors plus de Casse', () => {
+  const s = etatFin({ M: 2400 });
+  assert.deepStrictEqual(E.peutRenforcer(s, 'digues'), { ok: true, cout: 800 });
+  assert.deepStrictEqual(E.peutRenforcer(s, 'combustibles'), { ok: false, cout: 3000 }, 'pas assez de Mains');
+  assert.ok(!E.peutRenforcer(etatActe5({ M: 20000 }), 'digues').ok, 'pas avant que tout soit rendu');
+  const ev = E.renforcer(s, 'digues');
+  assert.ok(ev && ev.type === 'renfort' && ev.gardiens === 800);
+  assert.ok(s.M === 1600 && s.gardiens === 800 && s.sites.digues.dosage === 'pleine' && s.sites.digues.renforcee);
+  assert.strictEqual(E.renforcer(s, 'digues'), null, 'une garde pleine ne se renforce plus');
+  assert.ok(E.renforcer(s, 'galeries') && s.M === 100);
+  assert.strictEqual(E.renforcer(s, 'combustibles'), null);
+  assert.ok(E.peutChoisir(s), 'le choix reste ouvert');
+  const inv = E.inventaire(s);
+  assert.deepStrictEqual(inv.gardes.map(g => [g.id, g.dosage, g.casse, !!g.renforcee]),
+    [['combustibles', 'reduite', 1200, false], ['galeries', 'pleine', 0, true], ['digues', 'pleine', 0, true]]);
+  assert.strictEqual(inv.actes[4].lignes.filter(l => l.type === 'renfort').length, 2, 'l\'inventaire le dit, à sa place');
+  assert.strictEqual(E.clore(s).casseGarde, 1200);
+  assert.strictEqual(E.renforcer(s, 'combustibles'), null, 'plus rien après Clore');
+  assert.ok(E.rapportTexte(s, 'test').includes('Garde renforcée : Digues de la Sère, 800 gardiens de plus'));
+  const r = E.migrer(allerRetour(s));
+  assert.ok(r.sites.digues.renforcee && r.sites.digues.dosage === 'pleine' && !r.sites.combustibles.renforcee);
+  const suite = etatFin({ M: 9000 });
+  E.poursuivre(suite);
+  assert.ok(!E.peutRenforcer(suite, 'digues').ok, 'ni en poursuivant : il n\'y aura pas d\'épilogue');
+});
+
+test('chaque garde dit ce que fait chaque dosage, sans dire ce qu\'il coûte', () => {
+  for (const d of E.D.sites.filter(x => x.garde)) {
+    assert.ok(d.dosages && d.dosages.reduite && d.dosages.pleine && d.incident && d.sousDosage > 0, d.id);
+    for (const t of [d.dosages.reduite, d.dosages.pleine]) assert.ok(!/\d|personne|Casse/.test(t), `${d.id} : ${t}`);
+  }
+});
+
 test('Poursuivre : chaque pas retire un dixième de ce qui reste et dure le double du précédent ; plus de Clore', () => {
   const s = etatFin();
   assert.strictEqual(E.lancerPas(s), false, 'pas de pas sans avoir choisi');

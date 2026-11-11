@@ -29,8 +29,8 @@ Les sept points validés :
   - **Le coût :** une garde coûte de la Capacité une fois, et des gardiens pour toujours. Les gardiens sortent des Mains et ne reviennent jamais.
   - **La formation :** les gardiens se forment sur une place de formation, comme un lot de reconversion. Une garde demandée quand toutes les places sont prises attend la première qui se libère, et passe avant les lots suivants.
   - **L'effet :** une fois la garde instituée, la charge cesse de fuir et sort de l'Empreinte, pour sa part de ce qui reste.
-  - **L'affichage :** chaque garde montre sa durée, rapportée à ce qu'on connaît (« 100 000 ans, vingt fois toute l'histoire écrite »), et les gardiens qu'elle coûtera chaque année.
-- **Le dosage.** Chaque garde s'institue réduite ou pleine. Les deux arrêtent la fuite ; la pleine demande deux fois plus de gardiens. Le jeu ne dit pas ce qu'elle apporte de plus : la différence se paiera à l'épilogue, en Casse (§7, [#20](https://github.com/DavidGiangiacomo/decroissance/issues/20)). En attendant, le rapport de session note le dosage de chaque garde.
+  - **L'affichage :** chaque garde montre sa durée, rapportée à ce qu'on connaît (« 100 000 ans, vingt fois toute l'histoire écrite »), les gardiens qu'elle coûtera chaque année, et ce que fait chaque dosage : « Réduite : une inspection par an, après les crues. Pleine : des équipes sur chaque tronçon, toute l'année. »
+- **Le dosage.** Chaque garde s'institue réduite ou pleine. Les deux arrêtent la fuite ; la pleine demande deux fois plus de gardiens. Le jeu dit ce que fait chaque dosage, pas ce qu'il évite : la différence se paie à l'épilogue, en Casse (§7, [fins.md](fins.md)). Le rapport de session note le dosage de chaque garde.
 - **Sans Capacité, à bras.** À ce niveau d'Empreinte, la Capacité ne se renouvelle plus que de quelques points par minute : c'est le stock du début d'acte qui paie. Une garde ou un chantier de l'acte qui n'a plus assez de Capacité se fait à bras, avec deux fois plus de gardiens ou de Mains. La carte le dit avant le lancement.
 - **Le réseau national, point de non-retour.** C'est le dernier chantier industriel : les lignes à très haute tension et le poste de la Sère. Il retire beaucoup, et le joueur choisit quand le lancer (§5). Quand il est démantelé :
   - la Capacité ne se renouvelle plus jamais, même pendant une relance ;
@@ -112,7 +112,7 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les bots prud
 
 ## Points ouverts
 
-1. **Le dosage a maintenant un prix.** À Clore, chaque garde réduite ajoute de la Casse, que l'épilogue révèle : 300 personnes pour les digues, 600 pour les galeries, 1 200 pour les combustibles ([fins.md](fins.md)). Une garde pleine n'ajoute rien.
+1. **Le dosage a maintenant un prix.** À Clore, chaque garde réduite ajoute de la Casse, que l'épilogue révèle : 300 personnes pour les digues, 600 pour les galeries, 1 200 pour les combustibles. Une garde pleine n'ajoute rien, et une garde réduite peut encore être renforcée avant de clore ([fins.md](fins.md)).
 2. **La fin de l'acte attend la dernière dépollution.** Après la dernière garde, il peut rester une dizaine de minutes sans autre geste que de reconvertir. C'est voulu (« les sols tôt », et l'absence fait avancer la partie), mais un playtest dira si c'est vécu comme une attente ou comme une invitation à partir. R3, qui borne les murs de temps réel à 4 min, vise l'acte V.
 3. **Les gardiens ne comptent pas dans le plafond humain** de 40 000 Mains. Ce plafond n'est pas atteint.
 4. **Le Consentement qui remonte hors ligne** est gardé tel quel (point 7). Avec les sols, partir devient une stratégie : à observer.
