@@ -34,7 +34,7 @@ Les cinq points validés :
 - **La carte.** Une région reverdit à mesure que ses gestes sont faits et que sa terre repousse, et l'ombre des régions éteintes se lève. Les gestes n'ont pas de repère propre.
 - **Le compteur des Mains** dit combien de personnes sont restées sur place, à côté des gardiens.
 - **Le son.** Aucune couche nouvelle. Les oiseaux, les insectes et des voix, que l'acte IV avait fait taire, reviennent à mesure des gestes, et la pluie s'éloigne. Chaque geste achevé fait un bruit de terre retournée.
-- **La fin.** L'acte finit quand les vingt-huit gestes sont faits. Un panneau « Fin de l'acte V — le prototype s'arrête là » énumère ce qui reste (§11) : l'Empreinte et le plancher, chaque garde avec sa durée et ses gardiens, les gens restés sur la terre rendue, les gestes faits par les habitants, la Casse, les relances. Le rapport de session les contient aussi.
+- **La fin.** L'acte finit quand les vingt-huit gestes sont faits. Une section, « Ce qui reste », s'ouvre alors en haut de la colonne. Elle énumère l'Empreinte et le plancher, chaque garde avec sa durée et ses gardiens, les gens restés sur la terre rendue et la Casse, et propose Clore ou Poursuivre : les fins sont décrites dans [fins.md](fins.md). Le rapport de session contient les mêmes données.
 - **L'acte IV** ne montre plus son panneau de fin : son dernier élément ouvre directement l'acte V.
 
 ## Contenu
@@ -94,10 +94,10 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. À l'acte V, 
 
 1. **Le dernier tiers de l'acte se joue compteur figé.** La plupart des joueurs atteignent le plancher avant la fin : il leur reste de 7 à 19 min de gestes qui ne rendent que de la terre. C'est voulu, mais un playtest dira si ces gestes sont encore faits, et pourquoi.
 2. **Les Mains ne manquent presque jamais.** Avec des gardes réduites, tous les bots ont de quoi faire les vingt-huit gestes, sauf le pressé à 10 s. Il en reste de 1 000 à 7 000 à la fin. Le repli sur les habitants ne mord qu'avec des gardes pleines.
-3. **Une relance après le dernier geste laisse l'Empreinte au-dessus du plancher.** Pendant ses 90 s, elle monte de 6 %, et plus aucun geste ne la ramène. L'écran final du §11, « bloquée au plancher », viendra avec les fins ([#20](https://github.com/DavidGiangiacomo/decroissance/issues/20)).
+3. **Une relance après le dernier geste ne laisse plus l'Empreinte au-dessus du plancher.** Réglé avec les fins : quand tout est rendu, ce qu'une relance ajoute reste, et le plancher monte jusqu'à l'Empreinte ([fins.md](fins.md)).
 4. **Les gestes sont les mêmes partout.** Rien ne distingue Méraud de Morvel. Des lieux nommés viendront avec la carte complète ([#21](https://github.com/DavidGiangiacomo/decroissance/issues/21)) et les textes ([#23](https://github.com/DavidGiangiacomo/decroissance/issues/23)).
 5. **Le son** n'a qu'un bruit nouveau, à affiner avec le reste ([#22](https://github.com/DavidGiangiacomo/decroissance/issues/22)).
 6. **Hors de cet acte :**
-   - les trois fins et l'épilogue ([#20](https://github.com/DavidGiangiacomo/decroissance/issues/20)), dont « Poursuivre », où chaque point coûte le double du précédent ;
+   - Clore, Poursuivre et l'épilogue, décrits dans [fins.md](fins.md) ;
    - les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)) ;
    - le mode Croissance ([#19](https://github.com/DavidGiangiacomo/decroissance/issues/19)), que la remontée au plancher fait déjà grimper.

@@ -203,7 +203,7 @@ I5 est l'invariant maître, comme dans *La langue morte* : la vraie barre de pro
 | I1 | Le plus long moment sans chiffre perdu, du début de la partie au dernier instant où un chiffre peut encore tomber. Une fois l'Empreinte au plancher, il n'en reste plus à perdre | 25 min |
 | I2 | Les multiplicateurs permanents en faveur du joueur. Aujourd'hui, un seul : les places de formation, que les centres doublent | ×2 |
 | I3 | La Capacité et les Mains engagées par point d'Empreinte retiré, en moyenne sur chaque acte. Un geste de l'acte V compte pour son équipe, même fait par les habitants | plus qu'à l'acte précédent |
-| I4 | La Casse d'un pas à l'autre, puis après une relance, une sauvegarde rechargée et douze heures hors ligne | aucune baisse |
+| I4 | La Casse d'un pas à l'autre, puis après une relance, une sauvegarde rechargée, douze heures hors ligne et la clôture | aucune baisse |
 | I5 | L'écart de la courbe de Terre rendue à la droite la plus proche, en temps réel | 20 % de la Terre rendue à la fin |
 | I6 | La relance, essayée toutes les 15 s et à chaque événement, hors relance en cours : elle répond, et la croissance repart | à chaque essai, dans chaque acte |
 
@@ -212,6 +212,7 @@ Ce que la vérification ne couvre pas :
 - **La moyenne d'I1**, 20 à 25 min. Les bots jouent plus vite qu'un humain : ils perdent un chiffre toutes les 12 à 16 min, pour la plupart. Le script affiche cette moyenne sans la juger.
 - **Les décisions du §7**, pour I2 : elles ne sont pas encore dans le jeu.
 - **Le rendu**, pour I4 et I6. Le script vérifie que le compteur de Casse et le bouton Relancer sont dans la page et que le code ne les masque pas. Il n'ouvre pas de navigateur.
+- **Après Clore.** I4 et I6 valent jusqu'à la clôture : une partie close ne montre plus que la carte, sans compteur ni bouton (§11).
 - **La relance continue**, pour I1 et I3 : c'est un autre jeu (§8).
 
 Le seuil d'I5 est une garde contre les régressions, pas une cible. La courbe du tableau de rythme s'écarte elle-même de 4 % d'une droite ; celles des bots, de 9 à 16 %, et de 19,5 % pour le rapide à 45 s.
@@ -264,6 +265,8 @@ Sur l'écran final, l'Empreinte est bloquée au plancher. Trois issues, aucune p
 - **Croissance** — accessible à tout moment si l'on a laissé le bouton faire son travail. Dix minutes d'incrémental classique, généreux, avec les multiplicateurs, les e47 et tout le confort du genre. Puis l'écran se fige sur une Empreinte supérieure à celle du début, et la partie se ferme sans un mot. **Cette fin doit être réellement agréable à jouer**, sinon l'argument du jeu ne vaut rien.
 
 **Épilogue (après *Clore*)** — « L'inventaire ». Quinze minutes sans mécanique : la liste de tout ce qui a été fait, dans l'ordre, avec en regard **l'ordre optimal que le joueur n'a pas suivi** et le nombre de coupures qu'il aurait évitées. Y compris les erreurs qu'il n'a jamais su avoir commises. Coût de production quasi nul (les données existent déjà), valeur émotionnelle importante.
+
+*Prototype : Clore, Poursuivre et l'épilogue, validés et réglés, sont décrits dans [fins.md](fins.md). La fin Croissance reste à faire.*
 
 ---
 

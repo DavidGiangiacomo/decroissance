@@ -1,4 +1,4 @@
-// Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I à V.
+// Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I à V, et les fins : Clore, Poursuivre.
 (function () {
   const E = window.Engine, D = E.D;
   const CLE = 'decroissance.mvp.v1';
@@ -598,7 +598,9 @@
 
   let dernierNb = '';
   function rendreCompteur() {
-    const nb = E.fmtFin(s.E);   // sous 100, à la décimale : le plancher n'est pas un nombre rond
+    // Sous 100, à la décimale : le plancher n'est pas un nombre rond. Sous le plancher, à trois chiffres.
+    const sous = s.issue === 'poursuivre' && s.E < s.plancher * (1 - 1e-9);
+    const nb = sous ? E.fmtPas(s.E) : E.fmtFin(s.E);
     const c = $('compteur');
     if (performance.now() > animPerte && nb !== dernierNb) { c.textContent = nb; dernierNb = nb; }
     const rel = E.relanceActive(s), g = E.gEff(s);
@@ -607,7 +609,7 @@
     c.className = 'compteur ' + k + (arrete ? ' au-plancher' : '') + (rel ? ' relance' : '') + (performance.now() < animPerte ? ' perte' : '');
     const t = $('tendance'); t.className = 'tendance ' + k;
     const rebond = E.gRebond(s) > 0.005 && !rel, fuite = s.acte >= 4 && E.gSites(s) > 0 && !rel;
-    t.textContent = g > 0.005 ? `▲ +${(g < 1 ? g.toFixed(2) : g.toFixed(1)).replace('.', ',')} % / min${fuite ? ' · les charges fuient' : rebond ? ' · rebond du réseau' : ''}` : arrete ? 'au plancher — il ne descendra plus' : 'stable — plus rien ne monte';
+    t.textContent = g > 0.005 ? `▲ +${(g < 1 ? g.toFixed(2) : g.toFixed(1)).replace('.', ',')} % / min${fuite ? ' · les charges fuient' : rebond ? ' · rebond du réseau' : ''}` : sous ? 'sous le plancher — vous poursuivez' : arrete ? 'au plancher — il ne descendra plus' : 'stable — plus rien ne monte';
     if (s.ms.stabilise === null && g <= 0.005) t.textContent = 'stable';
     $('sci').hidden = !rel; if (rel) $('sci').textContent = E.fmtSci(s.E);
     const acte4 = s.acte >= 4, ag = E.aGarder(s);
@@ -662,7 +664,7 @@
     $('horloge').textContent = E.fmtDur(s.t);
   }
 
-  function rendre() { rendreCompteur(); rendreRessources(); rendreGestes(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
+  function rendre() { rendreIssue(); rendreCompteur(); rendreRessources(); rendreGestes(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
 
   // ---------- son : niveaux selon l'état ----------
   const PROD_FOSSILE = D.sites.reduce((a, d) => a + (d.prod || 0), 0);
@@ -681,6 +683,8 @@
     const poste = acte4 && !E.capaciteFinie(s) ? 1 : 0, pluie = perdus4 >= 1 ? (perdus4 >= 2 ? 0.7 : 1) : 0, silence = perdus4 >= 2;
     // Acte V : la terre rendue ramène les oiseaux, les insectes et des voix, et la pluie s'éloigne, à mesure des gestes.
     const retour = s.acte >= 5 ? Math.round(E.gestesFaits(s) / E.GESTES.length * 10) / 10 : 0;
+    // Close, la partie ne garde que l'ambiant (§12) : le vent, l'eau, les oiseaux, les insectes.
+    if (s.issue === 'clore') return { trafic: 0, turbines: 0, reseau: 0, fret: 0, vent: 0.7, oiseaux: 1, eau: 1, insectes: 1, voix: 0, poste: 0, pluie: 0 };
     if (rel) return { trafic: 1, turbines: 1, reseau: acte2 ? 1 : 0, fret: acte3 ? 1 : 0, vent: 0.15, oiseaux: 0, eau: apres2 ? 0.3 : 0, insectes: 0, voix: apres4 ? 0.3 : 0, poste, pluie: pluie * 0.3 };
     return { trafic: stab ? 0 : 1, turbines: chiffre ? 0 : 1, reseau, fret: silence ? 0 : fret, vent: stab ? (silence ? 0.7 : 1) : 0, oiseaux: chiffre && !silence ? 1 : retour, eau: apres2 ? 1 : 0,
       insectes: apres3 && !silence ? 1 : retour, voix: apres4 && !silence ? 1 : retour / 2, poste, pluie: Math.round(pluie * (1 - retour) * 10) / 10 };
@@ -719,7 +723,8 @@
       }
       if (ev.type === 'relance' && ev.remontee && s.acte >= 4) toast(`Le plancher double : ${E.fmtPlancher(ev.plancher)}. L'Empreinte y remonte.`);
       if (ev.type === 'non-retour') { son.extinction(); toast('Le réseau national est démantelé. La Capacité ne se renouvellera plus.'); }
-      if (ev.type === 'fin' && ev.acte === E.DERNIER_ACTE) montrerJalon('fin');
+      if (ev.type === 'fin' && ev.acte === E.DERNIER_ACTE) $('jalon').hidden = true;   // la section « Ce qui reste » prend le relais
+      if (ev.type === 'pas') son.geste();
     }
     if (delestes.length) {   // un délestage coupe souvent plusieurs consommateurs d'un coup : une seule alerte
       son.coupure(); secousseCasse();
@@ -749,10 +754,10 @@
     app.classList.add('pause-chiffre');
     const marge = 8 * (10 - s.digitsMin);
     document.documentElement.style.setProperty('--resserre', marge + 'px');
-    setTimeout(() => { app.classList.remove('pause-chiffre'); c.textContent = apres; dernierNb = apres; if (s.digitsMin === 9) montrerJalon('chiffre'); }, D.PAUSE_CHIFFRE * 1000);
+    setTimeout(() => { app.classList.remove('pause-chiffre'); c.textContent = apres; dernierNb = apres; if (s.digitsMin === 9) montrerJalon(); }, D.PAUSE_CHIFFRE * 1000);
   }
 
-  function montrerJalon(kind) {
+  function montrerJalon() {
     const j = $('jalon');
     const lignes = [
       ['Le nombre a cessé de monter', s.ms.stabilise !== null ? E.fmtDur(s.ms.stabilise) : 'jamais'],
@@ -762,31 +767,158 @@
       ['Casse', E.texteCasse(s)],
       ['Plancher irréductible', E.fmtPlancher(s.plancher)],
     ];
-    let titre = 'Acte I — premier chiffre perdu', note = 'Le reste de la carte est là. Rien ne vous oblige à continuer.';
-    if (kind === 'fin') {   // fin du dernier acte du prototype : l'acte V. Ce qui reste : le plancher, les gardes, la Casse (§11).
-      const r = E.rapport(s, VERSION);
-      lignes.splice(0, lignes.length,
-        ['Empreinte', E.fmtFin(s.E)],
-        ['Plancher irréductible', E.fmtPlancher(s.plancher)],
-        ['Le nombre s\'est arrêté sur le plancher', r.plancherAtteint !== null ? E.fmtDur(r.plancherAtteint) : 'pas encore'],
-        ['Chiffres perdus', `${r.chiffresPerdus.length} sur 9`],
-        ...r.gardes.map(g => [E.defs[g.id].nom, `${E.fmt(E.defs[g.id].ans)} ans · garde ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}${g.aBras ? ', à bras' : ''} · ${E.fmt(g.gardiens)} gardiens par an`]),
-        ['Gardiens, pour toujours', E.fmt(r.gardiens)],
-        ['Restés sur la terre rendue', E.fmt(r.installes)],
-        ['Gestes faits par les habitants', `${r.gestesHabitants} sur ${r.gestes}`],
-        ['Casse', E.texteCasse(s)],
-        ['Relances au total', `${s.relances}${s.relancesAuto ? ` (+${s.relancesAuto} sans vous)` : ''}`],
-        ['Terre rendue', `${E.T(s).toFixed(1).replace('.', ',')} % — elle finit de repousser`]);
-      titre = 'Fin de l\'acte V — le prototype s\'arrête là';
-      note = 'Tout est rendu. Il reste à choisir comment finir : ce sera la suite.';
-    }
+    const titre = 'Acte I — premier chiffre perdu', note = 'Le reste de la carte est là. Rien ne vous oblige à continuer.';
     j.innerHTML = `<h3>${titre}</h3>
       <table>${lignes.map(l => `<tr><td>${l[0]}</td><td>${l[1]}</td></tr>`).join('')}</table>
       <p class="muted">${note}</p>
-      <div class="carton-boutons"><button class="btn" id="jalon-fermer">${kind === 'fin' ? 'Fermer' : 'Continuer'}</button><button class="btn" id="jalon-rapport">Rapport de session</button></div>`;
+      <div class="carton-boutons"><button class="btn" id="jalon-fermer">Continuer</button><button class="btn" id="jalon-rapport">Rapport de session</button></div>`;
     j.hidden = false;
     $('jalon-fermer').addEventListener('click', () => { j.hidden = true; });
     $('jalon-rapport').addEventListener('click', ouvrirRapport);
+  }
+
+  // ---------- les fins (§11) ----------
+  // « Ce qui reste » : la section qui s'ouvre quand tout est rendu, et propose Clore ou Poursuivre.
+  const ROMAINS = ['', 'I', 'II', 'III', 'IV', 'V'];
+  const gardesInstituees = () => GARDES.filter(d => s.sites[d.id].state === 'eteint');
+  const ligneGarde = (d) => [d.nom, `${E.fmt(d.ans)} ans · garde ${s.sites[d.id].dosage === 'pleine' ? 'pleine' : 'réduite'} · ${E.fmt(s.sites[d.id].mEng || 0)} gardiens par an`];
+  function ceQuiReste(casse) {
+    return [
+      ['Empreinte', `${E.fmtFin(s.E)}${E.auPlancher(s) && !E.relanceActive(s) ? ', bloquée au plancher' : ''}`],
+      ...gardesInstituees().map(ligneGarde),
+      ['Gardiens, pour toujours', E.fmt(s.gardiens)],
+      ['Restés sur la terre rendue', E.fmt(s.installes)],
+      ['Casse', `${E.fmt(casse)} personne${casse > 1 ? 's' : ''} touchée${casse > 1 ? 's' : ''} pour de bon`],
+      ['Terre rendue', `${E.T(s).toFixed(1).replace('.', ',')} %`],
+    ];
+  }
+  const enTable = (lignes) => lignes.map(l => `<tr><td>${l[0]}</td><td>${l[1]}</td></tr>`).join('');
+  let dernierIssue = '';
+  function rendreIssue() {
+    const app = document.getElementById('app');
+    app.classList.toggle('clos', s.issue === 'clore');   // close, la partie ne montre plus que la carte
+    $('btn-inventaire').hidden = s.issue !== 'clore';
+    const sec = $('issue'), choix = E.toutRendu(s) && !s.issue;
+    if (choix && sec.hidden) document.querySelector('.panneau').scrollTop = 0;   // le choix s'ouvre en haut de la colonne
+    sec.hidden = !choix;
+    if (choix) {
+      const ok = E.peutChoisir(s);
+      $('btn-clore').disabled = $('btn-poursuivre').disabled = !ok;
+      $('issue-etat').textContent = ok ? '' : 'une relance court encore : le choix attend qu\'elle finisse';
+      const lignes = ceQuiReste(s.X), cle = JSON.stringify(lignes);
+      if (cle !== dernierIssue) { dernierIssue = cle; $('issue-table').innerHTML = enTable(lignes); }
+    }
+    const ps = $('poursuite');
+    ps.hidden = s.issue !== 'poursuivre';
+    if (!ps.hidden) {
+      const duree = E.dureePas(s);
+      $('poursuite-etat').textContent = s.pasFaits ? `${s.pasFaits} pas fait${s.pasFaits > 1 ? 's' : ''}` : 'aucun pas encore';
+      $('btn-pas').disabled = s.pasEnCours;
+      $('btn-pas').textContent = s.pasEnCours ? `Pas n° ${s.pasFaits + 1} · ${E.fmtDur(Math.ceil(duree * (1 - s.pasProgress)))}` : `Faire un pas · ${E.fmtDur(duree)}`;
+      $('poursuite-detail').textContent = `Pas n° ${s.pasFaits + 1} : Empreinte −${E.fmtPas(E.retraitPas(s))}, en ${E.fmtDur(duree)}. Le suivant : ${E.fmtDur(duree * 2)}.`;
+      $('pas-barre').style.width = s.pasEnCours ? (s.pasProgress * 100).toFixed(1) + '%' : '0%';
+    }
+  }
+
+  // Clore : l'écran énumère ce qui reste, sans commentaire. La Casse y est celle de la clôture ; l'épilogue dira le reste.
+  function montrerClos() {
+    arreterInventaire();
+    $('fin-titre').textContent = 'Clos';
+    $('fin-corps').innerHTML = `<table class="fin-table">${enTable(ceQuiReste(E.inventaire(s).casseAvant))}</table>`;
+    $('fin-boutons').innerHTML = '<button class="btn primaire" id="fin-suite">L\'inventaire</button>';
+    $('fin-suite').addEventListener('click', () => ouvrirInventaire());
+    $('fin').hidden = false;
+    $('fin-suite').focus();
+  }
+
+  // L'épilogue, « L'inventaire » : tout ce qui a été fait, dans l'ordre, sans mécanique. Pour les actes I à III,
+  // l'ordre sans Casse en regard ; puis ce que les gardes réduites laisseront faire.
+  const personnes = nbPersonnes;
+  function texteLancement(l) {
+    const d = E.defs[l.id], nom = d.nom;
+    if (d.geste) return `${nom}${l.habitants ? ', par les habitants' : ''}`;
+    if (d.garde) return `Garde ${l.dosage === 'pleine' ? 'pleine' : 'réduite'}${l.aBras ? ', à bras' : ''} : ${nom}`;
+    if (d.sol) return `Dépollution : ${nom}`;
+    if (d.mesure) return `Mesure : ${nom}`;
+    if (l.restes) return `Restes démantelés : ${nom}`;
+    if (l.vite) return `Démolition rapide : ${nom}`;
+    if (l.isole) return `Chantier à bras, faute de desserte : ${nom}`;
+    if (l.aBras) return `Chantier à bras, faute de Capacité : ${nom}`;
+    return `Chantier : ${nom}`;
+  }
+  function texteNote(n) {
+    if (n.quoi === 'coupure') return `Coupure : ${nomDe(n.id)}. ${personnes(n.casse)}.`;
+    if (n.quoi === 'delestage') return `Délestage : ${nomDe(n.id)}. ${personnes(n.casse)}.`;
+    if (n.quoi === 'privation') return `Coupure : ${nomDe(n.id)}, plus de ${E.noeuds[n.id].besoin.quoi}. ${personnes(n.casse)}.`;
+    if (n.quoi === 'pollution') return `Démolie trop vite : ${personnes(n.casse)}, et un sol pollué.`;
+    return `Isolé : ${nomDe(n.id)}. Son chantier se fera à bras.`;
+  }
+  function lignesInventaire() {
+    const inv = E.inventaire(s), out = [];
+    const ligne = (cls, texte, h) => out.push({ cls, texte, h: h || '' });
+    for (const a of inv.actes) {
+      if (!a.lignes.length) continue;
+      ligne('acte', `Acte ${ROMAINS[a.n]} — ${a.titre}`);
+      for (const l of a.lignes) {
+        if (l.type === 'engage') ligne('fait', texteLancement(l), E.fmtDur(l.t));
+        else if (l.type === 'relance') ligne('relance', `${l.auto ? 'Le Conseil relance, sans vous' : 'Relance'} : le plancher double.` +
+          (l.reembauche ? ` ${personnes(l.reembauche)} réembauchées, qui ne seront pas reconverties.` : '') +
+          (l.remontee ? ` L'Empreinte remonte de ${E.fmtFin(l.remontee.de)} à ${E.fmtFin(l.remontee.a)}.` : ''), E.fmtDur(l.t));
+        else if (l.type === 'penurie') ligne('casse', `Pénurie : les vivres à ${l.vivres} % des besoins. ${personnes(l.casse)}.`, E.fmtDur(l.t));
+        for (const n of l.notes) ligne(n.quoi === 'isolement' ? 'bras' : 'casse', texteNote(n), l.type === 'casse' ? E.fmtDur(l.t) : '');   // un isolement coûte des Mains, pas de la Casse
+      }
+      if (!a.propre) continue;
+      const rien = a.identique && !a.coupures && !a.aBras;
+      if (rien) { ligne('bilan', 'Rien à redire à cet ordre.'); continue; }
+      const marque = (x) => (E.defs[x.id].court || E.defs[x.id].nom) + (x.ajoute ? ' (que vous n\'avez pas faite)' : x.sansVite ? ' (sans démolir vite)' : x.retarde ? ' (plus tard)' : '');
+      if (a.identique) ligne('ordre', 'Le même ordre, en laissant à chaque terre le temps de rendre ses vivres, ne faisait pas de Casse.');
+      else ligne('ordre', `Sans Casse, votre ordre devenait : ${a.propre.map(marque).join(' · ')}.`);
+      const evite = [a.casse ? personnes(a.casse) : '', a.aBras ? `${a.aBras} chantier${a.aBras > 1 ? 's' : ''} à bras` : ''].filter(Boolean).join(', et ');
+      if (evite) ligne('bilan', `Il aurait épargné ${evite}.`);
+    }
+    if (inv.gardes.length) {
+      ligne('acte', 'Les gardes, ensuite');
+      for (const g of inv.gardes) {
+        const d = E.defs[g.id];
+        ligne(g.casse ? 'casse' : 'fait', `${d.nom}, garde ${g.dosage === 'pleine' ? 'pleine' : 'réduite'}, ${E.fmt(d.ans)} ans. ` +
+          (g.casse ? `${d.incident} ${personnes(g.casse)}.` : 'Rien à signaler.'));
+      }
+    }
+    ligne('total', inv.casseGardes ? `Casse à la clôture : ${personnes(inv.casseAvant)}. Avec ce que les gardes réduites ont laissé faire : ${E.fmt(inv.casseFinale)}.`
+      : `Casse : ${personnes(inv.casseFinale)}.`);
+    return out;
+  }
+  let minuteurInventaire = null;
+  function arreterInventaire() { if (minuteurInventaire) { clearInterval(minuteurInventaire); minuteurInventaire = null; } }
+  function ouvrirInventaire() {
+    if (!s || s.issue !== 'clore') return;
+    arreterInventaire();
+    const lignes = lignesInventaire();
+    $('fin-titre').textContent = 'L\'inventaire';
+    $('fin-corps').innerHTML = '<ol id="inventaire" class="inventaire"></ol>';
+    $('fin-boutons').innerHTML = '<button class="btn" id="fin-tout">Tout afficher</button><button class="btn primaire" id="fin-fermer" hidden>Fermer</button>';
+    const ol = $('inventaire'), carton = document.querySelector('#fin .carton');
+    let i = 0;
+    const ajouter = () => {
+      const l = lignes[i++], li = document.createElement('li');
+      li.className = l.cls;
+      li.innerHTML = '<span class="h"></span><span></span>';
+      li.children[0].textContent = l.h; li.children[1].textContent = l.texte;
+      ol.appendChild(li);
+    };
+    const finir = () => {   // lu jusqu'au bout : la Casse des gardes est dite, la partie peut se refermer sur la carte
+      arreterInventaire();
+      $('fin-tout').hidden = true; $('fin-fermer').hidden = false;
+      if (!s.inventaireVu) { s.inventaireVu = true; rendre(); sauver(); }
+    };
+    const suivant = () => { ajouter(); carton.scrollTop = carton.scrollHeight; if (i >= lignes.length) finir(); };
+    const tout = () => { while (i < lignes.length) ajouter(); finir(); };
+    $('fin-tout').addEventListener('click', tout);
+    $('fin-fermer').addEventListener('click', () => { $('fin').hidden = true; });
+    $('fin').hidden = false;
+    if (s.inventaireVu) { tout(); carton.scrollTop = 0; return; }   // déjà lu : il se rouvre en entier
+    suivant();
+    minuteurInventaire = setInterval(suivant, D.EPILOGUE.ligne * 1000);
   }
 
   // ---------- rapport de session ----------
@@ -821,6 +953,18 @@
   // ---------- actions ----------
   function engager(id, opts) { const evs = E.engage(s, id, opts); if (evs.length) { traiter(evs); rendre(); sauver(); } }
   function reconvertir() { if (E.reconvertirTout(s)) { rendre(); sauver(); } }
+  // Les deux fins sont sans retour : une confirmation, comme pour recommencer.
+  function clore() {
+    if (!E.peutChoisir(s) || !confirm('Clore scelle la partie. Plus rien ne pourra être lancé, ni relancé.')) return;
+    if (!E.clore(s)) return;
+    majSon(4); rendre(); rendreJournal(); sauver();
+    montrerClos();
+  }
+  function poursuivre() {
+    if (!E.peutChoisir(s) || !confirm('Poursuivre, c\'est refuser le plancher, et renoncer à clore.')) return;
+    if (E.poursuivre(s)) { rendre(); rendreJournal(); sauver(); }
+  }
+  function pas() { if (E.lancerPas(s)) { rendre(); sauver(); } }
   function relancer() { const ev = E.relancer(s, false); if (ev) { traiter([ev]); majSon(1.2); rendre(); sauver(); } }
 
   // ---------- boucle 10 Hz ----------
@@ -843,6 +987,7 @@
     if (!s.versions.includes(VERSION)) s.versions.push(VERSION);
     document.documentElement.style.setProperty('--resserre', (8 * (10 - s.digitsMin)) + 'px');
     construireCarte(); construireChantiers(); construireGardes(); construireGestes();
+    $('fin').hidden = true; arreterInventaire(); dernierIssue = '';
     dernierNb = ''; rendre(); rendreJournal();
     son.init(); son.setMute(!s.son); majSon(0.1);
     $('btn-son').textContent = `son : ${s.son ? 'oui' : 'non'}`;
@@ -876,6 +1021,10 @@
     $('btn-commencer').addEventListener('click', () => demarrer(E.create()));
     $('btn-relancer').addEventListener('click', relancer);
     $('btn-reconv').addEventListener('click', reconvertir);
+    $('btn-clore').addEventListener('click', clore);
+    $('btn-poursuivre').addEventListener('click', poursuivre);
+    $('btn-pas').addEventListener('click', pas);
+    $('btn-inventaire').addEventListener('click', () => ouvrirInventaire());
     $('continu').addEventListener('change', (ev) => { E.formerEnContinu(s, ev.target.checked); rendre(); sauver(); });
     $('btn-son').addEventListener('click', () => { s.son = !s.son; son.setMute(!s.son); $('btn-son').textContent = `son : ${s.son ? 'oui' : 'non'}`; sauver(); });
     $('btn-reset').addEventListener('click', () => { if (confirm('Recommencer depuis le début ? La partie en cours sera effacée.')) { effacer(); demarrer(E.create()); } });
@@ -897,9 +1046,10 @@
       $('btn-reprendre').hidden = false; $('btn-neuf').hidden = false; $('btn-commencer').hidden = true;
       if (absence) {
         const terre = absence.dT >= 0.05 ? ` ; la terre a regagné ${absence.dT.toFixed(1).replace('.', ',')} point${absence.dT >= 2 ? 's' : ''}` : '';
+        const pasFini = absence.pas ? ` Le pas n° ${absence.pas} s'est achevé.` : '';
         const sols = absence.sols ? `, mais la dépollution a continué${absence.depollues.length ? ` : ${absence.depollues.map(nomDe).join(', ')}, terminé${absence.depollues.length > 1 ? 's' : ''}` : ''}` : '';
         $('intro-absence').hidden = false;
-        $('intro-absence').textContent = `Vous avez été absent ${E.fmtDur(absence.elapsed)}. Rien n'a été démantelé pendant ce temps${sols}${terre}.`;
+        $('intro-absence').textContent = `Vous avez été absent ${E.fmtDur(absence.elapsed)}. Rien n'a été démantelé pendant ce temps${sols}${terre}.${pasFini}`;
       }
       $('btn-reprendre').addEventListener('click', () => demarrer(sauvegarde));
       $('btn-neuf').addEventListener('click', () => { if (confirm('Effacer la partie en cours ?')) { effacer(); demarrer(E.create()); } });
@@ -916,6 +1066,7 @@
     get etat() { return s; },
     avancer(sec) { const n = Math.round(sec / D.TICK); for (let i = 0; i < n; i++) { const evs = E.tick(s, D.TICK); if (evs.length) traiter(evs); } rendre(); },
     engager, reconvertir, relancer, sauver, gel: false, version: VERSION,
+    inventaire: () => E.inventaire(s),
     rapport: () => E.rapportTexte(s, VERSION),
   };
 

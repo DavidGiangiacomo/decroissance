@@ -309,9 +309,9 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .chantier .isole-note { grid-column: 1 / -1; font-size: 12px; color: #e2c48f; }
 
 @media (max-width: 900px) {
-  .app { height: auto; }
+  .app { height: auto; padding: 0 min(var(--resserre), 4vw); }   /* sur un écran étroit, le resserrement reste lisible */
   .haut { grid-template-columns: 1fr; text-align: center; }
-  .haut-droite { justify-content: center; }
+  .haut-droite { justify-content: center; flex-wrap: wrap; }
   .casse { align-items: center; }
   .casse-unite { text-align: center; }
   .corps { grid-template-columns: 1fr; }
@@ -368,3 +368,31 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .pastille.rendue { background: #5f9a55; opacity: .75; }
 /* Le compteur, arrêté sur le plancher */
 .compteur.au-plancher { color: #c9b48a; }
+
+/* ---- les fins : ce qui reste, Poursuivre, Clore, l'inventaire ---- */
+.issue { border: 1px solid #5d5a52; border-radius: 6px; padding: 10px 12px; background: #24231f; display: flex; flex-direction: column; gap: 6px; }
+.issue table, .fin-table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.issue td, .fin-table td { padding: 3px 0; border-top: 1px dotted #3f3b33; vertical-align: top; }
+.issue td:last-child, .fin-table td:last-child { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; padding-left: 12px; }
+.issue .carton-boutons { margin-top: 4px; }
+.carton-fin { width: 100%; max-width: 640px; padding: 24px 22px; }
+.carton-fin h2 { font-size: 18px; font-weight: 500; text-transform: none; letter-spacing: .02em; color: var(--texte); margin: 0 0 10px; }
+.fin-table { font-size: 13.5px; }
+.inventaire { list-style: none; margin: 0; padding: 0; font-size: 13px; line-height: 1.45; }
+.inventaire li { display: grid; grid-template-columns: 82px 1fr; gap: 0 10px; padding: 2px 0; animation: ligne-inventaire .8s ease-out; }
+.inventaire .h { color: var(--muted); font-family: var(--mono); font-size: 11.5px; text-align: right; padding-top: 2px; white-space: nowrap; }
+.inventaire li.acte { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--bord); color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-size: 11.5px; }
+.inventaire li.acte:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+.inventaire li.casse { color: #f0a49c; }
+.inventaire li.bras { color: #e2c48f; }
+.inventaire li.relance { color: var(--chaud); }
+.inventaire li.ordre, .inventaire li.bilan { color: #c9b48a; }
+.inventaire li.total { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--bord); font-weight: 600; }
+@keyframes ligne-inventaire { from { opacity: 0; } to { opacity: 1; } }
+/* Close, la partie ne montre plus que la carte : ni compteur, ni bouton, ni panneau (§11) */
+.app.clos .haut, .app.clos .legende, .app.clos .panneau > section, .app.clos .panneau > .jalon { display: none !important; }
+.app.clos .corps { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+.app.clos .carte-zone { border-right: 0; min-height: 0; }
+.app.clos .panneau { overflow: visible; padding: 8px 18px; }
+.app.clos .pied { border-top: 0; padding-top: 0; }
+.app.clos #carte { min-height: 0; }

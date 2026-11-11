@@ -101,6 +101,10 @@ function mesurer(partie) {
   const sauvegarde = !!recharge && recharge.X === s.X;
   if (recharge) E.applyOffline(recharge, D.OFFLINE_CAP);
   const horsLigne = !!recharge && recharge.X >= s.X;
+  // Clore ne fait qu'en ajouter : celle des gardes réduites.
+  const clos = structuredClone(s);
+  for (let i = 0; i < 3000 && !E.peutChoisir(clos); i++) E.tick(clos, dt);
+  const cloture = !E.clore(clos) || clos.X >= s.X;
 
   // I6 : les relances que le joueur ou le Conseil ont vraiment faites comptent aussi, chacune dans son acte.
   const acteA = (t) => 1 + Object.keys(E.TITRES_ACTES).filter(a => a > 1 && s.ms['acte' + a] != null && s.ms['acte' + a] <= t).length;
@@ -115,7 +119,7 @@ function mesurer(partie) {
     finie: s.ms['fin' + (E.DERNIER_ACTE === 1 ? '' : E.DERNIER_ACTE)] !== null, duree: s.t,
     pertes, sansChiffre: plusLongSansChiffre(pertes, Math.max(finChiffres, pertes.length ? pertes[pertes.length - 1] : 0)),
     coutParActe: actes,
-    casse: { baisses, sauvegarde, horsLigne },
+    casse: { baisses, sauvegarde, horsLigne, cloture },
     terre: { ecart: ecartDroite(terre), fin: E.T(s) },
     relance: { essais: relance.essais, actes: relance.actes.size, echecs: relance.echecs },
   };
@@ -130,6 +134,7 @@ function multiplicateurs() {
 }
 
 // I4 et I6, côté écran : le compteur de Casse et le bouton Relancer sont dans la page, et rien ne les masque.
+// Les deux valent jusqu'à Clore : une partie close ne montre plus que la carte (§11).
 // Vérification du code, pas du rendu : une règle de style.css ou un masquage indirect lui échappent.
 function affichage(id, fichiers) {
   const html = fichiers['index.html'], js = fichiers['main.js'];
@@ -209,8 +214,9 @@ function juger(mesures, opts) {
     if (k.baisses.length) { fautes++; ligne('echec', m.nom, `la Casse a baissé ${k.baisses.length} fois, d'abord à ${E.fmtDur(k.baisses[0])}`); }
     if (!k.sauvegarde) { fautes++; ligne('echec', m.nom, 'une sauvegarde rechargée ne rend pas la même Casse'); }
     if (!k.horsLigne) { fautes++; ligne('echec', m.nom, 'la Casse baisse hors ligne'); }
+    if (k.cloture === false) { fautes++; ligne('echec', m.nom, 'la Casse baisse à la clôture'); }
   }
-  if (!fautes) ligne('ok', `${mesures.length} parties`, "aucune baisse d'un pas à l'autre, ni après une relance, une sauvegarde rechargée ou 12 h hors ligne");
+  if (!fautes) ligne('ok', `${mesures.length} parties`, "aucune baisse d'un pas à l'autre, ni après une relance, une sauvegarde rechargée, 12 h hors ligne ou la clôture");
   const fichiers = opts.fichiers || lireFichiers();
   let defaut = affichage('casse-bloc', fichiers) || affichage('casse', fichiers);
   ligne(defaut ? 'echec' : 'ok', 'affichage', defaut || "le compteur est dans la page, et rien dans le code ne le masque");

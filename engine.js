@@ -6,6 +6,7 @@
 // les sols se dépolluent au temps réel seul ; le plancher s'affiche.
 // Acte V : rendre. Ce qui reste se rend à la main, un geste à la fois ; les équipes restent sur la terre rendue ;
 // l'Empreinte s'arrête sur le plancher.
+// Les fins : Clore, puis l'inventaire de l'épilogue ; ou Poursuivre, sous le plancher, sans écran de fin.
 (function (root) {
   const D = (typeof module !== 'undefined' && module.exports) ? require('./data.js') : root.DATA;
 
@@ -40,6 +41,13 @@
       reembauches: 0,       // acte III : gens réembauchés par une relance au lieu d'être reconvertis
       gardiens: 0,          // acte IV : gens affectés pour toujours à la garde de ce qui ne se démantèle pas
       installes: 0,         // acte V : gens restés sur la terre qu'ils ont rendue, sortis du jeu eux aussi
+      issue: null,          // les fins : null tant que rien n'est choisi, puis 'clore' ou 'poursuivre', sans retour
+      casseGarde: 0,        // Clore : la Casse des gardes réduites, comptée dans X, que seul l'épilogue révèle
+      plancherSurcroit: 1,  // ce dont le plancher a monté après le dernier geste, quand une relance ne peut plus être défaite
+      pasFaits: 0,          // Poursuivre : pas déjà faits sous le plancher
+      pasEnCours: false,    // Poursuivre : un pas est en cours
+      pasProgress: 0,
+      inventaireVu: false,  // Clore : l'épilogue a été lu jusqu'au bout
       digitsActe4: 0,       // acte IV : chiffres de l'Empreinte à l'ouverture de l'acte (0 : pas encore ouvert)
       penurie: false,       // acte III : les vivres manquent en ce moment
       penurieX: 0,          // Casse due aux pénuries
@@ -53,7 +61,7 @@
       digits: 10,
       digitsMin: 10,
       ms: { stabilise: null, chiffre: null, coupure: null, fin: null, acte2: null, fin2: null, acte3: null, fin3: null, acte4: null, fin4: null,
-        acte5: null, fin5: null, plancher: null },
+        acte5: null, fin5: null, plancher: null, clore: null, poursuivre: null },
       regionsEteintes: [],
       paused: 0,
       log: [],
@@ -462,6 +470,7 @@
   function canEngage(s, id, opts) {
     const d = defs[id], st = s.sites[id];
     if (!d) return { ok: false, raisons: ['inconnu'], coupures: [] };
+    if (s.issue === 'clore') return { ok: false, raisons: ['clos'], coupures: [] };
     if (acteDe(d) > s.acte) return { ok: false, raisons: ['pas encore'], coupures: [] };
     if (!existe(s, d)) return { ok: false, raisons: ['sans objet'], coupures: [] };
     const restes = st.state === 'coupe' && !d.mesure;   // site coupé : on démantèle ce qu'il en reste (R4)
@@ -609,6 +618,7 @@
 
   // Un lot part en formation s'il reste une place ; le plafond humain borne les Mains, engagées et en formation comprises.
   function reconvertir(s) {
+    if (s.issue === 'clore') return false;
     if (gardeEnAttente(s)) return false;   // une garde qui attend une place passe avant les lots
     if (placesOccupees(s) >= placesFormation(s) || s.deplaces <= 0) return false;
     const place = D.MAINS_MAX - (s.M + s.Meng + enFormation(s));
@@ -637,7 +647,7 @@
   }
 
   function relancer(s, auto) {
-    if (relanceActive(s)) return null;
+    if (relanceActive(s) || s.issue === 'clore') return null;   // une fois la partie close, il n'y a plus de bouton
     s.relanceUntil = s.t + D.RELANCE.dur;
     if (auto) { s.relancesAuto++; s.autoRelanceAt = s.t; log(s, 'Le Conseil a relancé la croissance sans vous.', 'casse'); }
     else { s.relances++; log(s, 'Relance.', 'relance'); }
@@ -699,12 +709,165 @@
 
   const acteFini = (s, n) => D.sites.every(d => acteDe(d) !== n || d.mesure || !existe(s, d) || s.sites[d.id].state === 'eteint');
 
+  // --- les fins (§11) ---
+  // Tout est rendu : le dernier acte est achevé. Il reste à choisir comment finir.
+  const toutRendu = (s) => s.ms['fin' + DERNIER_ACTE] !== null;
+  // Le choix se fait l'Empreinte bloquée au plancher : pas pendant une relance.
+  const peutChoisir = (s) => toutRendu(s) && !s.issue && !relanceActive(s);
+  function monterPlancher(s) {
+    s.plancherSurcroit *= s.E / s.plancher;
+    s.plancher = s.E;
+    log(s, `Il ne reste plus rien à rendre : ce que la relance a ajouté reste. Le plancher monte à ${fmtPlancher(s.plancher)}.`, 'relance');
+    trace(s, 'plancher-monte', { plancher: Math.round(s.plancher * 10) / 10 });
+  }
+
+  // Clore : sceller. Les gardes réduites se paient alors, en Casse, sans que le jeu l'ait jamais dit (§7) :
+  // elle entre dans X, et c'est l'épilogue qui la révèle.
+  const sousDosages = (s) => D.sites.filter(d => d.garde).map(d => ({ id: d.id, dosage: s.sites[d.id].dosage === 'pleine' ? 'pleine' : 'reduite',
+    casse: s.sites[d.id].dosage === 'pleine' ? 0 : (d.sousDosage || 0) }));
+  function clore(s) {
+    if (!peutChoisir(s)) return null;
+    s.issue = 'clore'; s.ms.clore = s.t;
+    trace(s, 'clore');
+    for (const g of sousDosages(s)) {
+      if (!g.casse) continue;
+      s.casseGarde += g.casse; s.X += g.casse;
+      trace(s, 'sous-dosage', { id: g.id, casse: g.casse });
+    }
+    log(s, 'Clos.', 'jalon');
+    return { type: 'clore', casseGarde: s.casseGarde };
+  }
+
+  // Poursuivre : refuser le plancher. Chaque pas retire une part de ce qui reste et dure le double du précédent.
+  // Il n'y a pas d'écran de fin, et plus de Clore.
+  function poursuivre(s) {
+    if (!peutChoisir(s)) return null;
+    s.issue = 'poursuivre'; s.ms.poursuivre = s.t;
+    log(s, 'Vous poursuivez, sous le plancher.', 'jalon');
+    trace(s, 'poursuivre');
+    return { type: 'poursuivre' };
+  }
+  const dureePas = (s) => D.POURSUIVRE.dur * Math.pow(2, s.pasFaits);
+  const retraitPas = (s) => s.E * D.POURSUIVRE.part;
+  function lancerPas(s) {
+    if (s.issue !== 'poursuivre' || s.pasEnCours) return false;
+    s.pasEnCours = true; s.pasProgress = 0;
+    return true;
+  }
+  function finirPas(s) {
+    const r = retraitPas(s);
+    s.E -= r;
+    s.pasFaits++; s.pasEnCours = false; s.pasProgress = 0;
+    log(s, `Pas n° ${s.pasFaits} : Empreinte −${fmtPas(r)}. Le suivant durera ${fmtDur(dureePas(s))}.`, 'ok');
+    trace(s, 'pas', { n: s.pasFaits, E: s.E });
+    return { type: 'pas', n: s.pasFaits, retire: r };
+  }
+
+  // --- l'épilogue : « L'inventaire » (§11) ---
+  // Un ordre sans Casse pour un acte : celui du joueur, réparé au plus juste. On rejoue ses lancements sur un état
+  // sans durées ni coûts ; quand le suivant ferait de la Casse, on prend le premier des siens qui n'en fait pas.
+  // Si aucun ne convient, on essaie une mesure qu'il n'a pas faite. `joueur` : [{ id, vite }], dans son ordre.
+  function ordrePropre(acte, joueur) {
+    const q = create();
+    q.acte = acte; q.K = Infinity; q.M = Infinity;
+    for (const d of D.sites) if (acteDe(d) < acte) q.sites[d.id].state = d.mesure ? 'fait' : 'eteint';
+    if (acte > 1) q.hopital = 'autonome';
+    const propre = (id) => {
+      const c = canEngage(q, id), a = c.apercu;
+      if (c.coupures.length) return false;
+      if (!a) return true;
+      if ((a.delestes && a.delestes.length) || (a.prives && a.prives.length) || (a.isoles && a.isoles.length)) return false;
+      return !(a.vivres && a.vivres.bas < a.vivres.besoin - 1e-9);
+    };
+    const fermer = (id, force) => {
+      const d = defs[id], st = q.sites[id];
+      if (force) for (const dep of canEngage(q, id).coupures) { if (dep === 'hopital') q.hopital = 'coupe'; else q.sites[dep].state = 'eteint'; }
+      st.state = d.mesure ? 'fait' : 'eteint';
+      st.t0 = undefined;   // sa terre a eu le temps de rendre ses vivres
+      if (id === 'autonomie') q.hopital = 'autonome';
+      if (force) equilibrer(q);
+    };
+    const restants = joueur.filter(x => defs[x.id] && acteDe(defs[x.id]) === acte && q.sites[x.id].state === 'actif').map(x => ({ id: x.id, vite: !!x.vite }));
+    const mesures = D.sites.filter(d => acteDe(d) === acte && d.mesure && !restants.some(x => x.id === d.id)).map(d => d.id);
+    const ordre = [];
+    while (restants.length) {
+      let i = restants.findIndex(x => propre(x.id)), force = false;
+      if (i < 0) {
+        const m = mesures.findIndex(propre);
+        if (m >= 0) { const id = mesures.splice(m, 1)[0]; fermer(id); ordre.push({ id, ajoute: true }); continue; }
+        i = 0; force = true;   // aucun ordre n'évite cette Casse
+      }
+      for (const x of restants.slice(0, i)) x.retarde = true;
+      const x = restants.splice(i, 1)[0];
+      fermer(x.id, force);
+      ordre.push(Object.assign({ id: x.id }, x.retarde ? { retarde: true } : {}, x.vite && defs[x.id].rapide ? { sansVite: true } : {}, force ? { inevitable: true } : {}));
+    }
+    return ordre;
+  }
+
+  // Tout ce qui a été fait, dans l'ordre, acte par acte, d'après la chronologie. Pour les actes I à III, où l'ordre
+  // fait la Casse : l'ordre sans Casse, et ce qu'il aurait évité. Puis les gardes, et ce que leur dosage coûte.
+  const ACTES_A_ORDRE = [1, 2, 3];
+  function inventaire(s) {
+    const actes = [];
+    for (let n = 1; n <= DERNIER_ACTE; n++) actes.push({ n, titre: TITRES_ACTES[n] || '', lignes: [], casse: 0, coupures: 0, aBras: 0, lots: 0 });
+    let a = actes[0], relance = null, penurie = null;
+    const lancement = (id) => { for (let i = a.lignes.length - 1; i >= 0; i--) if (a.lignes[i].type === 'engage' && a.lignes[i].id === id) return a.lignes[i]; return null; };
+    const dernier = (t) => { const l = a.lignes[a.lignes.length - 1]; return l && l.type === 'engage' && l.t === t ? l : null; };
+    const casse = (e, quoi) => {
+      const note = { quoi, id: e.id, casse: e.casse || 0 };
+      const l = quoi === 'pollution' ? lancement(e.id) : dernier(e.t);
+      if (l) l.notes.push(note); else a.lignes.push({ t: e.t, type: 'casse', notes: [note] });
+      a.casse += note.casse; a.coupures++;
+    };
+    for (const e of s.chrono) {
+      switch (e.type) {
+        case 'acte': a = actes[e.n - 1] || a; break;
+        case 'engage': a.lignes.push(Object.assign({ t: e.t, type: 'engage', id: e.id, notes: [] },
+          ...['vite', 'restes', 'isole', 'aBras', 'habitants', 'dosage'].map(k => (e[k] ? { [k]: e[k] } : {})))); if (e.isole) a.aBras++; break;
+        case 'coupure': case 'delestage': case 'privation': case 'pollution': casse(e, e.type); break;
+        case 'isolement': { const l = dernier(e.t); if (l) l.notes.push({ quoi: 'isolement', id: e.id }); break; }
+        case 'penurie': penurie = { t: e.t, type: 'penurie', vivres: e.vivres, casse: 0, notes: [] }; a.lignes.push(penurie); a.coupures++; break;
+        case 'penurie-fin': if (penurie) { penurie.casse = e.casse || 0; penurie.importee = !!e.import; a.casse += penurie.casse; penurie = null; } break;
+        case 'relance': relance = { t: e.t, type: 'relance', auto: !!e.auto, notes: [] }; a.lignes.push(relance); break;
+        case 'reembauche': if (relance) relance.reembauche = e.n; break;
+        case 'remontee': if (relance) relance.remontee = { de: e.de, a: e.a }; break;
+        case 'reconversion': a.lots++; break;
+        default: break;
+      }
+    }
+    if (penurie) { penurie.casse = s.penurieX - s.penurieDepuis; a.casse += penurie.casse; }   // une pénurie encore en cours
+    for (const acte of actes) {
+      if (!ACTES_A_ORDRE.includes(acte.n)) continue;
+      const joueur = [];
+      // Un site coupé puis démantelé en restes compte à la place où ses restes ont été lancés.
+      for (const l of acte.lignes) if (l.type === 'engage' && !joueur.some(x => x.id === l.id)) joueur.push({ id: l.id, vite: !!l.vite });
+      acte.propre = ordrePropre(acte.n, joueur);
+      acte.identique = acte.propre.every((x, i) => !x.ajoute && !x.sansVite && joueur[i] && joueur[i].id === x.id);
+      acte.inevitables = acte.propre.filter(x => x.inevitable).length;
+    }
+    const gardes = sousDosages(s).filter(g => s.sites[g.id].state === 'eteint');
+    const casseGardes = gardes.reduce((t, g) => t + g.casse, 0);
+    const avant = s.X - (s.casseGarde || 0);
+    return { actes, gardes, casseAvant: avant, casseGardes, casseFinale: avant + casseGardes };
+  }
+
   function tick(s, dt) {
     const ev = [];
+    if (s.issue === 'clore') {   // la partie est close : plus rien ne bouge, sauf la terre qui finit de repousser
+      for (const d of D.sites) {
+        const st = s.sites[d.id];
+        if (st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) st.regen = Math.min(1, st.regen + dt / d.regen);
+      }
+      return ev;
+    }
     direCasse(s);   // une coupure au lancement arrive hors du tick : sa définition suit au tick d'après
     if (s.paused > 0) { s.paused -= dt; return ev; }
+    const relAvant = relanceActive(s);
     s.t += dt;
     const rel = relanceActive(s);
+    // Quand tout est rendu, ce qu'une relance a ajouté ne peut plus être retiré : à sa fin, le plancher monte jusqu'à l'Empreinte.
+    if (relAvant && !rel && toutRendu(s) && s.E > s.plancher) monterPlancher(s);
     const g = gEff(s);
     if (g !== 0) s.E *= Math.exp((g / 100 / 60) * dt);
     s.K = Math.min(D.KCAP, s.K + kRate(s) * dt);
@@ -726,6 +889,10 @@
       } else if (st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) {
         st.regen = Math.min(1, st.regen + dt / d.regen);
       }
+    }
+    if (s.pasEnCours) {   // Poursuivre : le pas va à son rythme, rien ne l'accélère
+      s.pasProgress += dt / dureePas(s);
+      if (s.pasProgress >= 1) ev.push(finirPas(s));
     }
     for (const f of s.formations) f.progress += dt / D.RECONV.dur;
     for (const f of s.formations.filter(f => f.progress >= 1)) {
@@ -856,7 +1023,11 @@
     elapsed = Math.min(elapsed, D.OFFLINE_CAP);
     if (elapsed < 5) return null;
     const T0 = T(s), E0 = s.E, depollues = [], fini = new Set();
-    let sols = 0;
+    let sols = 0, pas = null;
+    if (s.pasEnCours) {   // Poursuivre : le pas en cours avance sans le joueur, comme les sols ; le suivant l'attendra
+      s.pasProgress += elapsed / dureePas(s);
+      if (s.pasProgress >= 1) pas = finirPas(s).n;
+    }
     for (const d of D.sites) {   // les sols : la seule chose qui progresse sans le joueur (§5)
       const st = s.sites[d.id];
       if (!d.sol || st.state !== 'chantier') continue;
@@ -882,7 +1053,8 @@
     if (sols) log(s, `Pendant votre absence (${fmtDur(elapsed)}), la dépollution a continué` +
       `${depollues.length ? ` : ${depollues.map(id => defs[id].nom).join(', ')}, terminé${depollues.length > 1 ? 's' : ''}` : ''}.`, 'ok');
     if (dT >= 0.05) log(s, `Pendant votre absence (${fmtDur(elapsed)}), la terre a regagné ${dT.toFixed(1).replace('.', ',')} point${dT >= 2 ? 's' : ''}.`, 'ok');
-    return { elapsed, dT, sols, depollues, dE: E0 - s.E };
+    if (pas) log(s, `Pendant votre absence (${fmtDur(elapsed)}), le pas n° ${pas} s'est achevé.`, 'ok');
+    return { elapsed, dT, sols, depollues, dE: E0 - s.E, pas };
   }
 
   // --- sauvegarde ---
@@ -957,7 +1129,9 @@
     }, 0);
     if (!('coMin' in save)) s.coMin = s.Co;
     // Le plancher se déduit des relances : une partie enregistrée avec un autre barème reprend le barème actuel.
-    s.plancher = D.PLANCHER0 * Math.pow(D.RELANCE.plancherMul, s.relances + s.relancesAuto);
+    if (!(Number.isFinite(s.plancherSurcroit) && s.plancherSurcroit >= 1)) s.plancherSurcroit = 1;
+    s.plancher = D.PLANCHER0 * Math.pow(D.RELANCE.plancherMul, s.relances + s.relancesAuto) * s.plancherSurcroit;
+    s.issue = save.issue === 'clore' || save.issue === 'poursuivre' ? save.issue : null;   // null par défaut : la boucle générale l'ignore
     if (!('debut' in save)) s.debut = null;
     return s;
   }
@@ -970,12 +1144,12 @@
   // La Casse par cause, d'après la chronologie : coupures (coupures, délestages, privations), pollutions, pénuries.
   function casseParCause(s) {
     const somme = (types) => s.chrono.filter(e => types.includes(e.type)).reduce((a, e) => a + (e.casse || 0), 0);
-    return { coupures: somme(['coupure', 'delestage', 'privation']), pollutions: somme(['pollution']), penuries: s.penurieX };
+    return { coupures: somme(['coupure', 'delestage', 'privation']), pollutions: somme(['pollution']), penuries: s.penurieX, gardes: s.casseGarde || 0 };
   }
   // « 1 200 personnes (coupures et délestages 400, pollutions 800) » : les causes nulles ne sont pas citées.
   function texteCasse(s) {
     const c = casseParCause(s);
-    const parts = [['coupures et délestages', c.coupures], ['pollutions', c.pollutions], ['pénuries', c.penuries]].filter(([, n]) => n > 0);
+    const parts = [['coupures et délestages', c.coupures], ['pollutions', c.pollutions], ['pénuries', c.penuries], ['gardes réduites', c.gardes]].filter(([, n]) => n > 0);
     const total = `${fmt(s.X)} personne${s.X > 1 ? 's' : ''}`;
     return parts.length ? `${total} (${parts.map(([nom, n]) => `${nom} ${fmt(n)}`).join(', ')})` : total;
   }
@@ -1015,6 +1189,11 @@
       relances20min: relancesJoueur.filter(e => e.t <= LIMITE_RELANCES).length,
       relances: s.relances,
       relancesConseil: s.relancesAuto,
+      issue: s.issue,
+      clore: s.ms.clore,
+      poursuivre: s.ms.poursuivre,
+      pas: s.pasFaits,
+      casseGardes: s.casseGarde || 0,
       coupures: nb('coupure') + nb('delestage') + nb('privation'),
       delestages: nb('delestage'),
       pollutions: nb('pollution'),
@@ -1068,6 +1247,11 @@
       case 'fin': return e.acte === 5 ? 'Tout est rendu' : e.acte === 4 ? "Tout ce qui pouvait l'être est démantelé, dépollué ou gardé" : e.acte === 3 ? 'La carte est vide : ce qui reste ne se démantèle pas' :
         e.acte === 2 ? 'Plus rien à démanteler sur le réseau' : 'Plus rien à démanteler sur cette carte';
       case 'absence': return `Absence de ${fmtDur(e.duree)}`;
+      case 'plancher-monte': return `Plus rien à rendre : le plancher monte à ${fmtPlancher(e.plancher)}`;
+      case 'clore': return 'Clore';
+      case 'sous-dosage': return `Garde réduite : ${nomDe(e.id)}, ${fmt(e.casse)} personnes`;
+      case 'poursuivre': return 'Poursuivre : le plancher est refusé';
+      case 'pas': return `Pas n° ${e.n} : Empreinte ${fmtPas(e.E)}`;
       default: return e.type;
     }
   }
@@ -1131,6 +1315,8 @@
     if (r.acte >= 3) lignes.push(`- Carte de l'acte III vidée : ${quand(r.finActe3)}`);
     if (r.acte >= 4) lignes.push(`- Acte IV achevé : ${quand(r.finActe4)}`);
     if (r.acte >= 5) lignes.push(`- Acte V achevé : ${quand(r.finActe5)}`);
+    if (r.issue === 'clore') lignes.push(`- Issue : Clore, à ${quand(r.clore)}`);
+    if (r.issue === 'poursuivre') lignes.push(`- Issue : Poursuivre, à ${quand(r.poursuivre)} ; ${r.pas} pas faits sous le plancher`);
     if (!r.chronologieComplete) lignes.push('- Partie commencée avant le rapport : chronologie incomplète');
     lignes.push('', 'Chronologie', '```');
     for (const e of r.chrono) lignes.push(`${fmtDur(e.t).padStart(11)}  ${ligneChrono(e)}`);
@@ -1150,6 +1336,8 @@
   }
   // Sous 100, l'Empreinte et ce qu'on lui retire se lisent à la décimale : « 4,8 ».
   const fmtFin = (n) => (n < 100 ? (Math.floor(n * 10 + 1e-6) / 10).toFixed(1).replace('.', ',') : fmt(n));
+  // Sous le plancher, l'Empreinte se lit à trois chiffres : « 4,32 », puis « 0,871 ».
+  const fmtPas = (n) => (n >= 100 ? fmt(n) : String(Number(n.toPrecision(3))).replace('.', ','));
   function fmtDur(sec) {
     sec = Math.floor(sec);
     if (sec < 60) return `${sec} s`;
@@ -1176,6 +1364,7 @@
     reconvertirTout, formerEnContinu, casseParCause, texteCasse,
     prixCoupure, prixLancement, risqueConseil, DEFINITION_CASSE,
     existe, capaciteFinie, aGarder, placesOccupees, gardeEnAttente, gardesEnFormation, fmtPlancher,
+    toutRendu, peutChoisir, clore, poursuivre, lancerPas, dureePas, retraitPas, inventaire, ordrePropre, fmtPas,
     GESTES, gesteEnCours, gestesFaits, auPlancher, retraitPrevu, dernierGeste, fmtFin,
     DERNIER_ACTE, TITRES_ACTES,
     fmt, fmtDur, fmtSci, migrer, rapport, rapportTexte,

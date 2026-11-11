@@ -77,7 +77,7 @@ Les sept parts réunies laissent 0,12 % de l'Empreinte : l'acte fait perdre 2,9 
 
 - **La Capacité du début d'acte.** Elle ne suffit pas à tout : les gardes et le réseau en demandent 1 100, le stock plafonne à 900. Ce qu'on paie en premier se fait avec, le reste se fait à bras.
 - **Le réseau tôt ou tard.** Le démonter tôt retire 60 % tout de suite, mais consomme 300 de Capacité, et ferme pour toujours la porte d'une relance qui en rendrait.
-- **Garder réduit ou plein.** Réduit garde des Mains pour l'acte V, qui se fera à la main (§10). Plein, c'est payer pour l'avenir, sans savoir quoi.
+- **Garder réduit ou plein.** Réduit garde des Mains pour l'acte V, qui se fera à la main (§10). Plein, c'est payer pour l'avenir, sans savoir quoi : le prix d'une garde réduite ne se dit qu'à l'épilogue ([fins.md](fins.md)).
 - **Les places de formation.** Les gardiens et les gens à reconvertir se disputent les mêmes places. Une garde demandée passe avant les lots, mais elle attend qu'une place se libère.
 - **Les sols tôt.** Les lancer tard, c'est attendre : ils ne vont pas plus vite. C'est aussi l'acte où partir fait avancer la partie.
 
@@ -112,13 +112,13 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les bots prud
 
 ## Points ouverts
 
-1. **Le dosage ne coûte encore rien.** Son prix, en Casse, viendra avec l'épilogue (#20). D'ici là, une garde pleine n'est qu'une dépense : un joueur qui optimise gardera tout réduit.
+1. **Le dosage a maintenant un prix.** À Clore, chaque garde réduite ajoute de la Casse, que l'épilogue révèle : 300 personnes pour les digues, 600 pour les galeries, 1 200 pour les combustibles ([fins.md](fins.md)). Une garde pleine n'ajoute rien.
 2. **La fin de l'acte attend la dernière dépollution.** Après la dernière garde, il peut rester une dizaine de minutes sans autre geste que de reconvertir. C'est voulu (« les sols tôt », et l'absence fait avancer la partie), mais un playtest dira si c'est vécu comme une attente ou comme une invitation à partir. R3, qui borne les murs de temps réel à 4 min, vise l'acte V.
 3. **Les gardiens ne comptent pas dans le plafond humain** de 40 000 Mains. Ce plafond n'est pas atteint.
 4. **Le Consentement qui remonte hors ligne** est gardé tel quel (point 7). Avec les sols, partir devient une stratégie : à observer.
 5. **Le rapide à 30 s dépasse I1 de 46 s**, hors du tableau ci-dessus. Il finit l'acte III à 11 259, juste au-dessus de 10⁴, et son premier sol n'est dépollué que 15 min après l'ouverture de l'acte IV : 25 min 46 séparent son cinquième et son sixième chiffre. `tools/check.js`, qui l'a trouvé, le tient pour un écart connu (§9 du design doc).
 6. **Hors de cet acte :**
    - l'acte V, « Rendre », où le compteur descend jusqu'au plancher : il est décrit dans [acte-5.md](acte-5.md) ;
-   - l'épilogue et les fins ([#20](https://github.com/DavidGiangiacomo/decroissance/issues/20)), où se paiera le dosage ;
+   - l'épilogue et les fins, où se paie le dosage : ils sont décrits dans [fins.md](fins.md) ;
    - les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)), dont la crédibilité « en acte IV » de la branche Dette ;
    - passer l'acte II en parts ([#31](https://github.com/DavidGiangiacomo/decroissance/issues/31), point 1), qui reste à faire.
