@@ -1,5 +1,6 @@
 // Décroissance — données (géographie fictive : l'Ostrane). Acte I : le MVP ; acte II : le réseau (issue #14) ;
-// acte III : les gens (issue #15) ; acte IV : le legs (issue #16) ; acte V : rendre (issue #17) ; les fins (issue #20).
+// acte III : les gens (issue #15) ; acte IV : le legs (issue #16) ; acte V : rendre (issue #17) ; les fins (issue #20) ;
+// le mode Croissance (issue #19).
 // Valeurs de réglage. Toutes les durées sont en secondes de jeu réelles.
 (function (root) {
   const DATA = {
@@ -69,6 +70,25 @@
     POURSUIVRE: { part: 0.10, dur: 60 },
     // L'épilogue : secondes entre deux lignes de l'inventaire.
     EPILOGUE: { ligne: 4 },
+
+    // Le mode Croissance : qui ne relâche jamais le bouton peut ne plus l'arrêter. La carte se rejoue à l'envers,
+    // en incrémental classique : les sites sont des générateurs, payés en Capacité, sans plafond.
+    //   chaine : relances enchaînées avant que « Ne plus arrêter » apparaisse ; delai : s entre la fin d'une relance
+    //     et la suivante pour qu'elles s'enchaînent ;
+    //   duree : s de mode avant que l'écran se fige (et pas avant que l'Empreinte ait dépassé celle du départ) ;
+    //   g0 : %/min de croissance dès le basculement ; k0 : Capacité/s au basculement, qui suit ensuite l'Empreinte ;
+    //   tiers : par acte, le coût du premier niveau d'un site et la croissance de chaque niveau, en %/min ;
+    //   ratio : chaque niveau coûte tant de fois le précédent ;
+    //   palier : chiffres gagnés entre deux paliers ; à chaque palier, la Capacité reçue est multipliée par palierK,
+    //     et les sites de l'acte suivant s'ouvrent ; auto : palier où l'achat automatique se débloque ;
+    //   co : points de Consentement gagnés par minute ; Emax : garde-fou numérique.
+    CROISSANCE: {
+      chaine: 3, delai: 30, duree: 600,
+      g0: 500, k0: 30, ratio: 4,
+      tiers: [{ cout: 200, g: 0.55 }, { cout: 7.5e4, g: 0.75 }, { cout: 1e7, g: 0.95 }, { cout: 1.2e9, g: 1.2 }],
+      palier: 3, palierK: 2, auto: 2,
+      co: 20, achatsMax: 400, Emax: 1e250,
+    },
 
     // Régions de la carte. Au deuxième chiffre perdu, la plus démantelée s'éteint.
     regions: {

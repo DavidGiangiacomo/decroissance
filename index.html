@@ -26,6 +26,7 @@
     </div>
     <div class="haut-droite">
       <button id="btn-relancer" class="btn-relancer" title="Relancer la croissance. Ça marche.">Relancer</button>
+      <button id="btn-croissance" class="btn-croissance" hidden title="La croissance ne s'arrêtera plus. Sans retour.">Ne plus arrêter</button>
       <div id="casse-bloc" class="casse">
         <span class="casse-label">Casse</span>
         <span id="casse" class="casse-val">0</span>
@@ -143,6 +144,20 @@
         </div>
       </section>
 
+      <section id="croissance" class="croissance" hidden>
+        <div class="reseau-tete">
+          <h2>Croissance</h2>
+          <span id="croissance-etat" class="reseau-etat"></span>
+        </div>
+        <p class="reseau-ordre">Plus rien ne se démantèle. Un site fermé se rouvre, un site ouvert s'agrandit : chaque niveau ajoute de la croissance. Tout se paie en Capacité, qui n'a plus de plafond.</p>
+        <div class="mains-ligne">
+          <div id="croissance-detail" class="muted"></div>
+          <button id="btn-tout" class="btn primaire">Tout acheter</button>
+        </div>
+        <label id="auto-zone" class="continu" hidden><input type="checkbox" id="achat-auto"> Achat automatique : tout ce qui est payable s'achète seul.</label>
+        <div id="liste-generateurs"></div>
+      </section>
+
       <section id="rendre" class="rendre" hidden>
         <div class="reseau-tete">
           <h2>Rendre</h2>
@@ -231,7 +246,7 @@
   <div id="intro" class="voile">
     <div class="carton">
       <h1>Décroissance</h1>
-      <p class="petit muted">Prototype — actes I à V, et deux des trois fins</p>
+      <p class="petit muted">Prototype — actes I à V, et les trois fins</p>
       <p>Vous héritez. Pas d'une conquête, d'une passation : l'Ostrane, pays industriel de taille moyenne — une côte, un fleuve, un bassin minier, deux métropoles — et un mandat, de durée non précisée, pour le démanteler proprement.</p>
       <p>Vous n'avez ni nom ni parti. Vous avez un inventaire, une carte, et le droit d'arbitrer. Personne ne vous demandera si c'est une bonne idée. La question est la manière.</p>
       <p class="petit">L'Empreinte est en haut. Elle monte. Chaque site fermé libère des gens à reconvertir, et la carte indique ce qu'un site alimente. Le son fait partie du jeu.</p>

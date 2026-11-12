@@ -401,3 +401,26 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .renfort { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px dotted #3f3b33; font-size: 12.5px; }
 .renfort b { display: block; font-weight: 600; }
 .renfort .btn { white-space: nowrap; }
+
+/* ---- le mode Croissance ---- */
+.btn-croissance { background: transparent; color: var(--chaud); border: 1px solid var(--chaud); border-radius: 6px; padding: 9px 12px; font-size: 13px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; cursor: pointer; }
+.haut-droite:has(.btn-croissance:not([hidden])) { gap: 12px; }
+.btn-croissance:hover { background: rgba(224, 164, 88, .12); }
+.btn-croissance[hidden] { display: none; }
+#croissance { border: 1px solid #7a5a2c; border-radius: 6px; padding: 10px 12px; background: #2a2418; display: flex; flex-direction: column; gap: 6px; }
+#croissance h2 { color: var(--chaud); }
+.gen-groupe h3 { margin: 8px 0 2px; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.gen-groupe h3 small { font-weight: 400; letter-spacing: 0; text-transform: none; }
+.gen-groupe.ferme .gen { display: none; }
+.gen { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 3px 0; border-top: 1px dotted #4a3f2a; font-size: 12.5px; }
+.gen-niv { font-family: var(--mono); font-size: 11.5px; }
+.gen .btn { padding: 4px 9px; font-size: 12px; font-family: var(--mono); white-space: nowrap; }
+/* Plus rien ne se démantèle : les autres panneaux se ferment */
+.app.croissance #issue, .app.croissance #poursuite, .app.croissance #rendre, .app.croissance #reseau, .app.croissance #vivres,
+.app.croissance #gens, .app.croissance #garde, .app.croissance #chantiers { display: none !important; }
+.app.croissance .compteur { letter-spacing: 0; }
+/* L'écran figé : plus rien ne répond, plus rien ne bouge. Il reste le pied de page. */
+.app.fige .haut, .app.fige .corps { pointer-events: none; }
+.app.fige .pied { pointer-events: auto; }
+.app.fige *, .app.fige *::before, .app.fige *::after { animation-play-state: paused !important; transition: none !important; }
+.app.fige .btn-relancer { filter: grayscale(.6); }

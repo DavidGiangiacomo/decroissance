@@ -5,11 +5,13 @@
 // Acte IV : le bourdonnement grave du poste, qui s'éteint avec le réseau national ; puis la pluie, et presque le silence.
 // Acte V : aucune couche nouvelle. Les oiseaux, les insectes et les voix reviennent à mesure que la terre est rendue,
 // la pluie s'éloigne ; chaque geste achevé fait un bruit de terre.
+// Mode Croissance : la musique reprend (§8), un arpège dont le tempo monte avec les chiffres gagnés ; les couches
+// industrielles reviennent une à une ; quand l'écran se fige, tout se coupe.
 // Le volume de chaque couche est piloté par l'état du jeu, crossfade lent.
 (function (root) {
   const FADE = 3.5;
   class Son {
-    constructor() { this.ctx = null; this.couches = {}; this.master = null; this.mute = false; this.niveaux = {}; this._oiseauxTimer = null; this._fretTimer = null; }
+    constructor() { this.ctx = null; this.couches = {}; this.master = null; this.mute = false; this.niveaux = {}; this._oiseauxTimer = null; this._fretTimer = null; this.bpm = 100; }
 
     init() {
       if (this.ctx) return;
@@ -28,6 +30,7 @@
       this.couches.voix = this._voix();
       this.couches.poste = this._poste();
       this.couches.pluie = this._pluie();
+      this.couches.musique = this._musique();
       for (const k in this.couches) this.couches[k].gain.gain.value = 0;
       if (ctx.state === 'suspended') ctx.resume();
     }
@@ -243,6 +246,32 @@
     }
     setMute(m) { this.mute = m; this.applique(this.niveaux, 0.4); }
 
+    // La musique du mode Croissance : un arpège majeur, en croches, sur quatre accords qui montent. Les notes ne
+    // sont programmées que lorsque la couche s'entend ; le tempo se règle avec tempo().
+    _musique() {
+      const ctx = this.ctx, gain = ctx.createGain();
+      gain.connect(this.master);
+      const ACCORDS = [0, 5, 7, 12], MOTIF = [0, 4, 7, 12, 16, 12, 7, 4];
+      let pas = 0, prochain = 0;
+      const note = (demiTons, quand, duree, volume, type) => {
+        const o = ctx.createOscillator(); o.type = type; o.frequency.value = 196 * Math.pow(2, demiTons / 12);
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, quand); g.gain.exponentialRampToValueAtTime(volume, quand + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, quand + duree);
+        o.connect(g); g.connect(gain); o.start(quand); o.stop(quand + duree + 0.02);
+      };
+      this._musiqueTimer = setInterval(() => {
+        if (this.mute || !((this.niveaux.musique || 0) > 0)) { prochain = 0; return; }
+        if (prochain < ctx.currentTime) prochain = ctx.currentTime + 0.05;   // au démarrage, ou après un onglet caché
+        while (prochain < ctx.currentTime + 0.25) {
+          const accord = ACCORDS[Math.floor(pas / 16) % ACCORDS.length], croche = 30 / this.bpm;
+          note(accord + MOTIF[pas % 8], prochain, croche * 1.6, 0.09, 'triangle');
+          if (pas % 8 === 0) note(accord - 12, prochain, croche * 6, 0.11, 'sine');   // une basse par mesure
+          pas++; prochain += croche;
+        }
+      }, 60);
+      return { gain };
+    }
+    tempo(bpm) { this.bpm = Math.max(60, Math.min(220, bpm)); }
+
     // Ponctuel : la perte d'un chiffre — un coup sourd, bas, qui s'éteint lentement
     chute() {
       if (!this.ctx || this.mute) return;
@@ -261,6 +290,20 @@
         const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.setValueAtTime(0.0001, t + quand); g.gain.exponentialRampToValueAtTime(v, t + quand + 0.02); g.gain.exponentialRampToValueAtTime(0.0005, t + quand + 0.24);
         src.connect(lp); lp.connect(g); g.connect(this.master); src.stop(t + quand + 0.3);
       }
+    }
+    // Ponctuel : un chiffre gagné — une note brève qui monte
+    montee() {
+      if (!this.ctx || this.mute) return;
+      const ctx = this.ctx, t = ctx.currentTime;
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(330, t); o.frequency.exponentialRampToValueAtTime(660, t + 0.35);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.14, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.6);
+      o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.65);
+    }
+    // L'écran se fige : tout se coupe, d'un coup, et ne revient pas
+    couper() {
+      if (!this.ctx) return;
+      const t = this.ctx.currentTime, g = this.master.gain;
+      g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + 0.08);
     }
     // Ponctuel : coupure — un claquement sec puis une alarme brève
     coupure() {

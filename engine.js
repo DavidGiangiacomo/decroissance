@@ -6,7 +6,8 @@
 // les sols se dépolluent au temps réel seul ; le plancher s'affiche.
 // Acte V : rendre. Ce qui reste se rend à la main, un geste à la fois ; les équipes restent sur la terre rendue ;
 // l'Empreinte s'arrête sur le plancher.
-// Les fins : Clore, puis l'inventaire de l'épilogue ; ou Poursuivre, sous le plancher, sans écran de fin.
+// Les fins : Clore, puis l'inventaire de l'épilogue ; ou Poursuivre, sous le plancher, sans écran de fin ;
+// ou Croissance : la carte se rejoue à l'envers, en incrémental classique, puis l'écran se fige.
 (function (root) {
   const D = (typeof module !== 'undefined' && module.exports) ? require('./data.js') : root.DATA;
 
@@ -48,6 +49,15 @@
       pasEnCours: false,    // Poursuivre : un pas est en cours
       pasProgress: 0,
       inventaireVu: false,  // Clore : l'épilogue a été lu jusqu'au bout
+      chaine: 0,            // relances du joueur enchaînées, chacune peu après la fin de la précédente
+      chaineFin: -1e9,      // fin de la dernière relance du joueur
+      croissanceDepuis: -1, // mode Croissance : instant du basculement (−1 : la partie n'a pas basculé)
+      Ebascule: 0,          // l'Empreinte au basculement
+      digitsBascule: 0,     // ses chiffres au basculement
+      digitsMax: 0,         // le plus de chiffres atteints depuis
+      paliers: 0,           // paliers franchis : un tous les trois chiffres gagnés
+      achats: 0,            // niveaux achetés
+      achatAuto: false,     // l'achat automatique est en marche
       digitsActe4: 0,       // acte IV : chiffres de l'Empreinte à l'ouverture de l'acte (0 : pas encore ouvert)
       penurie: false,       // acte III : les vivres manquent en ce moment
       penurieX: 0,          // Casse due aux pénuries
@@ -61,7 +71,7 @@
       digits: 10,
       digitsMin: 10,
       ms: { stabilise: null, chiffre: null, coupure: null, fin: null, acte2: null, fin2: null, acte3: null, fin3: null, acte4: null, fin4: null,
-        acte5: null, fin5: null, plancher: null, clore: null, poursuivre: null },
+        acte5: null, fin5: null, plancher: null, clore: null, poursuivre: null, bascule: null, fige: null },
       regionsEteintes: [],
       paused: 0,
       log: [],
@@ -79,8 +89,9 @@
     return s;
   }
 
-  const digitsOf = (E) => String(Math.floor(Math.max(1, E))).length;
-  const relanceActive = (s) => s.t < s.relanceUntil;
+  // Au-delà de 10¹⁵, un nombre ne s'écrit plus chiffre par chiffre : on compte ses chiffres au logarithme.
+  const digitsOf = (E) => (E < 1e15 ? String(Math.floor(Math.max(1, E))).length : Math.floor(Math.log10(E)) + 1);
+  const relanceActive = (s) => s.t < s.relanceUntil || enCroissance(s);   // en mode Croissance, elle ne s'arrête plus
 
   // --- acte IV : le legs ---
   // Les sols d'un site de l'acte II n'existent que s'il a été démoli trop vite.
@@ -119,8 +130,8 @@
     }
     return g;
   }
-  const gEff = (s) => gSites(s) + gRebond(s) + (relanceActive(s) ? D.RELANCE.g : 0);
-  const kRate = (s) => (capaciteFinie(s) ? 0 : D.K0 * Math.pow(s.E / D.E0, D.KEXP) * (relanceActive(s) ? D.RELANCE.kMul : 1));
+  const gEff = (s) => (s.croissanceDepuis >= 0 ? (enCroissance(s) ? gCroissance(s) : 0) : gSites(s) + gRebond(s) + (relanceActive(s) ? D.RELANCE.g : 0));
+  const kRate = (s) => (s.croissanceDepuis >= 0 ? (enCroissance(s) ? kCroissance(s) : 0) : capaciteFinie(s) ? 0 : D.K0 * Math.pow(s.E / D.E0, D.KEXP) * (relanceActive(s) ? D.RELANCE.kMul : 1));
 
   function T(s) {
     let t = 0;
@@ -471,6 +482,7 @@
     const d = defs[id], st = s.sites[id];
     if (!d) return { ok: false, raisons: ['inconnu'], coupures: [] };
     if (s.issue === 'clore') return { ok: false, raisons: ['clos'], coupures: [] };
+    if (s.croissanceDepuis >= 0) return { ok: false, raisons: ['croissance'], coupures: [] };   // on ne démantèle plus rien
     if (acteDe(d) > s.acte) return { ok: false, raisons: ['pas encore'], coupures: [] };
     if (!existe(s, d)) return { ok: false, raisons: ['sans objet'], coupures: [] };
     const restes = st.state === 'coupe' && !d.mesure;   // site coupé : on démantèle ce qu'il en reste (R4)
@@ -618,7 +630,7 @@
 
   // Un lot part en formation s'il reste une place ; le plafond humain borne les Mains, engagées et en formation comprises.
   function reconvertir(s) {
-    if (s.issue === 'clore') return false;
+    if (s.issue === 'clore' || s.croissanceDepuis >= 0) return false;
     if (gardeEnAttente(s)) return false;   // une garde qui attend une place passe avant les lots
     if (placesOccupees(s) >= placesFormation(s) || s.deplaces <= 0) return false;
     const place = D.MAINS_MAX - (s.M + s.Meng + enFormation(s));
@@ -647,8 +659,11 @@
   }
 
   function relancer(s, auto) {
-    if (relanceActive(s) || s.issue === 'clore') return null;   // une fois la partie close, il n'y a plus de bouton
+    if (relanceActive(s) || s.issue === 'clore' || s.croissanceDepuis >= 0) return null;   // close ou basculée, la partie n'a plus de relance
+    // Une relance du joueur lancée peu après la fin de la précédente s'enchaîne : c'est ne pas relâcher le bouton.
+    if (!auto) s.chaine = s.t - s.chaineFin <= D.CROISSANCE.delai ? s.chaine + 1 : 1;
     s.relanceUntil = s.t + D.RELANCE.dur;
+    if (!auto) s.chaineFin = s.relanceUntil;
     if (auto) { s.relancesAuto++; s.autoRelanceAt = s.t; log(s, 'Le Conseil a relancé la croissance sans vous.', 'casse'); }
     else { s.relances++; log(s, 'Relance.', 'relance'); }
     s.plancher = s.plancher * D.RELANCE.plancherMul;
@@ -713,7 +728,7 @@
   // Tout est rendu : le dernier acte est achevé. Il reste à choisir comment finir.
   const toutRendu = (s) => s.ms['fin' + DERNIER_ACTE] !== null;
   // Le choix se fait l'Empreinte bloquée au plancher : pas pendant une relance.
-  const peutChoisir = (s) => toutRendu(s) && !s.issue && !relanceActive(s);
+  const peutChoisir = (s) => toutRendu(s) && !s.issue && !relanceActive(s) && s.croissanceDepuis < 0;
   function monterPlancher(s) {
     s.plancherSurcroit *= s.E / s.plancher;
     s.plancher = s.E;
@@ -729,7 +744,7 @@
   // de plus, pour toujours. Le jeu ne dit pas davantage ce que cela change.
   function peutRenforcer(s, id) {
     const d = defs[id], st = s.sites[id];
-    if (!d || !d.garde || !toutRendu(s) || s.issue || st.state !== 'eteint' || st.dosage === 'pleine') return { ok: false, cout: d && d.garde ? d.M : 0 };
+    if (!d || !d.garde || !toutRendu(s) || s.issue || s.croissanceDepuis >= 0 || st.state !== 'eteint' || st.dosage === 'pleine') return { ok: false, cout: d && d.garde ? d.M : 0 };
     return { ok: s.M >= d.M, cout: d.M };
   }
   function renforcer(s, id) {
@@ -769,7 +784,7 @@
   const dureePas = (s) => D.POURSUIVRE.dur * Math.pow(2, s.pasFaits);
   const retraitPas = (s) => s.E * D.POURSUIVRE.part;
   function lancerPas(s) {
-    if (s.issue !== 'poursuivre' || s.pasEnCours) return false;
+    if (s.issue !== 'poursuivre' || s.pasEnCours || s.croissanceDepuis >= 0) return false;
     s.pasEnCours = true; s.pasProgress = 0;
     return true;
   }
@@ -872,6 +887,118 @@
     return { actes, gardes, casseAvant: avant, casseGardes, casseFinale: avant + casseGardes };
   }
 
+  // --- le mode Croissance (§8, §11) ---
+  // Qui ne relâche jamais le bouton peut ne plus l'arrêter : la partie bascule, sans retour, dans un incrémental
+  // classique où la carte se rejoue à l'envers. Dix minutes plus tard, l'écran se fige, et la partie se ferme.
+  const C = D.CROISSANCE;
+  const enCroissance = (s) => s.croissanceDepuis >= 0 && s.issue !== 'croissance';
+  // Les générateurs : les sites de la carte, par acte. Un site fermé se rouvre, un site ouvert s'agrandit.
+  const GENERATEURS = D.sites.filter(d => acteDe(d) <= C.tiers.length && !d.mesure && d.carte !== false);
+  const niveauDe = (s, d) => (s.sites[d.id].state === 'actif' ? 1 + (s.sites[d.id].niveau || 0) : 0);
+  const tierOuvert = (s, d) => acteDe(d) <= 1 + s.paliers;   // les sites de l'acte suivant s'ouvrent à chaque palier
+  const chiffresGagnes = (s) => (s.croissanceDepuis >= 0 ? Math.max(0, s.digitsMax - s.digitsBascule) : 0);
+  function gCroissance(s) {
+    let g = C.g0;
+    for (const d of GENERATEURS) g += niveauDe(s, d) * C.tiers[acteDe(d) - 1].g;
+    return g;
+  }
+  // La Capacité suit l'Empreinte, comme toujours, mais comptée depuis le basculement, et sans plafond.
+  const kCroissance = (s) => C.k0 * Math.pow(s.E / s.Ebascule, D.KEXP) * Math.pow(C.palierK, s.paliers);
+  const coutNiveau = (s, d) => C.tiers[acteDe(d) - 1].cout * Math.pow(C.ratio, niveauDe(s, d));
+
+  // « Ne plus arrêter » s'offre après quelques relances enchaînées, tant que la dernière court ou vient de finir.
+  const peutBasculer = (s) => s.croissanceDepuis < 0 && s.issue !== 'clore' && s.chaine >= C.chaine && s.t <= s.chaineFin + C.delai;
+  function basculer(s) {
+    if (!peutBasculer(s)) return null;
+    s.croissanceDepuis = s.t; s.ms.bascule = s.t;
+    s.Ebascule = s.E; s.digitsBascule = s.digitsMax = digitsOf(s.E);
+    // Tout ce qui était en cours s'arrête : les chantiers sont abandonnés, et tout le monde est réembauché.
+    for (const d of D.sites) {
+      const st = s.sites[d.id];
+      if (st.state === 'chantier') Object.assign(st, { state: 'actif', progress: 0, attentePlace: false });
+    }
+    s.reembauches += s.deplaces + enFormation(s);
+    Object.assign(s, { M: 0, Meng: 0, deplaces: 0, attente: [], formations: [], formerEnContinu: false, pasEnCours: false, penurie: false });
+    for (const n of NOEUDS_RESEAU) s.noeuds[n.id] = 'alimente';
+    if (s.hopital === 'coupe') s.hopital = 'alimente';
+    s.paused = D.PAUSE_ACTE;
+    log(s, "La croissance ne s'arrêtera plus.", 'relance');
+    trace(s, 'bascule', { E: s.E });
+    return { type: 'bascule' };
+  }
+
+  function peutAcheter(s, id) {
+    const d = defs[id];
+    if (s.croissanceDepuis < 0 || !d || !GENERATEURS.includes(d)) return { ok: false, cout: 0, ouvert: false, rouvre: false };
+    const cout = coutNiveau(s, d), ouvert = tierOuvert(s, d);
+    return { ok: enCroissance(s) && ouvert && s.K >= cout, cout, ouvert, rouvre: s.sites[id].state !== 'actif' };   // figée, la partie garde ses prix, mais ne vend plus rien
+  }
+  function acheter(s, id) {
+    const c = peutAcheter(s, id);
+    if (!c.ok) return null;
+    const st = s.sites[id];
+    s.K -= c.cout; s.achats++;
+    // Rouvrir : le site repart, et la terre qu'il avait rendue est reprise.
+    if (c.rouvre) Object.assign(st, { state: 'actif', progress: 0, regen: 0, pollue: false, restes: false, sansApport: false, niveau: 0 });
+    else st.niveau = (st.niveau || 0) + 1;
+    return { type: 'achat', id, rouvre: c.rouvre, niveau: niveauDe(s, defs[id]) };
+  }
+  // Achète tout ce qui est payable, le moins cher d'abord ; renvoie le nombre de niveaux achetés.
+  function acheterTout(s) {
+    let n = 0;
+    for (; n < C.achatsMax; n++) {
+      let choix = null, prix = Infinity;
+      for (const d of GENERATEURS) {
+        if (!tierOuvert(s, d)) continue;
+        const c = coutNiveau(s, d);
+        if (c <= s.K && c < prix) { choix = d; prix = c; }
+      }
+      if (!choix) break;
+      acheter(s, choix.id);
+    }
+    return n;
+  }
+  function activerAchatAuto(s, oui) {
+    if (!enCroissance(s) || s.paliers < C.auto) return false;
+    s.achatAuto = !!oui;
+    return true;
+  }
+
+  function tickCroissance(s, dt) {
+    const ev = [];
+    if (s.paused > 0) { s.paused -= dt; return ev; }
+    s.t += dt;
+    s.E = Math.min(C.Emax, s.E * Math.exp((gCroissance(s) / 100 / 60) * dt));
+    s.K += kCroissance(s) * dt;
+    s.Co = Math.min(100, s.Co + (C.co / 60) * dt);   // la croissance rachète l'adhésion
+    if (s.Co < s.coMin) s.coMin = s.Co;
+    if (s.achatAuto) acheterTout(s);
+    // Un chiffre gagné : une région se rallume ; tous les `palier` chiffres, la Capacité reçue double et un acte s'ouvre.
+    const dg = digitsOf(s.E);
+    while (s.digitsMax < dg) {
+      s.digitsMax++;
+      const n = s.digitsMax - s.digitsBascule;
+      trace(s, 'chiffre-gagne', { digits: s.digitsMax });
+      ev.push({ type: 'chiffre-gagne', digits: s.digitsMax, n });
+      const region = s.regionsEteintes.pop();
+      if (region) ev.push({ type: 'region-rallumee', region });
+      if (n % C.palier === 0) {
+        s.paliers++;
+        log(s, `Palier n° ${s.paliers} : la Capacité reçue double.${s.paliers < C.tiers.length ? ' De nouveaux sites s\'ouvrent.' : ''}${s.paliers === C.auto ? ' L\'achat peut devenir automatique.' : ''}`, 'relance');
+        trace(s, 'palier', { n: s.paliers });
+        ev.push({ type: 'palier', n: s.paliers });
+      }
+    }
+    s.digits = dg;
+    // La fin : l'écran se fige, sur une Empreinte supérieure à celle du départ. Sans un mot (§11).
+    if (s.t - s.croissanceDepuis >= C.duree && s.E > D.E0) {
+      s.issue = 'croissance'; s.ms.fige = s.t;
+      trace(s, 'fige', { E: s.E });
+      ev.push({ type: 'fige' });
+    }
+    return ev;
+  }
+
   function tick(s, dt) {
     const ev = [];
     if (s.issue === 'clore') {   // la partie est close : plus rien ne bouge, sauf la terre qui finit de repousser
@@ -881,6 +1008,7 @@
       }
       return ev;
     }
+    if (s.croissanceDepuis >= 0) return s.issue === 'croissance' ? ev : tickCroissance(s, dt);   // figée, plus rien ne bouge
     direCasse(s);   // une coupure au lancement arrive hors du tick : sa définition suit au tick d'après
     if (s.paused > 0) { s.paused -= dt; return ev; }
     const relAvant = relanceActive(s);
@@ -1112,6 +1240,7 @@
         if (st.aBras) s.sites[id].aBras = true;
         if (st.habitants) s.sites[id].habitants = true;
         if (st.renforcee) s.sites[id].renforcee = true;
+        if (Number.isFinite(st.niveau) && st.niveau > 0) s.sites[id].niveau = st.niveau;
         if (st.dosage === 'reduite' || st.dosage === 'pleine') s.sites[id].dosage = st.dosage;
         if (st.attentePlace) s.sites[id].attentePlace = true;
       }
@@ -1152,7 +1281,7 @@
     // Le plancher se déduit des relances : une partie enregistrée avec un autre barème reprend le barème actuel.
     if (!(Number.isFinite(s.plancherSurcroit) && s.plancherSurcroit >= 1)) s.plancherSurcroit = 1;
     s.plancher = D.PLANCHER0 * Math.pow(D.RELANCE.plancherMul, s.relances + s.relancesAuto) * s.plancherSurcroit;
-    s.issue = save.issue === 'clore' || save.issue === 'poursuivre' ? save.issue : null;   // null par défaut : la boucle générale l'ignore
+    s.issue = ['clore', 'poursuivre', 'croissance'].includes(save.issue) ? save.issue : null;   // null par défaut : la boucle générale l'ignore
     if (!('debut' in save)) s.debut = null;
     return s;
   }
@@ -1215,6 +1344,11 @@
       clore: s.ms.clore,
       poursuivre: s.ms.poursuivre,
       pas: s.pasFaits,
+      bascule: s.ms.bascule,
+      fige: s.ms.fige,
+      chiffresGagnes: chiffresGagnes(s),
+      paliers: s.paliers,
+      niveauxAchetes: s.achats,
       casseGardes: s.casseGarde || 0,
       coupures: nb('coupure') + nb('delestage') + nb('privation'),
       delestages: nb('delestage'),
@@ -1275,6 +1409,10 @@
       case 'sous-dosage': return `Garde réduite : ${nomDe(e.id)}, ${fmt(e.casse)} personnes`;
       case 'poursuivre': return 'Poursuivre : le plancher est refusé';
       case 'pas': return `Pas n° ${e.n} : Empreinte ${fmtPas(e.E)}`;
+      case 'bascule': return `La croissance ne s'arrête plus : Empreinte ${fmtE(e.E)}`;
+      case 'chiffre-gagne': return `Chiffre gagné, ${e.digits} chiffres`;
+      case 'palier': return `Palier n° ${e.n} : la Capacité reçue double`;
+      case 'fige': return `L'écran se fige : Empreinte ${fmtE(e.E)}`;
       default: return e.type;
     }
   }
@@ -1329,7 +1467,7 @@
     }
     lignes.push(
       `- Consentement minimum : ${r.consentementMin} %`,
-      `- Empreinte : ${fmtFin(r.empreinte)}`,
+      `- Empreinte : ${fmtE(r.empreinte)}`,
       `- Terre rendue : ${String(r.terreRendue).replace('.', ',')} %`,
       `- Plancher irréductible : ${fmtPlancher(r.plancher)}`,
       `- Carte de l'acte I vidée : ${quand(r.carteVidee)}`,
@@ -1339,6 +1477,11 @@
     if (r.acte >= 4) lignes.push(`- Acte IV achevé : ${quand(r.finActe4)}`);
     if (r.acte >= 5) lignes.push(`- Acte V achevé : ${quand(r.finActe5)}`);
     if (r.issue === 'clore') lignes.push(`- Issue : Clore, à ${quand(r.clore)}`);
+    if (r.bascule !== null) {
+      lignes.push(`- Bascule dans la croissance : ${quand(r.bascule)}`);
+      lignes.push(`- Chiffres gagnés : ${r.chiffresGagnes}, paliers : ${r.paliers}, niveaux achetés : ${fmt(r.niveauxAchetes)}`);
+      lignes.push(`- Issue : Croissance, écran figé à ${quand(r.fige)}`);
+    }
     if (r.issue === 'poursuivre') lignes.push(`- Issue : Poursuivre, à ${quand(r.poursuivre)} ; ${r.pas} pas faits sous le plancher`);
     if (!r.chronologieComplete) lignes.push('- Partie commencée avant le rapport : chronologie incomplète');
     lignes.push('', 'Chronologie', '```');
@@ -1369,6 +1512,8 @@
     const h = Math.floor(m / 60);
     return `${h} h ${String(m % 60).padStart(2, '0')}`;
   }
+  // Au-delà de treize chiffres, l'Empreinte passe en notation scientifique.
+  const fmtE = (n) => (n >= 1e13 ? fmtSci(n) : fmtFin(n));
   function fmtSci(n) {
     const e = Math.floor(Math.log10(n));
     const m = n / Math.pow(10, e);
@@ -1387,6 +1532,8 @@
     reconvertirTout, formerEnContinu, casseParCause, texteCasse,
     prixCoupure, prixLancement, risqueConseil, DEFINITION_CASSE,
     existe, capaciteFinie, aGarder, placesOccupees, gardeEnAttente, gardesEnFormation, fmtPlancher,
+    enCroissance, peutBasculer, basculer, GENERATEURS, niveauDe, tierOuvert, coutNiveau, peutAcheter, acheter, acheterTout, activerAchatAuto,
+    gCroissance, kCroissance, chiffresGagnes, fmtE,
     toutRendu, peutChoisir, peutRenforcer, renforcer, clore, poursuivre, lancerPas, dureePas, retraitPas, inventaire, ordrePropre, fmtPas,
     GESTES, gesteEnCours, gestesFaits, auPlancher, retraitPrevu, dernierGeste, fmtFin,
     DERNIER_ACTE, TITRES_ACTES,

@@ -1,6 +1,6 @@
 # Décroissance — prototype (actes I à V)
 
-Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md). L'acte III, « Les gens », s'ouvre quand le réseau est démantelé ; il est décrit dans [docs/acte-3.md](docs/acte-3.md). L'acte IV, « Le legs », s'ouvre quand la carte de l'acte III est vidée ; il est décrit dans [docs/acte-4.md](docs/acte-4.md). L'acte V, « Rendre », s'ouvre quand tout est gardé, démantelé et dépollué ; il est décrit dans [docs/acte-5.md](docs/acte-5.md). Deux des trois fins, Clore et Poursuivre, sont décrites dans [docs/fins.md](docs/fins.md).
+Prototype du [design doc](docs/design-doc.md) : un seul écran, une géographie fictive (l'**Ostrane** : une côte, le fleuve la Sère, le bassin minier de Cherbaix, deux métropoles, Valdrance et Orvenne, le port de Méraud). L'acte I est le MVP falsifiable du §14. L'acte II, « Le réseau », s'ouvre quand la carte de l'acte I est vidée ; il est décrit dans [docs/acte-2.md](docs/acte-2.md). L'acte III, « Les gens », s'ouvre quand le réseau est démantelé ; il est décrit dans [docs/acte-3.md](docs/acte-3.md). L'acte IV, « Le legs », s'ouvre quand la carte de l'acte III est vidée ; il est décrit dans [docs/acte-4.md](docs/acte-4.md). L'acte V, « Rendre », s'ouvre quand tout est gardé, démantelé et dépollué ; il est décrit dans [docs/acte-5.md](docs/acte-5.md). Deux des trois fins, Clore et Poursuivre, sont décrites dans [docs/fins.md](docs/fins.md) ; la troisième, Croissance, et le mode qui y mène, dans [docs/croissance.md](docs/croissance.md).
 
 Aucune dépendance, aucun build. Ouvrir `index.html` dans un navigateur (ou `python3 -m http.server` puis http://localhost:8000). Le son est synthétisé en WebAudio, il n'y a aucun fichier audio.
 
@@ -73,7 +73,7 @@ Détail, contenu, arbitrages et réglages dans [docs/acte-5.md](docs/acte-5.md).
 
 ## Les fins : Clore, Poursuivre
 
-Détail, contenu et points ouverts dans [docs/fins.md](docs/fins.md). La troisième fin, Croissance, reste à faire.
+Détail, contenu et points ouverts dans [docs/fins.md](docs/fins.md). La troisième fin, Croissance, a sa section plus bas.
 
 - **Ce qui reste** : au dernier geste, une section énumère le plancher, les gardes, les gens restés sur place et la Casse, et propose deux choix sans retour.
 - **Clore** scelle la partie : plus rien ne se lance ni ne se relance. Un écran énumère ce qui reste, puis vient l'épilogue, puis il ne reste que la carte.
@@ -82,6 +82,18 @@ Détail, contenu et points ouverts dans [docs/fins.md](docs/fins.md). La troisi�
 - **Renforcer une garde** : avant de choisir, une garde réduite peut devenir pleine avec les Mains qui restent. La carte de chaque garde dit ce que fait chaque dosage, pas ce qu'il coûte.
 - **Poursuivre** refuse le plancher : chaque pas retire un dixième de ce qui reste et dure le double du précédent, hors ligne compris. Il n'y a plus de Clore, ni d'écran de fin.
 - **Quand tout est rendu, ce qu'une relance ajoute reste** : le plancher monte jusqu'à l'Empreinte.
+
+## Le mode Croissance
+
+Détail, contenu, réglage et points ouverts dans [docs/croissance.md](docs/croissance.md).
+
+- **« Ne plus arrêter »** : à la troisième relance enchaînée, un second bouton apparaît à côté de Relancer. Il fait basculer la partie, sans retour, à n'importe quel acte.
+- **La carte se rejoue à l'envers** : les trente sites deviennent des générateurs. Un site fermé se rouvre, un site ouvert s'agrandit, et chaque niveau ajoute de la croissance. Tout se paie en Capacité, qui n'a plus de plafond.
+- **L'Empreinte s'emballe** : +500 % par minute dès le basculement, plus de 30 chiffres gagnés en dix minutes, en notation scientifique.
+- **Des paliers** tous les trois chiffres gagnés : la Capacité reçue double, les sites de l'acte suivant s'ouvrent, puis l'achat devient automatique.
+- **Aucun frottement** : le Consentement monte à 100, tout le monde est réembauché, aucune Casse nouvelle. La Terre rendue retombe.
+- **La fin** : dix minutes après le basculement, l'écran se fige et le son se coupe. Ni texte, ni épilogue.
+- Le son ramène les couches industrielles une à une, et une musique dont le tempo monte avec les chiffres gagnés.
 
 ## Fichiers
 
@@ -93,15 +105,16 @@ Détail, contenu et points ouverts dans [docs/fins.md](docs/fins.md). La troisi�
 | `docs/acte-4.md` | l'acte IV tel que validé et réglé : règles, contenu, arbitrages, écarts, rythme mesuré |
 | `docs/acte-5.md` | l'acte V tel que validé et réglé : règles, contenu, arbitrages, écarts, rythme mesuré, points ouverts |
 | `docs/fins.md` | Clore, Poursuivre et l'épilogue tels que validés : règles, contenu, écarts, ce que disent les bots, points ouverts |
+| `docs/croissance.md` | le mode Croissance et la troisième fin tels que validés : règles, contenu, écarts, rythme mesuré, points ouverts |
 | `data.js` | toutes les valeurs de réglage : sites, graphe, réseau, vivres, gardes et sols, gestes, régions, noms et métiers, constantes |
-| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, gestes, plancher, fins et inventaire de l'épilogue, relance, hors-ligne, formats) |
+| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, gestes, plancher, fins et inventaire de l'épilogue, mode Croissance, relance, hors-ligne, formats) |
 | `audio.js` | couches sonores synthétisées et sons ponctuels |
 | `main.js` | rendu, carte SVG, sauvegarde, boucle |
 | `index.html`, `style.css` | l'écran unique |
 | `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur ; il dit aussi ce que dirait l'épilogue |
 | `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
-| `tools/test.js` | tests du moteur : actes II à V, fins, reprise des sauvegardes, rapport de session, jugement des invariants |
-| `tools/check.js` | vérifie les invariants I1 à I6 du §9 sur treize parties jouées par les bots, et sort en erreur si l'un d'eux est cassé |
+| `tools/test.js` | tests du moteur : actes II à V, fins, mode Croissance, reprise des sauvegardes, rapport de session, jugement des invariants |
+| `tools/check.js` | vérifie les invariants I1 à I6 du §9 sur quatorze parties jouées par les bots, et sort en erreur si l'un d'eux est cassé |
 | `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
 | `.github/workflows/tests.yml` | lance les tests et la vérification des invariants sur chaque pull request, et sur `main` |
 
@@ -110,17 +123,18 @@ node tools/simulate.js prudent 10     # bot prudent, 10 s de réaction par actio
 node tools/simulate.js pressé 10      # ignore les avertissements : coupures, réseau, desserte, vivres
 node tools/simulate.js vite 10        # prudent, mais démolit vite à l'acte II
 node tools/simulate.js relance-1 10   # une relance à 2 min
-node tools/simulate.js croissance     # relance en continu
+node tools/simulate.js relance-continue   # relance sans arrêt, sans jamais basculer
+node tools/simulate.js croissance 5   # relance sans arrêt, puis « Ne plus arrêter » : le mode Croissance
 DOSAGE=pleine node tools/simulate.js prudent 10   # gardes pleines à l'acte IV
 node tools/test.js                    # tests du moteur
-node tools/check.js                   # invariants I1 à I6 du §9, sur treize parties (45 s environ)
+node tools/check.js                   # invariants I1 à I6 du §9, sur quatorze parties (45 s environ)
 ```
 
 Les deux dernières commandes tournent sur chaque pull request. Ce que `tools/check.js` mesure, ses seuils et les écarts connus du réglage actuel sont décrits au §9 du [design doc](docs/design-doc.md), « Vérification automatique ».
 
 Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 01, trois chiffres et la fin de l'acte IV vers 1 h 26, puis le dernier chiffre, le plancher et la fin de l'acte V vers 1 h 48. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois premiers, un peu plus de 2 h pour les quatre, 2 h 40 environ pour les cinq.
 
-Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`, `Jeu.inventaire()`.
+Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`, `Jeu.inventaire()`, `Jeu.basculer()`, `Jeu.toutAcheter()`.
 
 ## Protocole de test (§14)
 
@@ -132,6 +146,7 @@ Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.enga
 6. Pour l'acte III, noter si le testeur lit les noms, s'il regarde la jauge des vivres avant de fermer une exploitation, et s'il appuie sur Relancer quand le Consentement baisse.
 7. Pour l'acte V, noter la réaction quand le compteur s'arrête sur le plancher, et si le testeur fait encore les gestes qui restent une fois le compteur figé.
 8. Pour les fins, noter laquelle le testeur choisit et pourquoi, s'il lit l'inventaire ou l'affiche d'un coup, et sa réaction à la Casse des gardes réduites.
+9. Pour le mode Croissance, le faire jouer à part, à quelqu'un qui ne joue que lui : noter s'il le trouve agréable, s'il achète encore une fois l'achat automatique offert, et sa réaction quand l'écran se fige.
 
 ## Écarts avec le design doc, et pourquoi
 

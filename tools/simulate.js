@@ -1,7 +1,8 @@
 // Simulation hors navigateur : un joueur automatique joue les actes I à V.
 // node tools/simulate.js [profil] [réaction en s]     DOSAGE=pleine : gardes pleines à l'acte IV (réduites sinon)
 //   profils : prudent (par défaut), pressé, vite (prudent, mais démolit vite à l'acte II),
-//             relance-1 (une relance à 2 min), croissance (relance en continu)
+//             relance-1 (une relance à 2 min), relance-continue (relance sans arrêt, sans jamais basculer),
+//             croissance (relance sans arrêt, puis « Ne plus arrêter » : le mode Croissance, jusqu'à l'écran figé)
 //   ex. : node tools/simulate.js prudent 10        node tools/simulate.js pressé 10
 // tools/check.js fait jouer les mêmes joueurs avec simuler(), et les observe pas à pas.
 const E = require('../engine.js');
@@ -17,6 +18,7 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
   s.started = true;
   const dt = 0.1;
   const marks = [];
+  let prochainAchat = 0;   // mode Croissance : le prochain « Tout acheter » du bot
   let prochainAction = 0, relanceFaite = 0, maxE = s.E, minEavantStab = Infinity, rebond = 0;
 
   // Acte I : le joueur du MVP, inchangé. « Vite » y joue comme le prudent.
@@ -129,12 +131,20 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
         (casse.length ? `  ${casse.map(e => `${e.type.toUpperCase()} ${e.id || e.dep || e.ids.join('+')}`).join(', ')}` : ''));
     }
     if (profil === 'relance-1' && s.t > 120 && !relanceFaite) { E.relancer(s); relanceFaite++; marks.push(`${quand(s.t)}  RELANCE`); }
-    if (profil === 'croissance' && !E.relanceActive(s)) { E.relancer(s); }
+    if ((profil === 'croissance' || profil === 'relance-continue') && !E.relanceActive(s)) { E.relancer(s); }
+    // Croissance : dès que « Ne plus arrêter » s'offre, le bot bascule. Il achète ensuite tout ce qui est payable,
+    // après son temps de réaction, et met l'achat en automatique dès qu'il le peut.
+    if (profil === 'croissance' && E.peutBasculer(s)) { E.basculer(s); marks.push(`${quand(s.t)}  BASCULE  E=${E.fmtE(s.E)}`); }
+    if (E.enCroissance(s)) {
+      if (!s.achatAuto) E.activerAchatAuto(s, true);
+      if (s.t >= prochainAchat) { E.acheterTout(s); prochainAchat = s.t + reaction; }
+    }
     const avant = s.E, gReb = E.gRebond(s);
     const evs = E.tick(s, dt);
     if (suivi.pas) suivi.pas(s, evs);
     if (s.paused <= 0 && gReb > 0) rebond += avant * (Math.exp(gReb / 100 / 60 * dt) - 1);
     for (const ev of evs) {
+      if (ev.type === 'palier' || ev.type === 'fige') marks.push(`${quand(s.t)}  ${ev.type.toUpperCase()} ${ev.n || ''}  E=${E.fmtE(s.E)}  K=${E.fmtE(s.K)}  +${Math.round(E.gEff(s))} %/min  T=${E.T(s).toFixed(1)}`);
       // Acte V : un geste à la fois. Le joueur réagit à la fin du geste, pas à son lancement.
       if (ev.type === 'ferme' && E.defs[ev.id].geste) prochainAction = Math.max(prochainAction, s.t + reaction);
       if (['stabilise', 'chiffre', 'acte', 'fin', 'relance', 'ferme', 'garde', 'non-retour', 'plancher', 'pollution', 'region', 'arret', 'retour', 'penurie', 'penurie-fin'].includes(ev.type))
@@ -150,6 +160,7 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
     if (s.ms.fin4 !== null && !finQuatre) finQuatre = { E: s.E, plancher: s.plancher, M: s.M, T: E.T(s) };
     const fin = s.ms['fin' + E.DERNIER_ACTE];
     if (fin !== null && s.t - fin > 5) break;
+    if (s.issue === 'croissance') break;   // l'écran s'est figé
   }
   return { profil, reaction, s, marks, maxE, minEavantStab, rebond, coMin3, mainsMax, finDeux, coMin4, finTrois, coMin5, finQuatre };
 }
@@ -160,7 +171,7 @@ function resumer({ profil, reaction, s, marks, maxE, minEavantStab, rebond, coMi
   const pertes = s.chrono.filter(e => e.type === 'chiffre').map(e => e.t);
   console.log(marks.join('\n'));
   console.log('---');
-  console.log(`profil=${profil}  réaction=${reaction} s  E max=${E.fmt(maxE)}  E min avant stabilisation=${E.fmt(minEavantStab)}`);
+  console.log(`profil=${profil}  réaction=${reaction} s  E max=${E.fmtE(maxE)}  E min avant stabilisation=${E.fmt(minEavantStab)}`);
   console.log(`acte I   stabilisation=${r.stabilisation !== null ? E.fmtDur(r.stabilisation) : '—'}  premier chiffre=${r.premierChiffre !== null ? E.fmtDur(r.premierChiffre) : '—'}  carte vidée=${r.carteVidee !== null ? E.fmtDur(r.carteVidee) : '—'}`);
   if (r.acte2 !== null) {
     const ecart = pertes.length > 1 ? pertes[1] - pertes[0] : null;
@@ -212,7 +223,13 @@ function resumer({ profil, reaction, s, marks, maxE, minEavantStab, rebond, coMi
     }
     console.log(`         avec les ${E.fmt(s.M)} Mains qui restent : ${mieux.ids.length ? `renforcer ${mieux.ids.join(', ')}  Casse ${E.fmt(inv.casseFinale - mieux.casse)}` : 'aucune garde à renforcer'}`);
   }
-  console.log(`fin      E=${E.fmtFin(s.E)}  Co=${s.Co.toFixed(0)}  T=${E.T(s).toFixed(1)}/${E.Tmax().toFixed(1)}  relances=${r.relances}  relances du Conseil=${r.relancesConseil}`);
+  if (r.bascule !== null) {
+    const paliers = s.chrono.filter(e => e.type === 'palier').map(e => E.fmtDur(e.t - r.bascule));
+    const niveaux = E.GENERATEURS.reduce((a, d) => a + E.niveauDe(s, d), 0);
+    console.log(`croissance bascule=${E.fmtDur(r.bascule)} à E=${E.fmtE(s.Ebascule)}  écran figé=${r.fige !== null ? E.fmtDur(r.fige) : '—'}  durée du mode=${r.fige !== null ? E.fmtDur(r.fige - r.bascule) : '—'}` +
+      `  chiffres gagnés=${r.chiffresGagnes}  paliers=${r.paliers} (${paliers.join(', ')})  niveaux=${E.fmt(niveaux)}, dont ${E.fmt(r.niveauxAchetes)} achetés`);
+  }
+  console.log(`fin      E=${E.fmtE(s.E)}  Co=${s.Co.toFixed(0)}  T=${E.T(s).toFixed(1)}/${E.Tmax().toFixed(1)}  relances=${r.relances}  relances du Conseil=${r.relancesConseil}`);
 }
 
 if (require.main === module) {
