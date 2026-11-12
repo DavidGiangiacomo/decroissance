@@ -5,7 +5,8 @@ const fs = require('fs'), path = require('path'), { execSync } = require('child_
 
 const root = path.join(__dirname, '..');
 const out = path.join(root, '_site');
-const FICHIERS = ['index.html', 'style.css', 'data.js', 'engine.js', 'audio.js', 'main.js'];
+// Le simulateur est publié aussi : en mode test (?test), la page le charge pour reprendre la partie d'un bot.
+const FICHIERS = ['index.html', 'style.css', 'data.js', 'engine.js', 'audio.js', 'main.js', 'tools/simulate.js'];
 const MARQUE = '<meta name="version" content="dev">';
 
 function version() {
@@ -19,7 +20,10 @@ function version() {
 
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out);
-for (const f of FICHIERS) fs.copyFileSync(path.join(root, f), path.join(out, f));
+for (const f of FICHIERS) {
+  fs.mkdirSync(path.dirname(path.join(out, f)), { recursive: true });
+  fs.copyFileSync(path.join(root, f), path.join(out, f));
+}
 
 const v = version();
 const page = path.join(out, 'index.html');

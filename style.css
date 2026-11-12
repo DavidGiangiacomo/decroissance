@@ -424,3 +424,12 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .app.fige .pied { pointer-events: auto; }
 .app.fige *, .app.fige *::before, .app.fige *::after { animation-play-state: paused !important; transition: none !important; }
 .app.fige .btn-relancer { filter: grayscale(.6); }
+
+/* ---- raccourcis de test (index.html?test) ---- */
+.raccourcis { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--bord); }
+.raccourcis p { margin: 0 0 8px; }
+.raccourcis-choix { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+.raccourcis-choix label { display: contents; color: var(--muted); }
+.raccourcis-choix select { min-width: 0; background: #141619; color: var(--texte); border: 1px solid var(--bord); border-radius: 4px; padding: 4px 6px; font: inherit; }
+.raccourcis-choix select:disabled { opacity: .45; }
+.raccourcis .carton-boutons { margin-top: 10px; }

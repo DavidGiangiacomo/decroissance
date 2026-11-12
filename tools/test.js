@@ -1295,6 +1295,33 @@ test('au-delà de treize chiffres, l\'Empreinte passe en notation scientifique, 
   assert.strictEqual(E.digitsOf(9.99e40), 41);
 });
 
+// ---- Les raccourcis de test : reprendre la partie d'un bot ----
+const { partieA, POINTS } = require('./simulate.js');
+
+test('un raccourci rend la partie d\'un bot à l\'ouverture d\'un acte, et s\'arrête là', () => {
+  const s2 = partieA('acte2');
+  assert.ok(s2 && s2.acte === 2 && s2.ms.acte2 !== null && s2.ms.fin2 === null && s2.t < 13 * 60, `acte ${s2.acte}, t ${s2.t}`);
+  assert.strictEqual(s2.raccourci, "à l'ouverture de l'acte II, prudent à 10 s");
+  const s4 = partieA('acte4', { profil: 'pressé', reaction: 30 });
+  assert.ok(s4.acte === 4 && s4.ms.fin4 === null && s4.X > 0 && s4.paused > 0, 'le pressé y arrive avec de la Casse, sur le carton de l\'acte');
+  const repris = E.migrer(allerRetour(s4));
+  assert.ok(repris && repris.acte === 4 && repris.X === s4.X && repris.raccourci === s4.raccourci);
+  assert.doesNotThrow(() => { for (let i = 0; i < 600; i++) E.tick(repris, 0.1); });
+  assert.ok(E.rapportTexte(repris, 'test').includes("Raccourci de test : partie reprise d'un bot (à l'ouverture de l'acte IV, pressé à 30 s)"));
+  assert.ok(!E.rapportTexte(Object.assign(E.create(), { started: true }), 'test').includes('Raccourci de test'));
+});
+
+test('un raccourci mène au choix final, gardes pleines comprises, et au basculement dans la croissance', () => {
+  const fin = partieA('fin', { profil: 'pressé', reaction: 10, dosage: 'pleine' });   // une relance du Conseil court encore à la fin
+  assert.ok(fin && E.toutRendu(fin) && E.peutChoisir(fin) && fin.sites.digues.dosage === 'pleine');
+  assert.ok(fin.raccourci.endsWith('pressé à 10 s, gardes pleines'));
+  const c = partieA('croissance', { profil: 'prudent' });
+  assert.ok(c && E.enCroissance(c) && c.acte === 1 && c.raccourci === 'au basculement dans la croissance');
+  assert.strictEqual(partieA('acte9'), null);
+  assert.deepStrictEqual(POINTS, ['acte2', 'acte3', 'acte4', 'acte5', 'fin', 'croissance']);
+  assert.strictEqual(partieA('acte3', { profil: 'inconnu' }).raccourci, "à l'ouverture de l'acte III, prudent à 10 s");
+});
+
 // ---- Ce que les cartes annoncent, le moteur le fait (issue #35) ----
 test('aucun site n\'annonce d\'ajouter de l\'Empreinte : le moteur ne le ferait pas', () => {
   for (const d of E.D.sites) assert.ok(d.part > 0 || d.E >= 0, `${d.id} : E = ${d.E}`);

@@ -83,6 +83,7 @@
       coMin: 100,           // Consentement le plus bas atteint
       horsLigne: 0,         // secondes passées hors ligne ou onglet caché
       versions: [],         // versions du jeu sur lesquelles la partie a été jouée
+      raccourci: '',        // raccourci de test : la partie a été reprise d'un bot (lequel, et où)
     };
     for (const d of D.sites) s.sites[d.id] = { state: 'actif', progress: 0, regen: 0, vite: false, pollue: false };   // et, selon le site : habitants, dosage…
     for (const n of NOEUDS_RESEAU) s.noeuds[n.id] = 'alimente';
@@ -1311,6 +1312,7 @@
     return {
       version: version || null,
       versions: s.versions,
+      raccourci: s.raccourci || null,
       debut: s.debut ? new Date(s.debut).toISOString() : null,
       chronologieComplete: s.debut !== null,
       tempsJeu: Math.round(s.t),
@@ -1429,6 +1431,7 @@
       'Décroissance, rapport de session',
       `Version ${r.version || 'inconnue'}${autres.length ? `, partie commencée en ${autres[0]}` : ''}`,
       `Partie commencée le ${debut}, temps de jeu ${fmtDur(r.tempsJeu)}, hors ligne ${fmtDur(r.horsLigne)}`,
+      ...(r.raccourci ? [`Raccourci de test : partie reprise d'un bot (${r.raccourci}). Ce qui précède n'a pas été joué par le joueur.`] : []),
       '',
       `- Le nombre a cessé de monter : ${quand(r.stabilisation)}`,
       `- Premier chiffre perdu : ${quand(r.premierChiffre)}`,
