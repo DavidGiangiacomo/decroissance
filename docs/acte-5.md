@@ -88,7 +88,7 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. À l'acte V, 
 - À 10 et 30 s, aucun écart ne dépasse 18 min. À 45 s, deux joueurs passent plus de 25 min sans chiffre perdu (25 min 25 et 27 min 16) : ils dépassaient déjà I1 aux actes II et III.
 - Tous finissent sur leur plancher, sauf le pressé aux gardes pleines : ses vingt gestes faits par les habitants lui valent deux relances du Conseil dans l'acte. Son plancher passe de 38,4 à 153,6, et son Empreinte y remonte.
 - Les actes I à V se jouent en 1 h 48 pour le bot prudent à 10 s ; le §9 en prévoit 3 h 25. La Terre rendue est à 98 % à la fin de l'acte, à 100 % quatre minutes plus tard.
-- `node tools/check.js` passe : le coût d'un point d'Empreinte monte encore (I3), et la Terre rendue reste à moins de 20 % d'une droite pour les treize parties (I5).
+- `node tools/check.js` passe : le coût d'un point d'Empreinte monte encore (I3), et la Terre rendue reste à moins de 20 % d'une droite pour les treize parties qui démantèlent (I5).
 
 ## Points ouverts
 
@@ -100,4 +100,4 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. À l'acte V, 
 6. **Hors de cet acte :**
    - Clore, Poursuivre et l'épilogue, décrits dans [fins.md](fins.md) ;
    - les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)) ;
-   - le mode Croissance ([#19](https://github.com/DavidGiangiacomo/decroissance/issues/19)), que la remontée au plancher fait déjà grimper.
+   - le mode Croissance, décrit dans [croissance.md](croissance.md).

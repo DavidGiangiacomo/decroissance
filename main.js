@@ -1,4 +1,4 @@
-// Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I à V, et les fins : Clore, Poursuivre.
+// Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I à V, et les fins : Clore, Poursuivre, Croissance.
 (function () {
   const E = window.Engine, D = E.D;
   const CLE = 'decroissance.mvp.v1';
@@ -131,7 +131,9 @@
   }
 
   function rendreCarte() {
-    const acte2 = s.acte >= 2, acte3 = s.acte >= 3, menace = menaces();
+    // En mode Croissance, la carte se rejoue à l'envers : les actes s'ouvrent avec les paliers.
+    const mode = s.croissanceDepuis >= 0;
+    const acte2 = s.acte >= 2 || (mode && s.paliers >= 1), acte3 = s.acte >= 3 || (mode && s.paliers >= 2), menace = menaces();
     for (const d of D.sites) {
       if (d.mesure || d.carte === false) continue;
       const g = el['site-' + d.id], st = s.sites[d.id];
@@ -139,14 +141,15 @@
       const isole = acte3 && st.state === 'actif' && E.isole(s, d);
       const attend = d.garde && st.state === 'chantier' && st.attentePlace;
       g.setAttribute('class', `site ${st.state}${d.garde ? ' garde' : ''}${d.sol ? ' sol' : ''}${attend ? ' attend' : ''}${st.pollue ? ' pollue' : ''}${sansApport ? ' sans-apport' : ''}${isole ? ' isole' : ''}` +
-        `${menace.has(d.id) ? ' menace' : ''}${selection === d.id ? ' selection' : ''}${E.acteDe(d) > s.acte ? ' futur' : ''}`);
+        `${menace.has(d.id) ? ' menace' : ''}${selection === d.id ? ' selection' : ''}${E.acteDe(d) > s.acte && !(mode && E.tierOuvert(s, d)) ? ' futur' : ''}`);
+      g.querySelector('.halo').setAttribute('r', mode ? (16 + 2 * Math.sqrt(E.niveauDe(s, d))).toFixed(1) : 16);   // un site agrandi rayonne plus loin
       g.querySelector('.arc').setAttribute('d', st.state === 'chantier' && !attend ? arcPath(st.progress) : '');
       const v = g.querySelector('.vegetal');
       if (st.state === 'eteint' && !st.pollue && d.regen > 0) { v.setAttribute('r', (10 + 14 * st.regen).toFixed(1)); v.style.opacity = (0.15 + 0.6 * st.regen).toFixed(2); }
       else v.style.opacity = 0;
     }
     // Acte IV : le réseau national remplace le poste ; une fois démantelé, les lignes s'éteignent.
-    el.poste.classList.toggle('futur', s.acte >= 4);
+    el.poste.classList.toggle('futur', s.acte >= 4 || (mode && s.paliers >= 3));
     const reseauMort = E.capaciteFinie(s);
     el['noeud-hopital'].setAttribute('class', `noeud ${s.hopital}`);
     for (const n of D.noeuds) {
@@ -601,7 +604,7 @@
   function rendreCompteur() {
     // Sous 100, à la décimale : le plancher n'est pas un nombre rond. Sous le plancher, à trois chiffres.
     const sous = s.issue === 'poursuivre' && s.E < s.plancher * (1 - 1e-9);
-    const nb = sous ? E.fmtPas(s.E) : E.fmtFin(s.E);
+    const nb = sous ? E.fmtPas(s.E) : E.fmtE(s.E);   // au-delà de treize chiffres, la notation scientifique
     const c = $('compteur');
     if (performance.now() > animPerte && nb !== dernierNb) { c.textContent = nb; dernierNb = nb; }
     const rel = E.relanceActive(s), g = E.gEff(s);
@@ -610,12 +613,13 @@
     c.className = 'compteur ' + k + (arrete ? ' au-plancher' : '') + (rel ? ' relance' : '') + (performance.now() < animPerte ? ' perte' : '');
     const t = $('tendance'); t.className = 'tendance ' + k;
     const rebond = E.gRebond(s) > 0.005 && !rel, fuite = s.acte >= 4 && E.gSites(s) > 0 && !rel;
-    t.textContent = g > 0.005 ? `▲ +${(g < 1 ? g.toFixed(2) : g.toFixed(1)).replace('.', ',')} % / min${fuite ? ' · les charges fuient' : rebond ? ' · rebond du réseau' : ''}` : sous ? 'sous le plancher — vous poursuivez' : arrete ? 'au plancher — il ne descendra plus' : 'stable — plus rien ne monte';
+    t.textContent = g > 0.005 ? `▲ +${g >= 100 ? E.fmt(g) : (g < 1 ? g.toFixed(2) : g.toFixed(1)).replace('.', ',')} % / min${fuite ? ' · les charges fuient' : rebond ? ' · rebond du réseau' : ''}` : sous ? 'sous le plancher — vous poursuivez' : arrete ? 'au plancher — il ne descendra plus' : 'stable — plus rien ne monte';
     if (s.ms.stabilise === null && g <= 0.005) t.textContent = 'stable';
-    $('sci').hidden = !rel; if (rel) $('sci').textContent = E.fmtSci(s.E);
+    if (s.issue === 'croissance') t.textContent = '';   // l'écran figé ne dit rien (§11)
+    $('sci').hidden = !rel || s.E >= 1e13; if (rel) $('sci').textContent = E.fmtSci(s.E);
     const acte4 = s.acte >= 4, ag = E.aGarder(s);
-    $('plancher').hidden = !acte4; if (acte4) $('plancher').textContent = `plancher : ${E.fmtPlancher(s.plancher)}`;
-    $('a-garder').hidden = !acte4 || ag <= 0; if (acte4) $('a-garder').textContent = `à garder : ${Math.round(ag * 100)} %`;
+    $('plancher').hidden = !acte4 || s.croissanceDepuis >= 0; if (acte4) $('plancher').textContent = `plancher : ${E.fmtPlancher(s.plancher)}`;
+    $('a-garder').hidden = !acte4 || ag <= 0 || s.croissanceDepuis >= 0; if (acte4) $('a-garder').textContent = `à garder : ${Math.round(ag * 100)} %`;
     document.getElementById('app').dataset.digits = s.digits;
   }
 
@@ -630,7 +634,9 @@
   }
 
   function rendreRessources() {
-    $('k').textContent = Math.floor(s.K); $('krate').textContent = E.capaciteFinie(s) ? ' · ne se renouvelle plus' : ` +${E.kRate(s).toFixed(1).replace('.', ',')} / s`;
+    const enMode = s.croissanceDepuis >= 0;
+    $('k').textContent = s.K >= 1e13 ? E.fmtSci(s.K) : E.fmt(s.K);
+    $('krate').textContent = enMode ? (E.enCroissance(s) ? ` +${E.fmtE(Math.round(E.kRate(s)))} / s` : '') : E.capaciteFinie(s) ? ' · ne se renouvelle plus' : ` +${E.kRate(s).toFixed(1).replace('.', ',')} / s`;
     const enForm = E.enFormation(s);
     $('m').textContent = E.fmt(s.M); $('meng').textContent = ` · ${E.fmt(s.Meng)} engagées${s.acte >= 3 && enForm ? ` · ${E.fmt(enForm)} en formation` : ''}${s.gardiens ? ` · ${E.fmt(s.gardiens)} gardiens` : ''}${s.installes ? ` · ${E.fmt(s.installes)} restés sur place` : ''}`;
     const T = E.T(s); $('t').textContent = T.toFixed(1).replace('.', ','); $('t-barre').style.width = Math.min(100, T) + '%';
@@ -660,12 +666,14 @@
     const b = $('btn-relancer'); const rel = E.relanceActive(s);
     const auto = rel && s.t - s.autoRelanceAt < D.RELANCE.dur;
     b.className = 'btn-relancer' + (rel ? (auto ? ' auto' : ' actif') : '');
-    b.disabled = rel;
-    b.textContent = rel ? (auto ? `Relancé sans vous · ${E.fmtDur(Math.ceil(s.relanceUntil - s.t))}` : `Relance · ${E.fmtDur(Math.ceil(s.relanceUntil - s.t))}`) : 'Relancer';
+    b.disabled = rel || s.issue === 'croissance';
+    $('btn-croissance').hidden = !E.peutBasculer(s);   // il ne s'offre qu'à qui n'a pas relâché le bouton
+    if (s.croissanceDepuis >= 0) b.textContent = 'Croissance';
+    else b.textContent = rel ? (auto ? `Relancé sans vous · ${E.fmtDur(Math.ceil(s.relanceUntil - s.t))}` : `Relance · ${E.fmtDur(Math.ceil(s.relanceUntil - s.t))}`) : 'Relancer';
     $('horloge').textContent = E.fmtDur(s.t);
   }
 
-  function rendre() { rendreIssue(); rendreCompteur(); rendreRessources(); rendreGestes(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
+  function rendre() { rendreCroissance(); rendreIssue(); rendreCompteur(); rendreRessources(); rendreGestes(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
 
   // ---------- son : niveaux selon l'état ----------
   const PROD_FOSSILE = D.sites.reduce((a, d) => a + (d.prod || 0), 0);
@@ -685,6 +693,13 @@
     // Acte V : la terre rendue ramène les oiseaux, les insectes et des voix, et la pluie s'éloigne, à mesure des gestes.
     const retour = s.acte >= 5 ? Math.round(E.gestesFaits(s) / E.GESTES.length * 10) / 10 : 0;
     // Close, la partie ne garde que l'ambiant (§12) : le vent, l'eau, les oiseaux, les insectes.
+    // Mode Croissance : l'industrie revient à plein, couche après couche, la musique reprend, la nature se tait.
+    // Figée, la partie n'a plus aucun son.
+    if (s.issue === 'croissance') return { trafic: 0, turbines: 0, reseau: 0, fret: 0, vent: 0, oiseaux: 0, eau: 0, insectes: 0, voix: 0, poste: 0, pluie: 0, musique: 0 };
+    if (s.croissanceDepuis >= 0) {
+      const n = E.chiffresGagnes(s);
+      return { trafic: 1, turbines: 1, reseau: n >= 1 ? 1 : 0, fret: n >= 2 ? 1 : 0, vent: 0, oiseaux: 0, eau: 0, insectes: 0, voix: 0, poste: n >= 3 ? 1 : 0, pluie: 0, musique: 1 };
+    }
     if (s.issue === 'clore') return { trafic: 0, turbines: 0, reseau: 0, fret: 0, vent: 0.7, oiseaux: 1, eau: 1, insectes: 1, voix: 0, poste: 0, pluie: 0 };
     if (rel) return { trafic: 1, turbines: 1, reseau: acte2 ? 1 : 0, fret: acte3 ? 1 : 0, vent: 0.15, oiseaux: 0, eau: apres2 ? 0.3 : 0, insectes: 0, voix: apres4 ? 0.3 : 0, poste, pluie: pluie * 0.3 };
     return { trafic: stab ? 0 : 1, turbines: chiffre ? 0 : 1, reseau, fret: silence ? 0 : fret, vent: stab ? (silence ? 0.7 : 1) : 0, oiseaux: chiffre && !silence ? 1 : retour, eau: apres2 ? 1 : 0,
@@ -726,6 +741,12 @@
       if (ev.type === 'non-retour') { son.extinction(); toast('Le réseau national est démantelé. La Capacité ne se renouvellera plus.'); }
       if (ev.type === 'fin' && ev.acte === E.DERNIER_ACTE) $('jalon').hidden = true;   // la section « Ce qui reste » prend le relais
       if (ev.type === 'pas') son.geste();
+      if (ev.type === 'chiffre-gagne') {   // l'inverse d'un chiffre perdu : une note qui monte, l'écran qui se rouvre d'un cran
+        son.montee(); son.tempo(100 + 4 * ev.n);
+        document.documentElement.style.setProperty('--resserre', (8 * Math.max(0, 10 - ev.digits)) + 'px');
+      }
+      if (ev.type === 'palier') toast(`Palier n° ${ev.n} : la Capacité reçue double.${ev.n < D.CROISSANCE.tiers.length ? ' De nouveaux sites s\'ouvrent.' : ''}${ev.n === D.CROISSANCE.auto ? ' L\'achat peut devenir automatique.' : ''}`);
+      if (ev.type === 'fige') { son.couper(); document.querySelectorAll('.toast').forEach(t => t.remove()); }   // sans un mot (§11)
     }
     if (delestes.length) {   // un délestage coupe souvent plusieurs consommateurs d'un coup : une seule alerte
       son.coupure(); secousseCasse();
@@ -776,6 +797,62 @@
     j.hidden = false;
     $('jalon-fermer').addEventListener('click', () => { j.hidden = true; });
     $('jalon-rapport').addEventListener('click', ouvrirRapport);
+  }
+
+  // ---------- le mode Croissance (§8, §11) ----------
+  // Les sites, par acte : un bouton rouvre un site fermé ou agrandit un site ouvert. Les actes s'ouvrent aux paliers.
+  function construireGenerateurs() {
+    const box = $('liste-generateurs'); box.innerHTML = '';
+    for (let acte = 1; acte <= D.CROISSANCE.tiers.length; acte++) {
+      const g = document.createElement('div');
+      g.className = 'gen-groupe';
+      g.innerHTML = `<h3>Acte ${ROMAINS[acte]} — ${E.TITRES_ACTES[acte]}<small class="muted"></small></h3>`;
+      for (const d of E.GENERATEURS.filter(x => E.acteDe(x) === acte)) {
+        const r = document.createElement('div');
+        r.className = 'gen';
+        r.innerHTML = '<span class="gen-nom"></span><span class="gen-niv muted"></span><button class="btn"></button>';
+        r.firstElementChild.textContent = d.court || d.nom; r.title = d.nom;
+        r.lastElementChild.addEventListener('click', () => acheter(d.id));
+        g.appendChild(r); el['gen-' + d.id] = r;
+      }
+      box.appendChild(g); el['gen-groupe-' + acte] = g;
+    }
+  }
+  const pourcentMin = (g) => `+${g >= 100 ? E.fmt(g) : g.toFixed(1).replace('.', ',')} % / min`;
+  function rendreCroissance() {
+    const app = document.getElementById('app'), mode = s.croissanceDepuis >= 0, fige = s.issue === 'croissance';
+    app.classList.toggle('croissance', mode);   // les autres panneaux se ferment : plus rien ne se démantèle
+    app.classList.toggle('fige', fige);         // l'écran figé ne répond plus
+    const sec = $('croissance');
+    sec.hidden = !mode;
+    if (!mode) return;
+    const n = E.chiffresGagnes(s), C = D.CROISSANCE;
+    $('croissance-etat').textContent = `${n} chiffre${n > 1 ? 's' : ''} gagné${n > 1 ? 's' : ''}${s.paliers ? ` · palier n° ${s.paliers}` : ''}`;
+    $('croissance-detail').textContent = fige ? '' : `Croissance ${pourcentMin(E.gEff(s))}. Prochain palier dans ${C.palier - (n % C.palier)} chiffre${C.palier - (n % C.palier) > 1 ? 's' : ''}.`;
+    $('auto-zone').hidden = s.paliers < C.auto;
+    $('achat-auto').checked = !!s.achatAuto;
+    let payable = false;
+    for (let acte = 1; acte <= C.tiers.length; acte++) {
+      const ouvert = acte <= 1 + s.paliers, g = el['gen-groupe-' + acte];
+      g.className = 'gen-groupe' + (ouvert ? '' : ' ferme');
+      g.querySelector('small').textContent = ouvert ? ` · ${pourcentMin(C.tiers[acte - 1].g)} par niveau` : ` · s'ouvre au palier n° ${acte - 1}`;
+    }
+    for (const d of E.GENERATEURS) {
+      const r = el['gen-' + d.id], c = E.peutAcheter(s, d.id), niv = E.niveauDe(s, d);
+      r.children[1].textContent = niv ? `niveau ${niv}` : 'fermé';
+      r.lastElementChild.textContent = `${c.rouvre ? 'Rouvrir' : 'Agrandir'} · ${E.fmtE(c.cout)}`;
+      r.lastElementChild.disabled = !c.ok;
+      if (c.ok) payable = true;
+    }
+    $('btn-tout').disabled = !payable;
+  }
+  function cartonCroissance() {
+    son.silence(D.PAUSE_ACTE);
+    $('carton-acte-num').textContent = 'Sans retour';
+    $('carton-acte-titre').textContent = 'Croissance';
+    const c = $('carton-acte');
+    c.hidden = true; void c.offsetWidth; c.hidden = false;
+    setTimeout(() => { c.hidden = true; }, D.PAUSE_ACTE * 1000);
   }
 
   // ---------- les fins (§11) ----------
@@ -987,6 +1064,15 @@
   }
   function pas() { if (E.lancerPas(s)) { rendre(); sauver(); } }
   function renforcer(id) { if (E.renforcer(s, id)) { rendre(); rendreJournal(); sauver(); } }
+  // La troisième fin, sans retour elle aussi : une confirmation, comme pour les deux autres.
+  function basculer() {
+    if (!E.peutBasculer(s) || !confirm('La croissance ne s\'arrêtera plus. Plus rien ne se démantèlera.')) return;
+    if (!E.basculer(s)) return;
+    $('jalon').hidden = true;
+    cartonCroissance(); son.tempo(100); majSon(1.2); rendre(); rendreJournal(); sauver();
+  }
+  function acheter(id) { if (E.acheter(s, id)) { rendre(); sauver(); } }
+  function toutAcheter() { if (E.acheterTout(s)) { rendre(); sauver(); } }
   function relancer() { const ev = E.relancer(s, false); if (ev) { traiter([ev]); majSon(1.2); rendre(); sauver(); } }
 
   // ---------- boucle 10 Hz ----------
@@ -1008,7 +1094,7 @@
     histoCo = [];
     if (!s.versions.includes(VERSION)) s.versions.push(VERSION);
     document.documentElement.style.setProperty('--resserre', (8 * (10 - s.digitsMin)) + 'px');
-    construireCarte(); construireChantiers(); construireGardes(); construireGestes();
+    construireCarte(); construireChantiers(); construireGardes(); construireGestes(); construireGenerateurs();
     $('fin').hidden = true; arreterInventaire(); dernierIssue = '';
     dernierNb = ''; rendre(); rendreJournal();
     son.init(); son.setMute(!s.son); majSon(0.1);
@@ -1046,6 +1132,9 @@
     $('btn-clore').addEventListener('click', clore);
     $('btn-poursuivre').addEventListener('click', poursuivre);
     $('btn-pas').addEventListener('click', pas);
+    $('btn-croissance').addEventListener('click', basculer);
+    $('btn-tout').addEventListener('click', toutAcheter);
+    $('achat-auto').addEventListener('change', (ev) => { E.activerAchatAuto(s, ev.target.checked); rendre(); sauver(); });
     $('btn-inventaire').addEventListener('click', () => ouvrirInventaire());
     $('continu').addEventListener('change', (ev) => { E.formerEnContinu(s, ev.target.checked); rendre(); sauver(); });
     $('btn-son').addEventListener('click', () => { s.son = !s.son; son.setMute(!s.son); $('btn-son').textContent = `son : ${s.son ? 'oui' : 'non'}`; sauver(); });
@@ -1088,7 +1177,7 @@
     get etat() { return s; },
     avancer(sec) { const n = Math.round(sec / D.TICK); for (let i = 0; i < n; i++) { const evs = E.tick(s, D.TICK); if (evs.length) traiter(evs); } rendre(); },
     engager, reconvertir, relancer, sauver, gel: false, version: VERSION,
-    inventaire: () => E.inventaire(s),
+    inventaire: () => E.inventaire(s), basculer: () => { if (E.basculer(s)) { cartonCroissance(); majSon(1.2); rendre(); } }, toutAcheter,
     rapport: () => E.rapportTexte(s, VERSION),
   };
 

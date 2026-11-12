@@ -12,11 +12,13 @@ const SEUILS = {
   I5: 20,        // % de la Terre rendue finale : écart maximal à la droite la plus proche. La cible du §9 s'en écarte de 4 %.
 };
 
-// Les parties jouées : chaque joueur du simulateur à 10, 30 et 45 s de réaction, et la relance continue.
-// La relance continue est un autre jeu (§8, usage 3) : I1 et I3 ne s'y appliquent pas.
+// Les parties jouées : chaque joueur du simulateur à 10, 30 et 45 s de réaction, la relance continue, et le mode
+// Croissance. Relancer sans arrêt est un autre jeu (§8, usage 3) : I1 et I3 ne s'y appliquent pas. Le mode Croissance
+// reprend la terre rendue et s'arrête à l'acte où il a basculé : I5 et les cinq actes d'I6 ne s'y appliquent pas non plus.
 const PARTIES = [];
 for (const profil of ['prudent', 'pressé', 'vite', 'relance-1']) for (const reaction of [10, 30, 45]) PARTIES.push({ profil, reaction });
-PARTIES.push({ profil: 'croissance', reaction: 0, autreJeu: true });
+PARTIES.push({ profil: 'relance-continue', reaction: 0, autreJeu: true });
+PARTIES.push({ profil: 'croissance', reaction: 0, autreJeu: true, mode: true });
 const nomPartie = (p) => (p.reaction ? `${p.profil} ${p.reaction} s` : p.profil);
 
 // Écarts connus : des invariants déjà cassés par le réglage actuel, et documentés. Ils ne font pas échouer la
@@ -66,7 +68,7 @@ function mesurer(partie) {
   const suivreCasse = (s) => { if (s.X < casse) baisses.push(s.t); casse = s.X; };
   // I6 : sur une copie de la partie, la relance doit répondre, ramener la croissance, et ne rien effacer de la Casse.
   function essayerRelance(s) {
-    if (E.relanceActive(s)) return;   // une relance court déjà : le bouton attend qu'elle finisse
+    if (E.relanceActive(s) || s.issue === 'clore' || s.issue === 'croissance') return;   // une relance court déjà, ou la partie est finie
     const c = structuredClone(s);
     const r = E.relancer(c, false);
     relance.essais++; relance.actes.add(s.acte);
@@ -115,8 +117,8 @@ function mesurer(partie) {
   // Un acte qui coûte sans plus rien retirer, parce que l'Empreinte est au plancher : un coût par point sans borne.
   for (let a = 1; a <= E.DERNIER_ACTE; a++) actes.push(retire[a] > 0 ? (cout[a] || 0) / retire[a] * 1e6 : cout[a] > 0 ? Infinity : null);
   return {
-    nom: nomPartie(partie), autreJeu: !!partie.autreJeu,
-    finie: s.ms['fin' + (E.DERNIER_ACTE === 1 ? '' : E.DERNIER_ACTE)] !== null, duree: s.t,
+    nom: nomPartie(partie), autreJeu: !!partie.autreJeu, mode: !!partie.mode,
+    finie: s.ms['fin' + (E.DERNIER_ACTE === 1 ? '' : E.DERNIER_ACTE)] !== null || s.issue === 'croissance', duree: s.t,
     pertes, sansChiffre: plusLongSansChiffre(pertes, Math.max(finChiffres, pertes.length ? pertes[pertes.length - 1] : 0)),
     coutParActe: actes,
     casse: { baisses, sauvegarde, horsLigne, cloture },
@@ -194,6 +196,7 @@ function juger(mesures, opts) {
     ligne(x.facteur <= SEUILS.I2 ? 'ok' : 'echec', x.nom, `×${String(x.facteur).replace('.', ',')}`);
   }
   ligne('info', 'décisions du §7', 'pas encore dans le jeu (#18) : rien à mesurer');
+  ligne('info', 'mode Croissance', "sans objet : c'est le jeu où le joueur devient puissant (§8)");
 
   // I3
   ligne = section("I3 — le coût d'un point d'Empreinte croît d'acte en acte (Capacité et Mains engagées par million de points retirés)");
@@ -224,6 +227,7 @@ function juger(mesures, opts) {
   // I5
   ligne = section(`I5 — la Terre rendue est quasi linéaire en temps réel : au plus ${SEUILS.I5} % d'écart à la droite la plus proche`);
   for (const m of mesures) {
+    if (m.mode) { ligne('info', m.nom, 'sans objet : le mode Croissance reprend la terre rendue'); continue; }
     const r = comparer('I5', m.nom, m.terre.ecart, pourcent, '', connus);
     ligne(r.etat, m.nom, r.texte);
   }
@@ -234,7 +238,7 @@ function juger(mesures, opts) {
   for (const m of mesures) {
     const r = m.relance;
     if (r.echecs.length) { fautes++; ligne('echec', m.nom, `la relance n'a pas répondu ${r.echecs.length} fois sur ${r.essais}, d'abord à ${E.fmtDur(r.echecs[0])}`); }
-    else if (m.finie && r.actes < E.DERNIER_ACTE) { fautes++; ligne('echec', m.nom, `la relance n'a été vue que dans ${r.actes} des ${E.DERNIER_ACTE} actes`); }
+    else if (m.finie && !m.mode && r.actes < E.DERNIER_ACTE) { fautes++; ligne('echec', m.nom, `la relance n'a été vue que dans ${r.actes} des ${E.DERNIER_ACTE} actes`); }
   }
   const essais = mesures.reduce((a, m) => a + m.relance.essais, 0);
   if (!fautes) ligne('ok', `${mesures.length} parties`, `la relance répond et ramène la croissance aux ${E.fmt(essais)} instants essayés, dans chacun des ${E.DERNIER_ACTE} actes, hors relance en cours`);

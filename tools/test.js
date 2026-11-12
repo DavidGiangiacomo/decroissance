@@ -1,4 +1,4 @@
-// Tests du moteur, sans navigateur : actes II à V, les fins, reprise des sauvegardes, rapport de session,
+// Tests du moteur, sans navigateur : actes II à V, les fins, le mode Croissance, reprise des sauvegardes, rapport de session,
 // et le jugement de la vérification des invariants (tools/check.js).
 // Usage : node tools/test.js
 const assert = require('assert');
@@ -1115,6 +1115,186 @@ test('sous le plancher, l\'Empreinte se lit à trois chiffres', () => {
   assert.strictEqual(E.fmtPas(38.4), '38,4');
 });
 
+// ---- Le mode Croissance (issue #19) ----
+const CR = E.D.CROISSANCE;
+// Une partie où le joueur relance sans arrêt, jusqu'à ce que « Ne plus arrêter » s'offre.
+function enchainer(s) {
+  for (let i = 0; i < 40000 && !E.peutBasculer(s); i++) { if (!E.relanceActive(s)) E.relancer(s); E.tick(s, 0.1); }
+  return s;
+}
+function etatCroissance(extra) {
+  const s = enchainer(Object.assign(E.create(), { started: true }));
+  E.basculer(s);
+  Object.assign(s, { paused: 0 }, extra || {});
+  return s;
+}
+
+test('« Ne plus arrêter » ne s\'offre qu\'après trois relances enchaînées, et se retire si la chaîne se rompt', () => {
+  const s = Object.assign(E.create(), { started: true });
+  E.relancer(s);
+  assert.ok(s.chaine === 1 && !E.peutBasculer(s));
+  jusquA(s, () => !E.relanceActive(s), 2000); E.relancer(s);
+  assert.ok(s.chaine === 2 && !E.peutBasculer(s) && E.basculer(s) === null);
+  jusquA(s, () => !E.relanceActive(s), 2000); E.relancer(s);
+  assert.ok(s.chaine === 3 && E.peutBasculer(s), 'à la troisième, pendant qu\'elle court');
+  jusquA(s, () => !E.relanceActive(s), 2000);
+  for (let i = 0; i < 250; i++) E.tick(s, 0.1);
+  assert.ok(E.peutBasculer(s), 'et encore 30 s après sa fin');
+  for (let i = 0; i < 100; i++) E.tick(s, 0.1);
+  assert.ok(!E.peutBasculer(s), 'puis plus');
+  E.relancer(s);
+  assert.ok(s.chaine === 1 && !E.peutBasculer(s), 'une relance tardive recommence la chaîne');
+});
+
+test('les relances du Conseil ne s\'enchaînent pas ; une partie close ne bascule pas', () => {
+  const s = Object.assign(E.create(), { started: true });
+  for (let k = 0; k < 4; k++) { E.relancer(s, true); jusquA(s, () => !E.relanceActive(s), 2000); }
+  assert.ok(s.chaine === 0 && !E.peutBasculer(s));
+  const clos = etatFin();
+  for (let k = 0; k < 3; k++) { E.relancer(clos); jusquA(clos, () => !E.relanceActive(clos), 2000); }
+  E.relancer(clos);
+  assert.ok(E.peutBasculer(clos), 'tout rendu, la croissance reste possible');
+  jusquA(clos, () => E.peutChoisir(clos), 2000);
+  E.clore(clos);
+  assert.ok(!E.peutBasculer(clos) && E.basculer(clos) === null);
+});
+
+test('le basculement est sans retour : les chantiers s\'arrêtent, tout le monde est réembauché, plus rien ne se démantèle', () => {
+  const s = enchainer(Object.assign(E.create(), { started: true }));
+  E.engage(s, 'pub');
+  Object.assign(s, { deplaces: 900, attente: [{ de: 'pub', n: 900, t0: s.t }], M: 400 });
+  const E0 = s.E;
+  const ev = E.basculer(s);
+  assert.ok(ev && ev.type === 'bascule' && E.enCroissance(s) && s.ms.bascule === s.t && s.Ebascule === E0);
+  assert.ok(s.sites.pub.state === 'actif' && s.Meng === 0 && s.M === 0 && s.deplaces === 0 && s.reembauches === 900);
+  assert.ok(E.relanceActive(s), 'la relance ne s\'arrête plus');
+  assert.strictEqual(E.relancer(s), null);
+  assert.strictEqual(E.reconvertir(s), false);
+  for (const d of E.D.sites) assert.ok(!E.canEngage(s, d.id).ok, d.id);
+  assert.strictEqual(E.basculer(s), null);
+  assert.ok(s.chrono.some(e => e.type === 'bascule'));
+});
+
+test('en croissance, les sites sont des générateurs : un site fermé se rouvre, un site ouvert s\'agrandit, et le prix quadruple', () => {
+  const s = etatCroissance({ K: 1e4 });
+  assert.strictEqual(E.GENERATEURS.length, 30);
+  Object.assign(s.sites.credit, { state: 'eteint', regen: 1 });
+  const T0 = E.T(s), g0 = E.gCroissance(s);
+  assert.deepStrictEqual(E.peutAcheter(s, 'credit'), { ok: true, cout: 200, ouvert: true, rouvre: true });
+  const a = E.acheter(s, 'credit');
+  assert.ok(a.rouvre && a.niveau === 1 && s.sites.credit.state === 'actif' && s.K === 9800);
+  assert.ok(E.T(s) < T0, 'la terre qu\'il avait rendue est reprise');
+  assert.ok(Math.abs(E.gCroissance(s) - g0 - 0.55) < 1e-9, 'chaque niveau ajoute sa croissance');
+  assert.strictEqual(E.peutAcheter(s, 'credit').cout, 800);
+  assert.ok(!E.acheter(s, 'credit').rouvre && E.niveauDe(s, E.defs.credit) === 2 && s.K === 9000);
+  assert.strictEqual(E.peutAcheter(s, 'credit').cout, 3200);
+  assert.ok(!E.peutAcheter(s, 'acierie').ouvert && E.acheter(s, 'acierie') === null, 'les sites de l\'acte II attendent le premier palier');
+  assert.strictEqual(E.acheter(s, 'autonomie'), null, 'une mesure n\'est pas un générateur');
+  s.K = 0;
+  assert.strictEqual(E.acheter(s, 'pub'), null);
+  s.K = 5000;
+  const n = E.acheterTout(s);
+  assert.ok(n > 5 && s.K < 800, `tout acheter : ${n} niveaux, reste ${s.K}`);
+  assert.ok(!E.peutAcheter(Object.assign(E.create(), { K: 1e6 }), 'pub').ok, 'hors du mode, rien ne s\'achète');
+});
+
+test('en croissance, l\'Empreinte s\'emballe, la Capacité n\'a plus de plafond, et rien ne frotte', () => {
+  const s = etatCroissance({ Co: 30, X: 400 });
+  const E0 = s.E;
+  assert.ok(E.gEff(s) >= CR.g0 && Math.abs(E.kRate(s) - CR.k0) < 1e-9);
+  for (let i = 0; i < 600; i++) E.tick(s, 0.1);
+  assert.ok(s.E > E0 * 100, `plus de deux chiffres en une minute : ${s.E / E0}`);
+  assert.ok(s.K > E.D.KCAP * 2, `la Capacité dépasse son ancien plafond : ${s.K}`);
+  assert.ok(Math.abs(s.Co - 50) < 0.1 && s.X === 400 && s.relancesAuto === 0, 'le Consentement remonte, la Casse ne bouge pas, le Conseil se tait');
+  for (let i = 0; i < 1800; i++) E.tick(s, 0.1);
+  assert.strictEqual(s.Co, 100);
+});
+
+test('chaque chiffre gagné rallume une région ; tous les trois, la Capacité reçue double et un acte s\'ouvre', () => {
+  const s = etatCroissance();
+  s.regionsEteintes = ['Cherbaix', 'Méraud'];
+  const d0 = s.digitsBascule;
+  let ev = jusquA(s, () => E.chiffresGagnes(s) >= 1, 3000);
+  assert.ok(ev.some(e => e.type === 'chiffre-gagne' && e.n === 1) && ev.some(e => e.type === 'region-rallumee' && e.region === 'Méraud'));
+  assert.deepStrictEqual(s.regionsEteintes, ['Cherbaix']);
+  assert.ok(s.paliers === 0 && !E.activerAchatAuto(s, true));
+  const k = E.kRate(s) / Math.pow(s.E / s.Ebascule, E.D.KEXP);
+  ev = jusquA(s, () => E.chiffresGagnes(s) >= 3, 6000);
+  assert.ok(s.paliers === 1 && ev.some(e => e.type === 'palier' && e.n === 1) && s.digitsMax === d0 + 3);
+  assert.ok(Math.abs(E.kRate(s) / Math.pow(s.E / s.Ebascule, E.D.KEXP) / k - 2) < 1e-9, 'la Capacité reçue double');
+  assert.ok(E.peutAcheter(s, 'acierie').ouvert && !E.peutAcheter(s, 'port').ouvert, 'l\'acte II s\'ouvre, pas encore l\'acte III');
+  jusquA(s, () => s.paliers >= 2, 6000);
+  assert.ok(E.activerAchatAuto(s, true) && s.achatAuto, 'au deuxième palier, l\'achat peut devenir automatique');
+  const achats = s.achats;
+  for (let i = 0; i < 100; i++) E.tick(s, 0.1);
+  assert.ok(s.achats > achats, 'et il achète seul');
+});
+
+test('dix minutes après le basculement, l\'écran se fige sur une Empreinte supérieure à celle du départ, et plus rien ne bouge', () => {
+  const s = etatCroissance();
+  const t0 = s.t;
+  const ev = jusquA(s, () => s.issue === 'croissance', 9000);
+  assert.ok(Math.abs(s.t - t0 - CR.duree) < 0.2, `dix minutes : ${s.t - t0}`);
+  assert.ok(ev.some(e => e.type === 'fige') && s.ms.fige === s.t && s.E > E.D.E0 && !E.enCroissance(s));
+  assert.ok(E.chiffresGagnes(s) >= 20, `même sans rien acheter : ${E.chiffresGagnes(s)} chiffres gagnés`);
+  const fige = allerRetour(s);
+  for (let i = 0; i < 600; i++) assert.deepStrictEqual(E.tick(s, 0.1), []);
+  assert.ok(s.E === fige.E && s.t === fige.t && s.K === fige.K);
+  assert.ok(E.relancer(s) === null && E.acheter(s, 'pub') === null && E.gEff(s) === 0 && !E.relanceActive(s));
+  const texte = E.rapportTexte(s, 'test');
+  for (const t of ['Bascule dans la croissance', 'Issue : Croissance, écran figé', 'La croissance ne s\'arrête plus', 'Palier n° 1', 'L\'écran se fige', `- Empreinte : ${E.fmtE(s.E)}`]) assert.ok(texte.includes(t), t);
+  const json = JSON.parse(texte.split('```json\n')[1].split('\n```')[0]);
+  assert.ok(json.issue === 'croissance' && json.bascule !== null && json.fige !== null && json.chiffresGagnes === E.chiffresGagnes(s) && json.paliers === s.paliers);
+});
+
+test('basculée tout à la fin, la partie ne se fige pas avant d\'avoir dépassé l\'Empreinte du départ', () => {
+  const s = etatFin();
+  for (let k = 0; k < 3; k++) { jusquA(s, () => !E.relanceActive(s), 2000); E.relancer(s); }
+  assert.ok(E.basculer(s) && s.Ebascule < 100);
+  s.paused = 0;
+  E.acheterTout(s);
+  const sousLeDepart = Object.assign(allerRetour(s), { t: s.t + CR.duree });   // dix minutes plus tard, sans avoir grandi
+  E.tick(sousLeDepart, 0.1);
+  assert.ok(sousLeDepart.issue !== 'croissance' && sousLeDepart.E < E.D.E0, 'pas encore');
+  for (let i = 0; i < 9000 && s.issue !== 'croissance'; i++) { if (i % 100 === 0) E.acheterTout(s); E.tick(s, 0.1); }
+  assert.ok(s.issue === 'croissance' && s.E > E.D.E0, `Empreinte ${s.E}`);
+  assert.ok(E.T(s) < 30, `les sites rouverts ont repris la terre rendue : ${E.T(s)}`);
+  assert.ok(!E.peutChoisir(s) && E.clore(s) === null && E.poursuivre(s) === null && !E.peutRenforcer(s, 'digues').ok);
+});
+
+test('le bot qui ne relâche jamais le bouton bascule à la troisième relance et gagne plus de trente chiffres', () => {
+  const { s } = simuler({ profil: 'croissance', reaction: 5 });
+  assert.ok(s.issue === 'croissance' && Math.abs(s.ms.bascule - 180) < 1 && s.relances === 3);
+  assert.ok(E.chiffresGagnes(s) >= 30 && s.paliers >= 9 && s.X === 0, `${E.chiffresGagnes(s)} chiffres, ${s.paliers} paliers`);
+  assert.ok(E.GENERATEURS.every(d => E.niveauDe(s, d) > 1), 'tous les sites ont grandi');
+});
+
+test('une partie en croissance, ou figée, se reprend ; une sauvegarde d\'avant le mode aussi', () => {
+  const s = etatCroissance({ K: 5000 });
+  E.acheterTout(s);
+  for (let i = 0; i < 300; i++) E.tick(s, 0.1);
+  const r = E.migrer(allerRetour(s));
+  assert.ok(E.enCroissance(r) && r.sites.pub.niveau === s.sites.pub.niveau && r.Ebascule === s.Ebascule && r.achats === s.achats && r.chaine === s.chaine);
+  assert.ok(Math.abs(E.gCroissance(r) - E.gCroissance(s)) < 1e-9);
+  jusquA(s, () => s.issue === 'croissance', 9000);
+  const f = E.migrer(allerRetour(s));
+  assert.ok(f.issue === 'croissance' && f.E === s.E && E.tick(f, 0.1).length === 0);
+  const ancienne = allerRetour(E.create());
+  for (const k of ['chaine', 'chaineFin', 'croissanceDepuis', 'Ebascule', 'digitsBascule', 'digitsMax', 'paliers', 'achats', 'achatAuto']) delete ancienne[k];
+  for (const k of ['bascule', 'fige']) delete ancienne.ms[k];
+  const a = E.migrer(ancienne);
+  assert.ok(a && !E.enCroissance(a) && a.croissanceDepuis === -1 && a.chaine === 0 && !E.peutBasculer(a));
+});
+
+test('au-delà de treize chiffres, l\'Empreinte passe en notation scientifique, et ses chiffres se comptent encore', () => {
+  assert.strictEqual(E.fmtE(1234567), `1${' '}234${' '}567`);
+  assert.strictEqual(E.fmtE(4.8), '4,8');
+  assert.strictEqual(E.fmtE(1.07e41), '1,07·10⁴¹');
+  assert.strictEqual(E.digitsOf(999999999), 9);
+  assert.strictEqual(E.digitsOf(1e21), 22);
+  assert.strictEqual(E.digitsOf(9.99e40), 41);
+});
+
 // ---- Ce que les cartes annoncent, le moteur le fait (issue #35) ----
 test('aucun site n\'annonce d\'ajouter de l\'Empreinte : le moteur ne le ferait pas', () => {
   for (const d of E.D.sites) assert.ok(d.part > 0 || d.E >= 0, `${d.id} : E = ${d.E}`);
@@ -1138,7 +1318,7 @@ const PAGE = { 'index.html': '<button id="btn-relancer" class="btn-relancer">Rel
 // Une partie où tout tient ; `extra` y casse un invariant.
 function partieSaine(extra) {
   return Object.assign({
-    nom: 'témoin', autreJeu: false, finie: true, duree: 5400,
+    nom: 'témoin', autreJeu: false, mode: false, finie: true, duree: 5400,
     pertes: [600, 1800, 3000, 4200, 5400], sansChiffre: C.plusLongSansChiffre([600, 1800, 3000, 4200, 5400], 5400),
     coutParActe: [12, 19, 9000, 400000, 5e8],
     casse: { baisses: [], sauvegarde: true, horsLigne: true, cloture: true },

@@ -1,6 +1,6 @@
 # Les fins — Clore, Poursuivre, et l'épilogue
 
-Design proposé pour [l'issue #20](https://github.com/DavidGiangiacomo/decroissance/issues/20) et validé le 2026-11-11. Cette page décrit ce que le prototype fait, et ce qui a changé par rapport à la proposition. La troisième fin du §11, Croissance, reste à faire ([#19](https://github.com/DavidGiangiacomo/decroissance/issues/19)).
+Design proposé pour [l'issue #20](https://github.com/DavidGiangiacomo/decroissance/issues/20) et validé le 2026-11-11. Cette page décrit ce que le prototype fait, et ce qui a changé par rapport à la proposition. La troisième fin du §11, Croissance, est décrite dans [croissance.md](croissance.md).
 
 ## L'idée
 
@@ -105,5 +105,5 @@ Trois gardes réduites coûtent 2 100 personnes. Les rendre pleines coûte 5 300
 4. **L'ordre réparé dépend de l'ordre du joueur.** Deux joueurs qui font la même Casse ne lisent pas le même ordre. Il ne dit pas non plus si un autre ordre aurait été plus rapide.
 5. **Les textes** des trois incidents et de l'inventaire sont provisoires ([#23](https://github.com/DavidGiangiacomo/decroissance/issues/23)).
 6. **Hors de ces deux fins :**
-   - la fin Croissance et le mode qui y mène ([#19](https://github.com/DavidGiangiacomo/decroissance/issues/19)) ;
+   - la fin Croissance et le mode qui y mène, décrits dans [croissance.md](croissance.md) ;
    - les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)), qui entreront dans l'inventaire.

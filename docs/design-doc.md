@@ -157,6 +157,8 @@ Trois usages, trois lectures :
 2. **Ponctuel** — l'usage attendu, l'arbitrage central du jeu.
 3. **Continu** — le jeu devient un incrémental classique, agréable, gras, avec des e47 et des multiplicateurs partout. Il se termine autrement (§11).
 
+*Prototype : le mode Croissance, validé et réglé, est décrit dans [croissance.md](croissance.md).*
+
 **Et si le Consentement tombe sous 20 %, quelqu'un d'autre appuie sur le bouton.** Le joueur voit son propre écran repartir à la hausse sans l'avoir décidé. C'est le pic de malaise du jeu, l'équivalent structurel de la Contradiction dans *La langue morte*.
 
 ---
@@ -196,7 +198,7 @@ I5 est l'invariant maître, comme dans *La langue morte* : la vraie barre de pro
 
 ### Vérification automatique
 
-`node tools/check.js` fait jouer treize parties aux bots du simulateur : le prudent, le pressé, le rapide et le joueur qui relance une fois, à 10, 30 et 45 s de réaction, et la relance continue. Il sort en erreur si un invariant mesurable est cassé. Un workflow le lance sur chaque pull request, avec les tests du moteur.
+`node tools/check.js` fait jouer quatorze parties aux bots du simulateur : le prudent, le pressé, le rapide et le joueur qui relance une fois, à 10, 30 et 45 s de réaction, la relance continue, et le mode Croissance. Il sort en erreur si un invariant mesurable est cassé. Un workflow le lance sur chaque pull request, avec les tests du moteur.
 
 | Invariant | Ce qui est mesuré | Seuil |
 |---|---|---|
@@ -214,6 +216,7 @@ Ce que la vérification ne couvre pas :
 - **Le rendu**, pour I4 et I6. Le script vérifie que le compteur de Casse et le bouton Relancer sont dans la page et que le code ne les masque pas. Il n'ouvre pas de navigateur.
 - **Après Clore.** I4 et I6 valent jusqu'à la clôture : une partie close ne montre plus que la carte, sans compteur ni bouton (§11).
 - **La relance continue**, pour I1 et I3 : c'est un autre jeu (§8).
+- **Le mode Croissance**, pour I1, I2, I3 et I5 : c'est le jeu où le joueur devient puissant, et où la terre rendue est reprise ([croissance.md](croissance.md)).
 
 Le seuil d'I5 est une garde contre les régressions, pas une cible. La courbe du tableau de rythme s'écarte elle-même de 4 % d'une droite ; celles des bots, de 9 à 16 %, et de 19,5 % pour le rapide à 45 s.
 
@@ -266,7 +269,7 @@ Sur l'écran final, l'Empreinte est bloquée au plancher. Trois issues, aucune p
 
 **Épilogue (après *Clore*)** — « L'inventaire ». Quinze minutes sans mécanique : la liste de tout ce qui a été fait, dans l'ordre, avec en regard **l'ordre optimal que le joueur n'a pas suivi** et le nombre de coupures qu'il aurait évitées. Y compris les erreurs qu'il n'a jamais su avoir commises. Coût de production quasi nul (les données existent déjà), valeur émotionnelle importante.
 
-*Prototype : Clore, Poursuivre et l'épilogue, validés et réglés, sont décrits dans [fins.md](fins.md). La fin Croissance reste à faire.*
+*Prototype : Clore, Poursuivre et l'épilogue, validés et réglés, sont décrits dans [fins.md](fins.md) ; le mode Croissance et sa fin, dans [croissance.md](croissance.md).*
 
 ---
 
