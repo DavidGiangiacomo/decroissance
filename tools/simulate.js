@@ -5,14 +5,16 @@
 //             croissance (relance sans arrêt, puis « Ne plus arrêter » : le mode Croissance, jusqu'à l'écran figé)
 //   ex. : node tools/simulate.js prudent 10        node tools/simulate.js pressé 10
 // tools/check.js fait jouer les mêmes joueurs avec simuler(), et les observe pas à pas.
-const E = require('../engine.js');
+// La page charge aussi ce fichier, en mode test (index.html?test), pour reprendre la partie d'un bot : partieA().
+const E = typeof require === 'function' ? require('../engine.js') : window.Engine;
 const D = E.D;
 
 const ordreActe1 = ['pub', 'credit', 'aero', 'suv', 'dc', 'ciment', 'charbon', 'autonomie', 'gaz'];
 const quand = (t) => E.fmtDur(t).padStart(11);
 
 // Joue une partie. `reaction` : secondes d'attente avant chaque action (simule un humain).
-// `suivi`, facultatif, observe la partie : engage(s, id, cout, ev) après chaque lancement, pas(s, ev) après chaque tick.
+// `suivi`, facultatif, observe la partie : engage(s, id, cout, ev) après chaque lancement, pas(s, ev) après chaque tick ;
+// arret(s), s'il renvoie vrai, arrête la partie là.
 function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi = {} } = {}) {
   const s = E.create();
   s.started = true;
@@ -161,6 +163,7 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
     const fin = s.ms['fin' + E.DERNIER_ACTE];
     if (fin !== null && s.t - fin > 5) break;
     if (s.issue === 'croissance') break;   // l'écran s'est figé
+    if (suivi.arret && suivi.arret(s)) break;
   }
   return { profil, reaction, s, marks, maxE, minEavantStab, rebond, coMin3, mainsMax, finDeux, coMin4, finTrois, coMin5, finQuatre };
 }
@@ -232,8 +235,34 @@ function resumer({ profil, reaction, s, marks, maxE, minEavantStab, rebond, coMi
   console.log(`fin      E=${E.fmtE(s.E)}  Co=${s.Co.toFixed(0)}  T=${E.T(s).toFixed(1)}/${E.Tmax().toFixed(1)}  relances=${r.relances}  relances du Conseil=${r.relancesConseil}`);
 }
 
-if (require.main === module) {
-  resumer(simuler({ profil: process.argv[2] || 'prudent', reaction: Number(process.argv[3] || 0), dosage: process.env.DOSAGE }));
+// Les raccourcis de test : l'état d'une partie de bot à un point donné, pour la reprendre de là sans rejouer ce qui
+// précède. Les points : l'ouverture d'un acte, le choix final (tout est rendu), le basculement dans la croissance.
+const NOMS_POINTS = { acte2: "à l'ouverture de l'acte II", acte3: "à l'ouverture de l'acte III", acte4: "à l'ouverture de l'acte IV", acte5: "à l'ouverture de l'acte V",
+  fin: 'au choix final', croissance: 'au basculement dans la croissance' };
+const POINTS = Object.keys(NOMS_POINTS);
+const JOUEURS = ['prudent', 'pressé', 'vite', 'relance-1'];
+function partieA(point, { profil = 'prudent', reaction = 10, dosage = 'reduite' } = {}) {
+  if (!POINTS.includes(point)) return null;
+  if (point === 'croissance') profil = 'croissance';   // seul ce bot bascule
+  else if (!JOUEURS.includes(profil)) profil = 'prudent';
+  const atteint = (s) => (point === 'fin' ? E.peutChoisir(s) : point === 'croissance' ? E.enCroissance(s) : s.acte >= Number(point.slice(4)));
+  let copie = null;
+  const { s } = simuler({ profil, reaction, dosage, suivi: { pas(x) { if (!copie && atteint(x)) copie = JSON.parse(JSON.stringify(x)); }, arret: () => !!copie } });
+  if (!copie && point === 'fin' && E.toutRendu(s)) {   // une relance courait encore à la fin de la partie du bot
+    for (let i = 0; i < 3000 && !E.peutChoisir(s); i++) E.tick(s, 0.1);
+    if (E.peutChoisir(s)) copie = JSON.parse(JSON.stringify(s));
+  }
+  if (!copie) return null;
+  // Ce que le rapport de session dira de cette partie : ce qui précède n'a pas été joué par le joueur.
+  copie.raccourci = NOMS_POINTS[point] + (point === 'croissance' ? '' : `, ${profil} à ${reaction} s${dosage === 'pleine' ? ', gardes pleines' : ''}`);
+  return copie;
 }
 
-module.exports = { simuler, resumer };
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { simuler, resumer, partieA, POINTS, JOUEURS, NOMS_POINTS };
+  if (require.main === module) {
+    resumer(simuler({ profil: process.argv[2] || 'prudent', reaction: Number(process.argv[3] || 0), dosage: process.env.DOSAGE }));
+  }
+} else {
+  window.Simulateur = { simuler, partieA, POINTS, JOUEURS, NOMS_POINTS };
+}

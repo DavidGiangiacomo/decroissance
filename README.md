@@ -111,8 +111,8 @@ Détail, contenu, réglage et points ouverts dans [docs/croissance.md](docs/croi
 | `audio.js` | couches sonores synthétisées et sons ponctuels |
 | `main.js` | rendu, carte SVG, sauvegarde, boucle |
 | `index.html`, `style.css` | l'écran unique |
-| `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur ; il dit aussi ce que dirait l'épilogue |
-| `tools/build-site.js` | prépare le site publié sur GitHub Pages et y inscrit la version |
+| `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur ; il dit aussi ce que dirait l'épilogue. La page le charge en mode test, pour reprendre la partie d'un bot |
+| `tools/build-site.js` | prépare le site publié sur GitHub Pages, simulateur compris, et y inscrit la version |
 | `tools/test.js` | tests du moteur : actes II à V, fins, mode Croissance, reprise des sauvegardes, rapport de session, jugement des invariants |
 | `tools/check.js` | vérifie les invariants I1 à I6 du §9 sur quatorze parties jouées par les bots, et sort en erreur si l'un d'eux est cassé |
 | `.github/workflows/pages.yml` | publie le jeu sur GitHub Pages à chaque push sur `main` |
@@ -135,6 +135,19 @@ Les deux dernières commandes tournent sur chaque pull request. Ce que `tools/ch
 Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 01, trois chiffres et la fin de l'acte IV vers 1 h 26, puis le dernier chiffre, le plancher et la fin de l'acte V vers 1 h 48. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois premiers, un peu plus de 2 h pour les quatre, 2 h 40 environ pour les cinq.
 
 Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`, `Jeu.inventaire()`, `Jeu.basculer()`, `Jeu.toutAcheter()`.
+
+## Raccourcis de test
+
+Atteindre l'acte IV demande une heure de jeu, et la fin 1 h 48. Pour tester un acte ou une fin sans rejouer ce qui précède, ouvrir le jeu en mode test : `index.html?test`, ou https://davidgiangiacomo.github.io/decroissance/?test en ligne.
+
+- **L'accueil propose alors de reprendre la partie d'un bot** : à l'ouverture de l'acte II, III, IV ou V, au choix final quand tout est rendu, ou au basculement dans la croissance.
+- **Le bot se choisit** : le prudent, le pressé, le rapide ou celui qui relance une fois, à 10, 30 ou 45 s de réaction, avec des gardes réduites ou pleines. Le pressé arrive avec de la Casse et des relances du Conseil ; le prudent, sans.
+- **Le bot joue dans le navigateur**, en une à deux secondes, avec le moteur et les réglages du moment : aucun état n'est enregistré d'avance.
+- **La partie de test a sa propre sauvegarde.** Elle ne touche pas à la vraie, et se reprend en rouvrant le jeu en mode test.
+- **Le rapport de session le dit** : « Raccourci de test : partie reprise d'un bot », avec le bot et le point de reprise. Ce qui précède n'a pas été joué par le joueur.
+- **Un lien peut porter les choix**, qui sont alors présélectionnés : `?depuis=acte4&joueur=pressé&reaction=30&gardes=pleine`. Les points sont `acte2` à `acte5`, `fin` et `croissance`.
+
+Sans `?test`, rien de tout cela n'apparaît : le lien normal reste celui à envoyer aux testeurs naïfs.
 
 ## Protocole de test (§14)
 

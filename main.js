@@ -1,7 +1,11 @@
 // Décroissance — point d'entrée : boucle, rendu, sauvegarde, événements. Actes I à V, et les fins : Clore, Poursuivre, Croissance.
 (function () {
   const E = window.Engine, D = E.D;
-  const CLE = 'decroissance.mvp.v1';
+  // Mode test (index.html?test) : l'accueil propose de reprendre la partie d'un bot à l'ouverture d'un acte, au choix
+  // final ou au basculement dans la croissance. La partie de test a sa propre sauvegarde : elle ne touche pas à la vraie.
+  const PARAMS = new URLSearchParams(location.search);
+  const TEST = PARAMS.has('test') || PARAMS.has('depuis');
+  const CLE = 'decroissance.mvp.v1' + (TEST ? '.test' : '');
   const $ = (id) => document.getElementById(id);
   // Version jouée : « dev » en local ; hash court et date du commit une fois publiée (tools/build-site.js).
   const VERSION = (document.querySelector('meta[name="version"]') || {}).content || 'dev';
@@ -1119,9 +1123,65 @@
     last = performance.now();
   }
 
+  // ---------- raccourcis de test ----------
+  // Le bot du simulateur joue dans le navigateur jusqu'au point choisi, puis la partie reprend de là : rien n'est
+  // enregistré d'avance, l'état vient toujours du moteur et des réglages du moment.
+  const RAC_POINTS = [['acte2', "à l'ouverture de l'acte II"], ['acte3', "à l'ouverture de l'acte III"], ['acte4', "à l'ouverture de l'acte IV"],
+    ['acte5', "à l'ouverture de l'acte V"], ['fin', 'au choix final, quand tout est rendu'], ['croissance', 'au basculement dans la croissance']];
+  const RAC_JOUEURS = [['prudent', 'le prudent : aucune Casse'], ['pressé', 'le pressé : de la Casse, des relances du Conseil'],
+    ['vite', "le rapide : démolit vite à l'acte II"], ['relance-1', 'celui qui relance une fois, à 2 min']];
+  const RAC_REACTIONS = [['10', '10 s'], ['30', '30 s'], ['45', '45 s']];
+  const RAC_GARDES = [['reduite', 'réduites'], ['pleine', 'pleines']];
+  function initRaccourcis() {
+    const remplir = (id, options, voulu) => {
+      const sel = $(id);
+      for (const [valeur, texte] of options) { const o = document.createElement('option'); o.value = valeur; o.textContent = texte; sel.appendChild(o); }
+      if (options.some(([v]) => v === voulu)) sel.value = voulu;   // ?depuis=acte4&joueur=pressé&reaction=30&gardes=pleine
+    };
+    remplir('rac-point', RAC_POINTS, PARAMS.get('depuis'));
+    remplir('rac-joueur', RAC_JOUEURS, PARAMS.get('joueur'));
+    remplir('rac-reaction', RAC_REACTIONS, PARAMS.get('reaction'));
+    remplir('rac-gardes', RAC_GARDES, PARAMS.get('gardes'));
+    const maj = () => {   // le basculement n'a qu'un bot ; les gardes ne comptent qu'après l'acte IV
+      const point = $('rac-point').value;
+      $('rac-joueur').disabled = $('rac-reaction').disabled = point === 'croissance';
+      $('rac-gardes').disabled = point !== 'acte5' && point !== 'fin';
+    };
+    $('rac-point').addEventListener('change', maj); maj();
+    $('btn-raccourci').addEventListener('click', raccourci);
+    $('raccourcis').hidden = false;
+  }
+  function chargerSimulateur() {
+    if (window.Simulateur) return Promise.resolve();
+    return new Promise((ok, ko) => {
+      const sc = document.createElement('script');
+      sc.src = 'tools/simulate.js'; sc.onload = () => (window.Simulateur ? ok() : ko()); sc.onerror = ko;
+      document.head.appendChild(sc);
+    });
+  }
+  function raccourci() {
+    const point = $('rac-point').value, etat = $('rac-etat'), bouton = $('btn-raccourci');
+    bouton.disabled = true;
+    etat.textContent = 'Le bot joue jusque-là : quelques secondes.';
+    chargerSimulateur()
+      .then(() => new Promise((suite) => setTimeout(suite, 40)))   // le temps d'afficher le message
+      .then(() => {
+        const partie = window.Simulateur.partieA(point, { profil: $('rac-joueur').value, reaction: Number($('rac-reaction').value), dosage: $('rac-gardes').value });
+        const repris = partie && E.migrer(partie);   // le même chemin qu'une sauvegarde
+        if (!repris) throw new Error('point non atteint');
+        etat.textContent = '';
+        demarrer(repris);
+        if (point === 'croissance') cartonCroissance();
+        else if (s.paused > 0 && s.acte >= 2) ouvrirActe(s.acte);   // le carton de l'acte, que le bot n'a pas vu
+      })
+      .catch(() => { etat.textContent = "Le raccourci n'a pas pu être chargé : il lui faut le fichier tools/simulate.js à côté de la page."; })
+      .then(() => { bouton.disabled = false; });
+  }
+
   // ---------- init ----------
   function init() {
-    $('version').textContent = `version ${VERSION}`;
+    $('version').textContent = `version ${VERSION}${TEST ? ' · test' : ''}`;
+    if (TEST) initRaccourcis();
     $('casse-bloc').title = E.DEFINITION_CASSE;
     $('co-seuil').textContent = `Sous ${D.RELANCE.autoSeuil} %, le Conseil relance la croissance sans vous.`;
     $('co-seuil-marque').style.left = D.RELANCE.autoSeuil + '%';

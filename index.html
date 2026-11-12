@@ -255,6 +255,17 @@
         <button id="btn-commencer" class="btn primaire">Prendre le mandat</button>
         <button id="btn-neuf" class="btn" hidden>Nouvelle partie</button>
       </div>
+      <div id="raccourcis" class="raccourcis" hidden>
+        <p class="petit"><b>Mode test.</b> Reprendre la partie d'un bot, sans rejouer ce qui précède. Cette partie a sa propre sauvegarde : la vôtre n'est pas touchée.</p>
+        <div class="raccourcis-choix">
+          <label>Reprendre <select id="rac-point"></select></label>
+          <label>Joueur <select id="rac-joueur"></select></label>
+          <label>Réaction <select id="rac-reaction"></select></label>
+          <label>Gardes <select id="rac-gardes"></select></label>
+        </div>
+        <div class="carton-boutons"><button id="btn-raccourci" class="btn">Reprendre de là</button></div>
+        <p id="rac-etat" class="petit muted" aria-live="polite"></p>
+      </div>
       <p id="intro-absence" class="petit muted" hidden></p>
     </div>
   </div>
