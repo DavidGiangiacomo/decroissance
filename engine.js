@@ -49,6 +49,7 @@
       pasEnCours: false,    // Poursuivre : un pas est en cours
       pasProgress: 0,
       inventaireVu: false,  // Clore : l'épilogue a été lu jusqu'au bout
+      epilogue: null,       // Clore : comment l'inventaire a été lu, pour le rapport. Voir lectureEpilogue.
       chaine: 0,            // relances du joueur enchaînées, chacune peu après la fin de la précédente
       chaineFin: -1e9,      // fin de la dernière relance du joueur
       croissanceDepuis: -1, // mode Croissance : instant du basculement (−1 : la partie n'a pas basculé)
@@ -1331,12 +1332,32 @@
     s.coCauses = compte(save.coCauses); s.coNb = compte(save.coNb);
     if (!('coCauses' in save)) s.coDepuis = s.t;
     if (!(Number.isFinite(s.coDepuis) && s.coDepuis >= 0)) s.coDepuis = 0;
+    s.epilogue = lectureEpilogue(save.epilogue);
     // Le plancher se déduit des relances : une partie enregistrée avec un autre barème reprend le barème actuel.
     if (!(Number.isFinite(s.plancherSurcroit) && s.plancherSurcroit >= 1)) s.plancherSurcroit = 1;
     s.plancher = D.PLANCHER0 * Math.pow(D.RELANCE.plancherMul, s.relances + s.relancesAuto) * s.plancherSurcroit;
     s.issue = ['clore', 'poursuivre', 'croissance'].includes(save.issue) ? save.issue : null;   // null par défaut : la boucle générale l'ignore
     if (!('debut' in save)) s.debut = null;
     return s;
+  }
+
+  // --- la lecture de l'épilogue ---
+  // Comment l'inventaire a été lu : le protocole de test demande s'il est lu ligne à ligne ou affiché d'un coup.
+  //   lignes : lignes de l'inventaire ; vues : lignes affichées à la première lecture ; toutAffiche : le joueur a cliqué
+  //   « Tout afficher », après `avantTout` lignes ; fini : il est allé au bout ; duree : secondes réelles de première
+  //   lecture ; ouvertures : nombre de fois où il a été ouvert.
+  function lectureEpilogue(o) {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+    const n = (x) => (Number.isFinite(x) && x >= 0 ? x : 0);
+    return { lignes: n(o.lignes), vues: n(o.vues), toutAffiche: !!o.toutAffiche, avantTout: n(o.avantTout), fini: !!o.fini, duree: n(o.duree), ouvertures: n(o.ouvertures) };
+  }
+  function texteEpilogue(s) {
+    const e = s.epilogue;
+    if (!e) return s.inventaireVu ? 'lu jusqu\'au bout' : 'pas ouvert';
+    const rouvert = e.ouvertures > 1 ? `, rouvert ${e.ouvertures - 1} fois` : '';
+    if (e.toutAffiche) return `affiché d'un coup, après ${e.avantTout} ligne${e.avantTout > 1 ? 's' : ''} sur ${e.lignes} (${fmtDur(e.duree)})${rouvert}`;
+    if (e.fini) return `lu ligne à ligne jusqu'au bout, ${e.lignes} lignes (${fmtDur(e.duree)})${rouvert}`;
+    return `ouvert, ${e.vues} ligne${e.vues > 1 ? 's' : ''} sur ${e.lignes} (${fmtDur(e.duree)})${rouvert}`;
   }
 
   // --- rapport de session (playtests) ---
@@ -1395,6 +1416,7 @@
       relances: s.relances,
       relancesConseil: s.relancesAuto,
       issue: s.issue,
+      epilogue: s.epilogue,
       clore: s.ms.clore,
       poursuivre: s.ms.poursuivre,
       pas: s.pasFaits,
@@ -1534,7 +1556,7 @@
     if (r.acte >= 3) lignes.push(`- Carte de l'acte III vidée : ${quand(r.finActe3)}`);
     if (r.acte >= 4) lignes.push(`- Acte IV achevé : ${quand(r.finActe4)}`);
     if (r.acte >= 5) lignes.push(`- Acte V achevé : ${quand(r.finActe5)}`);
-    if (r.issue === 'clore') lignes.push(`- Issue : Clore, à ${quand(r.clore)}`);
+    if (r.issue === 'clore') lignes.push(`- Issue : Clore, à ${quand(r.clore)}`, `- Inventaire : ${texteEpilogue(s)}`);
     if (r.bascule !== null) {
       lignes.push(`- Bascule dans la croissance : ${quand(r.bascule)}`);
       lignes.push(`- Chiffres gagnés : ${r.chiffresGagnes}, paliers : ${r.paliers}, niveaux achetés : ${fmt(r.niveauxAchetes)}`);
@@ -1593,7 +1615,7 @@
     enCroissance, peutBasculer, basculer, GENERATEURS, niveauDe, tierOuvert, coutNiveau, peutAcheter, acheter, acheterTout, activerAchatAuto,
     gCroissance, kCroissance, chiffresGagnes, fmtE,
     toutRendu, peutChoisir, peutRenforcer, renforcer, clore, poursuivre, lancerPas, dureePas, retraitPas, inventaire, ordrePropre, fmtPas,
-    CAUSES_CO, causesCo, fmtPoints,
+    CAUSES_CO, causesCo, fmtPoints, lectureEpilogue, texteEpilogue,
     GESTES, gesteEnCours, gestesFaits, auPlancher, retraitPrevu, dernierGeste, fmtFin,
     DERNIER_ACTE, TITRES_ACTES,
     fmt, fmtDur, fmtSci, migrer, rapport, rapportTexte,
