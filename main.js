@@ -765,7 +765,6 @@
     const delestes = [];
     for (const ev of evs) {
       if (ev.type === 'stabilise') { son.silence(D.PAUSE_STABILISE); document.getElementById('app').classList.add('pause'); setTimeout(() => document.getElementById('app').classList.remove('pause'), D.PAUSE_STABILISE * 1000); }
-      if (ev.type === 'chiffre') { perteDeChiffre(); }
       if (ev.type === 'coupure') { son.coupure(); secousseCasse(); toast(ev.dep === 'hopital' ? `Coupure : l'hôpital de Cherbaix est sans électricité. ${ev.casse} personnes.` : `Coupure : ${E.defs[ev.dep].nom} à l'arrêt brutal. ${ev.casse} personnes sans reclassement.`); }
       if (ev.type === 'delestage') delestes.push(ev);
       if (ev.type === 'privation') { son.coupure(); secousseCasse(); toast(`Coupure : ${nomDe(ev.id)}, plus de ${E.noeuds[ev.id].besoin.quoi}. ${E.fmt(ev.casse)} personnes.`); }
@@ -796,6 +795,9 @@
       if (ev.type === 'palier') toast(`Palier n° ${ev.n} : la Capacité reçue double.${ev.n < D.CROISSANCE.tiers.length ? ' De nouveaux sites s\'ouvrent.' : ''}${ev.n === D.CROISSANCE.auto ? ' L\'achat peut devenir automatique.' : ''}`);
       if (ev.type === 'fige') { son.couper(); document.querySelectorAll('.toast').forEach(t => t.remove()); }   // sans un mot (§11)
     }
+    // Plusieurs chiffres perdus d'un coup, au retour d'une absence par exemple : une seule animation, qui les fait tous tomber.
+    const pertes = evs.filter(e => e.type === 'chiffre').length;
+    if (pertes) perteDeChiffre(pertes);
     if (delestes.length) {   // un délestage coupe souvent plusieurs consommateurs d'un coup : une seule alerte
       son.coupure(); secousseCasse();
       toast(`Délestage : ${delestes.map(e => nomDe(e.id)).join(', ')}. ${E.fmt(delestes.reduce((a, e) => a + e.casse, 0))} personnes.`);
@@ -814,17 +816,23 @@
     setTimeout(() => { c.hidden = true; }, D.PAUSE_ACTE * 1000);
   }
 
-  function perteDeChiffre() {
-    // Le nombre se recentre, le chiffre de tête tombe, l'écran se resserre d'un cran.
+  function perteDeChiffre(n) {
+    // Le nombre se recentre, le chiffre de tête tombe, l'écran se resserre d'un cran. Quand plusieurs chiffres tombent
+    // d'un coup, ils tombent ensemble, et le coup sourd se répète, un par chiffre.
+    n = Math.max(1, n || 1);
     const c = $('compteur'), avant = dernierNb, apres = E.fmtFin(s.E);
+    let fin = 0;
+    for (let vus = 0; fin < avant.length && vus < n; fin++) if (/\d/.test(avant[fin])) vus++;
     animPerte = performance.now() + D.PAUSE_CHIFFRE * 1000;
-    c.innerHTML = `<span class="digit-perdu">${avant.slice(0, 1)}</span>${avant.slice(1)}`;
+    c.innerHTML = `<span class="digit-perdu"></span><span></span>`;
+    c.firstElementChild.textContent = avant.slice(0, Math.max(1, fin)); c.lastElementChild.textContent = avant.slice(Math.max(1, fin));
     son.chute();
+    for (let k = 1; k < n; k++) setTimeout(() => son.chute(), 650 * k);
     const app = document.getElementById('app');
     app.classList.add('pause-chiffre');
     const marge = 8 * (10 - s.digitsMin);
     document.documentElement.style.setProperty('--resserre', marge + 'px');
-    setTimeout(() => { app.classList.remove('pause-chiffre'); c.textContent = apres; dernierNb = apres; if (s.digitsMin === 9) montrerJalon(); }, D.PAUSE_CHIFFRE * 1000);
+    setTimeout(() => { app.classList.remove('pause-chiffre'); c.textContent = apres; dernierNb = apres; if (s.digitsMin + n === 10) montrerJalon(); }, D.PAUSE_CHIFFRE * 1000);   // le premier chiffre perdu
   }
 
   function montrerJalon() {
@@ -1052,14 +1060,21 @@
       li.children[0].textContent = l.h; li.children[1].textContent = l.texte;
       ol.appendChild(li);
     };
+    // Comment il est lu, pour le rapport : à la première lecture seulement ; ensuite, il se rouvre en entier.
+    const premiere = !s.inventaireVu, debut = Date.now();
+    if (!s.epilogue && premiere) s.epilogue = E.lectureEpilogue({ lignes: lignes.length });
+    const lecture = s.epilogue || {}, dureeAvant = lecture.duree || 0;   // une partie lue avant ce compte n'en a pas
+    if (s.epilogue) lecture.ouvertures++;
+    const noter = () => { if (premiere) { lecture.vues = Math.max(lecture.vues, i); lecture.duree = dureeAvant + (Date.now() - debut) / 1000; sauver(); } };
     const finir = () => {   // lu jusqu'au bout : la Casse des gardes est dite, la partie peut se refermer sur la carte
       arreterInventaire();
       $('fin-tout').hidden = true; $('fin-fermer').hidden = false;
+      if (premiere) { lecture.fini = true; noter(); }
       if (!s.inventaireVu) { s.inventaireVu = true; rendre(); sauver(); }
     };
-    const suivant = () => { ajouter(); carton.scrollTop = carton.scrollHeight; if (i >= lignes.length) finir(); };
+    const suivant = () => { ajouter(); carton.scrollTop = carton.scrollHeight; if (i >= lignes.length) finir(); else noter(); };
     const tout = () => { while (i < lignes.length) ajouter(); finir(); };
-    $('fin-tout').addEventListener('click', tout);
+    $('fin-tout').addEventListener('click', () => { if (premiere && !lecture.toutAffiche) { lecture.toutAffiche = true; lecture.avantTout = i; } tout(); });
     $('fin-fermer').addEventListener('click', () => { $('fin').hidden = true; });
     $('fin').hidden = false;
     if (s.inventaireVu) { tout(); carton.scrollTop = 0; return; }   // déjà lu : il se rouvre en entier

@@ -1398,6 +1398,26 @@ test('le rapport de session dit ce qui a fait bouger le consentement', () => {
   assert.strictEqual(E.fmtPoints(12.34), '+12,3');
 });
 
+test('le rapport dit comment l\'inventaire a été lu : ligne à ligne, d\'un coup, ou pas jusqu\'au bout', () => {
+  const s = etatFin(); E.clore(s);
+  assert.ok(E.rapportTexte(s, 'test').includes('- Inventaire : pas ouvert'));
+  s.epilogue = E.lectureEpilogue({ lignes: 90, vues: 90, fini: true, duree: 362, ouvertures: 1 });
+  assert.strictEqual(E.texteEpilogue(s), 'lu ligne à ligne jusqu\'au bout, 90 lignes (6 min 02 s)');
+  s.epilogue = E.lectureEpilogue({ lignes: 90, vues: 90, toutAffiche: true, avantTout: 12, fini: true, duree: 48, ouvertures: 3 });
+  assert.strictEqual(E.texteEpilogue(s), 'affiché d\'un coup, après 12 lignes sur 90 (48 s), rouvert 2 fois');
+  s.epilogue = E.lectureEpilogue({ lignes: 90, vues: 34, duree: 136, ouvertures: 1 });
+  assert.strictEqual(E.texteEpilogue(s), 'ouvert, 34 lignes sur 90 (2 min 16 s)');
+  const json = JSON.parse(E.rapportTexte(s, 'test').split('```json\n')[1].split('\n```')[0]);
+  assert.deepStrictEqual(json.epilogue, { lignes: 90, vues: 34, toutAffiche: false, avantTout: 0, fini: false, duree: 136, ouvertures: 1 });
+  const r = E.migrer(allerRetour(s));
+  assert.deepStrictEqual(r.epilogue, s.epilogue);
+  assert.strictEqual(E.migrer(Object.assign(allerRetour(s), { epilogue: [1, 2] })).epilogue, null);
+  assert.strictEqual(E.lectureEpilogue({ lignes: -3, vues: 'beaucoup' }).lignes, 0);
+  const ancienne = Object.assign(allerRetour(s), { epilogue: undefined, inventaireVu: true });   // lu avant que le rapport le détaille
+  assert.strictEqual(E.texteEpilogue(E.migrer(ancienne)), 'lu jusqu\'au bout');
+  assert.ok(!E.rapportTexte(etatFin(), 'test').includes('- Inventaire'), 'seulement après Clore');
+});
+
 // ---- Ce que les cartes annoncent, le moteur le fait (issue #35) ----
 test('aucun site n\'annonce d\'ajouter de l\'Empreinte : le moteur ne le ferait pas', () => {
   for (const d of E.D.sites) assert.ok(d.part > 0 || d.E >= 0, `${d.id} : E = ${d.E}`);
