@@ -84,6 +84,9 @@
       horsLigne: 0,         // secondes passées hors ligne ou onglet caché
       versions: [],         // versions du jeu sur lesquelles la partie a été jouée
       raccourci: '',        // raccourci de test : la partie a été reprise d'un bot (lequel, et où)
+      coCauses: {},         // ce qui a fait bouger le Consentement depuis coDepuis : points gagnés ou perdus, par cause
+      coNb: {},             // combien de fois, pour les causes ponctuelles (une fermeture, une relance…)
+      coDepuis: 0,          // depuis quand on compte : 0, ou l'instant où une partie plus ancienne a été reprise
     };
     for (const d of D.sites) s.sites[d.id] = { state: 'actif', progress: 0, regen: 0, vite: false, pollue: false };   // et, selon le site : habitants, dosage…
     for (const n of NOEUDS_RESEAU) s.noeuds[n.id] = 'alimente';
@@ -93,6 +96,42 @@
   // Au-delà de 10¹⁵, un nombre ne s'écrit plus chiffre par chiffre : on compte ses chiffres au logarithme.
   const digitsOf = (E) => (E < 1e15 ? String(Math.floor(Math.max(1, E))).length : Math.floor(Math.log10(E)) + 1);
   const relanceActive = (s) => s.t < s.relanceUntil || enCroissance(s);   // en mode Croissance, elle ne s'arrête plus
+
+  // --- ce qui fait bouger le Consentement ---
+  // Chaque mouvement passe par bougerCo, qui le compte sous sa cause : le joueur peut voir pourquoi il monte ou descend.
+  // `ponctuel` : un événement (une fermeture, une relance) plutôt qu'un effet continu ; on en compte le nombre.
+  const CAUSES_CO = {
+    equilibre: { nom: 'retour vers 70 %', aide: 'sans rien faire, il revient de lui-même vers 70 %, de 0,6 point par minute' },
+    horsLigne: { nom: 'absence, retour vers 70 %', aide: "pendant une absence, il revient vers 70 % au même rythme" },
+    simultanes: { nom: 'chantiers menés de front', aide: '0,8 point par minute pour chaque chantier en cours au-delà du premier' },
+    fermetures: { nom: 'fermetures', ponctuel: true, aide: "certaines fermetures coûtent quelques points : la carte du site le dit" },
+    reconversions: { nom: 'départs en formation', ponctuel: true, aide: '1 point par lot qui part en formation' },
+    formations: { nom: 'formations achevées', ponctuel: true, aide: "à partir de l'acte III, 2 points par lot qui finit sa formation" },
+    attente: { nom: 'gens qui attendent une formation', aide: "à partir de l'acte III, 0,4 point par minute pour chaque millier de personnes qui attendent" },
+    penurie: { nom: 'pénurie', aide: 'tant que les vivres manquent' },
+    coupures: { nom: 'coupures et délestages', ponctuel: true, aide: 'une coupure, un délestage ou une privation coûte de 12 à 30 points' },
+    relances: { nom: 'vos relances', ponctuel: true, aide: '3 points par relance' },
+    conseil: { nom: 'relances du Conseil', ponctuel: true, aide: '15 points quand le Conseil relance sans vous' },
+    habitants: { nom: 'gestes des habitants', ponctuel: true, aide: '3 points par geste que les habitants font faute de Mains' },
+    croissance: { nom: 'la croissance', aide: '20 points par minute, en mode Croissance' },
+    bornes: { nom: 'déjà à 0 ou à 100 %', aide: "ce qui l'aurait fait sortir de la jauge ne compte pas" },
+  };
+  function bougerCo(s, cause, delta) {
+    s.Co += delta;
+    s.coCauses[cause] = (s.coCauses[cause] || 0) + delta;
+    if (CAUSES_CO[cause].ponctuel) s.coNb[cause] = (s.coNb[cause] || 0) + 1;
+  }
+  // Ramène le Consentement entre 0 et 100 ; ce qui dépassait est compté à part.
+  function bornerCo(s) {
+    const avant = s.Co;
+    s.Co = Math.max(0, Math.min(100, s.Co));
+    if (s.Co !== avant) s.coCauses.bornes = (s.coCauses.bornes || 0) + (s.Co - avant);
+  }
+  // Les causes, de la plus forte à la plus faible : [{ cause, nom, aide, points, nb }].
+  const causesCo = (totaux, nbs) => Object.keys(CAUSES_CO).filter(c => Math.abs(totaux[c] || 0) >= 0.05)
+    .map(c => ({ cause: c, nom: CAUSES_CO[c].nom, aide: CAUSES_CO[c].aide, points: totaux[c], nb: (nbs && nbs[c]) || 0 }))
+    .sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
+  const fmtPoints = (p) => `${p >= 0 ? '+' : '−'}${Math.abs(p).toFixed(1).replace('.', ',')}`;
 
   // --- acte IV : le legs ---
   // Les sols d'un site de l'acte II n'existent que s'il a été démoli trop vite.
@@ -405,8 +444,8 @@
       s.sites[id].state = 'coupe';
       retirer(s, d.E * D.COUPURE_SITE_E);
       s.X += d.deplaces;
-      s.Co -= D.COUPURE_SITE_CO;
-      log(s, `DÉLESTAGE — ${d.nom} à l'arrêt brutal. ${fmt(d.deplaces)} personnes sans reclassement.`, 'casse');
+      bougerCo(s, 'coupures', -D.COUPURE_SITE_CO);
+      log(s, `DÉLESTAGE — ${d.nom} à l'arrêt brutal. ${fmt(d.deplaces)} personnes sans reclassement. Consentement −${D.COUPURE_SITE_CO}.`, 'casse');
       trace(s, 'delestage', { id, casse: d.deplaces });
       marquerCoupure(s);
       return [{ type: 'delestage', id, casse: d.deplaces }];
@@ -414,8 +453,8 @@
     const n = noeuds[id];
     s.noeuds[id] = 'deleste';
     s.X += n.casse;
-    s.Co -= n.co;
-    log(s, `DÉLESTAGE — ${n.nom} sans électricité. ${fmt(n.casse)} personnes.`, 'casse');
+    bougerCo(s, 'coupures', -n.co);
+    log(s, `DÉLESTAGE — ${n.nom} sans électricité. ${fmt(n.casse)} personnes. Consentement −${n.co}.`, 'casse');
     trace(s, 'delestage', { id, casse: n.casse });
     marquerCoupure(s);
     return [{ type: 'delestage', id, casse: n.casse }];
@@ -424,8 +463,8 @@
   function priver(s, n) {
     s.noeuds[n.id] = 'prive';
     s.X += n.casse;
-    s.Co -= n.co;
-    log(s, `COUPURE — ${n.nom} : plus de ${n.besoin.quoi}. ${fmt(n.casse)} personnes.`, 'casse');
+    bougerCo(s, 'coupures', -n.co);
+    log(s, `COUPURE — ${n.nom} : plus de ${n.besoin.quoi}. ${fmt(n.casse)} personnes. Consentement −${n.co}.`, 'casse');
     trace(s, 'privation', { id: n.id, casse: n.casse });
     marquerCoupure(s);
     return [{ type: 'privation', id: n.id, casse: n.casse }];
@@ -519,7 +558,7 @@
     s.M -= cc.M; s.Meng += cc.M;
     st.state = 'chantier'; st.progress = 0; st.vite = vite; st.mEng = cc.M; st.restes = !!c.restes; st.isole = c.isole; st.t0 = s.t;
     if (c.aBras) st.aBras = true;
-    if (c.habitants) { st.habitants = true; s.Co -= D.HABITANTS.co; }
+    if (c.habitants) { st.habitants = true; bougerCo(s, 'habitants', -D.HABITANTS.co); }
     if (d.geste) {
       log(s, c.habitants ? `Faute de Mains, les habitants s'y mettent : ${d.nom}. Consentement −${D.HABITANTS.co}.` :
         `Geste lancé : ${d.nom}, ${fmt(cc.M)} personnes.`, 'chantier');
@@ -555,8 +594,8 @@
       const n = noeuds.hopital;
       s.hopital = 'coupe';
       s.X += n.casse;
-      s.Co -= n.co;
-      log(s, `COUPURE — ${n.nom} sans électricité. ${n.casse} personnes.`, 'casse');
+      bougerCo(s, 'coupures', -n.co);
+      log(s, `COUPURE — ${n.nom} sans électricité. ${n.casse} personnes. Consentement −${n.co}.`, 'casse');
       trace(s, 'coupure', { id: dep, casse: n.casse });
       ev.push({ type: 'coupure', dep, casse: n.casse });
     } else {
@@ -564,8 +603,8 @@
       st.state = 'coupe';
       retirer(s, d.E * D.COUPURE_SITE_E);
       s.X += d.deplaces;
-      s.Co -= D.COUPURE_SITE_CO;
-      log(s, `COUPURE — ${d.nom} à l'arrêt brutal. ${d.deplaces} personnes sans reclassement.`, 'casse');
+      bougerCo(s, 'coupures', -D.COUPURE_SITE_CO);
+      log(s, `COUPURE — ${d.nom} à l'arrêt brutal. ${d.deplaces} personnes sans reclassement. Consentement −${D.COUPURE_SITE_CO}.`, 'casse');
       trace(s, 'coupure', { id: dep, casse: d.deplaces });
       ev.push({ type: 'coupure', dep, casse: d.deplaces });
     }
@@ -590,7 +629,8 @@
     else if (d.geste) s.installes += mEng;   // l'équipe reste sur la terre qu'elle a rendue
     else s.M += mEng;
     if (!st.restes) ajouterAttente(s, id, d.deplaces);
-    s.Co -= d.co;
+    if (d.co) bougerCo(s, 'fermetures', -d.co);
+    const coFerme = d.co ? ` Consentement −${d.co}.` : '';   // dit dans le journal, à la suite de la fermeture
     if (d.garde) {
       ev[0] = { type: 'garde', id, dosage: st.dosage, gardiens: mEng };
       log(s, `Gardée : ${d.nom}, pour ${fmt(d.ans)} ans. ${fmt(mEng)} gardiens chaque année, pour toujours. Empreinte −${fmt(E0)} (${Math.round(d.part * 100)} % de ce qui restait).`, 'ok');
@@ -601,15 +641,15 @@
       if (d.seulementSi) s.sites[d.seulementSi].pollue = false;   // le sol de l'acte II, enfin dépollué, se régénère
       log(s, `Dépollué : ${d.nom}. Empreinte −${fmt(E0)} (${Math.round(d.part * 100)} % de ce qui restait).`, 'ok');
     } else if (st.restes) {
-      log(s, `Restes démantelés : ${d.nom}. Empreinte −${fmt(E0)}.`, 'ok');
+      log(s, `Restes démantelés : ${d.nom}. Empreinte −${fmt(E0)}.${coFerme}`, 'ok');
     } else if (id === 'autonomie') {
       s.hopital = 'autonome';
       log(s, `${d.nom} : l'hôpital ne dépend plus des centrales.`, 'ok');
     } else if (d.mesure) {
-      log(s, `Fait : ${d.nom}.`, 'ok');
+      log(s, `Fait : ${d.nom}.${coFerme}`, 'ok');
     } else {
       const part = d.part ? ` (${Math.round(d.part * 100)} % de ce qui restait)` : '';
-      log(s, `Fermé : ${d.nom}. Empreinte −${fmt(E0)}${part}${d.deplaces ? `, ${fmt(d.deplaces)} personnes à reconvertir` : ''}.`, 'ok');
+      log(s, `Fermé : ${d.nom}. Empreinte −${fmt(E0)}${part}${d.deplaces ? `, ${fmt(d.deplaces)} personnes à reconvertir` : ''}.${coFerme}`, 'ok');
     }
     if (d.garde) trace(s, 'garde', Object.assign({ id, dosage: st.dosage, gardiens: mEng }, st.aBras ? { aBras: true } : {}));
     else trace(s, 'ferme', st.restes ? { id, restes: true } : { id });
@@ -640,7 +680,7 @@
     const compo = prendreAttente(s, n);
     s.lots++;
     s.formations.push({ n, progress: 0, lot: s.lots, compo });
-    s.Co -= D.RECONV.co;
+    bougerCo(s, 'reconversions', -D.RECONV.co);
     trace(s, 'reconversion', { n });
     return true;
   }
@@ -668,7 +708,12 @@
     if (auto) { s.relancesAuto++; s.autoRelanceAt = s.t; log(s, 'Le Conseil a relancé la croissance sans vous.', 'casse'); }
     else { s.relances++; log(s, 'Relance.', 'relance'); }
     s.plancher = s.plancher * D.RELANCE.plancherMul;
+    const coAvant = s.Co;   // compté tel qu'il a joué : à 100 %, une relance n'ajoute rien
     s.Co = Math.min(100, s.Co + (auto ? D.RELANCE.coAuto : D.RELANCE.co));
+    const cause = auto ? 'conseil' : 'relances';
+    s.coCauses[cause] = (s.coCauses[cause] || 0) + (s.Co - coAvant);
+    s.coNb[cause] = (s.coNb[cause] || 0) + 1;
+    if (s.Co > coAvant + 0.05) log(s, `Consentement +${fmt(Math.round(s.Co - coAvant))}.`, auto ? 'casse' : 'relance');
     trace(s, 'relance', { auto: !!auto });
     // L'Empreinte n'est jamais sous le plancher : s'il passe au-dessus d'elle en doublant, elle y remonte.
     const remontee = s.E < s.plancher;
@@ -971,7 +1016,9 @@
     s.t += dt;
     s.E = Math.min(C.Emax, s.E * Math.exp((gCroissance(s) / 100 / 60) * dt));
     s.K += kCroissance(s) * dt;
+    const coAvant = s.Co;
     s.Co = Math.min(100, s.Co + (C.co / 60) * dt);   // la croissance rachète l'adhésion
+    if (s.Co !== coAvant) s.coCauses.croissance = (s.coCauses.croissance || 0) + (s.Co - coAvant);
     if (s.Co < s.coMin) s.coMin = s.Co;
     if (s.achatAuto) acheterTout(s);
     // Un chiffre gagné : une région se rallume ; tous les `palier` chiffres, la Capacité reçue double et un acte s'ouvre.
@@ -1046,21 +1093,21 @@
     for (const f of s.formations) f.progress += dt / D.RECONV.dur;
     for (const f of s.formations.filter(f => f.progress >= 1)) {
       s.M += f.n;
-      if (s.acte >= 3) s.Co += D.CO_FORMES;   // des gens qui retrouvent un métier : l'adhésion revient
-      log(s, `${f.n} personnes reconverties.`, 'ok');
+      if (s.acte >= 3) bougerCo(s, 'formations', D.CO_FORMES);   // des gens qui retrouvent un métier : l'adhésion revient
+      log(s, `${f.n} personnes reconverties.${s.acte >= 3 ? ` Consentement +${D.CO_FORMES}.` : ''}`, 'ok');
       ev.push({ type: 'reconv', n: f.n, lot: f.lot });
     }
     s.formations = s.formations.filter(f => f.progress < 1);
     if (s.formerEnContinu) reconvertirTout(s);
     // Consentement : dérive vers l'équilibre, usure si l'on empile les chantiers
     const n = chantiersActifs(s);
-    if (n > 1) s.Co -= D.CO_HATE * (n - 1) * dt;
+    if (n > 1) bougerCo(s, 'simultanes', -D.CO_HATE * (n - 1) * dt);
     if (s.acte >= 3) {
-      s.Co -= D.CO_ATTENTE * (s.deplaces / 1000) * dt;   // attendre une formation use l'adhésion
+      if (s.deplaces > 0) bougerCo(s, 'attente', -D.CO_ATTENTE * (s.deplaces / 1000) * dt);   // attendre une formation use l'adhésion
       ev.push(...nourrir(s, dt, rel));
     }
-    s.Co += Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * dt);
-    s.Co = Math.max(0, Math.min(100, s.Co));
+    bougerCo(s, 'equilibre', Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * dt));
+    bornerCo(s);
     if (s.Co < s.coMin) s.coMin = s.Co;
 
     // Quelqu'un d'autre appuie sur le bouton
@@ -1149,7 +1196,7 @@
         ev.push({ type: 'penurie', vivres: v.prod });
       }
       s.penurieAcc += deficit * V.casse * dt;
-      s.Co -= deficit * V.co * dt;
+      bougerCo(s, 'penurie', -deficit * V.co * dt);
       const k = Math.floor(s.penurieAcc);
       if (k > 0) { s.penurieAcc -= k; s.X += k; s.penurieX += k; }
     } else if (s.penurie) {
@@ -1197,7 +1244,7 @@
       const st = s.sites[d.id];
       if (!fini.has(d.id) && st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) st.regen = Math.min(1, st.regen + elapsed / d.regen);
     }
-    s.Co += Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * elapsed);
+    bougerCo(s, 'horsLigne', Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * elapsed));
     const dT = T(s) - T0;
     if (sols) log(s, `Pendant votre absence (${fmtDur(elapsed)}), la dépollution a continué` +
       `${depollues.length ? ` : ${depollues.map(id => defs[id].nom).join(', ')}, terminé${depollues.length > 1 ? 's' : ''}` : ''}.`, 'ok');
@@ -1279,6 +1326,11 @@
       return a + (st.state === 'chantier' ? (Number.isFinite(st.mEng) ? st.mEng : cout(d, st.vite, st.isole).M) : 0);
     }, 0);
     if (!('coMin' in save)) s.coMin = s.Co;
+    // Ce qui a fait bouger le Consentement : des nombres par cause connue. Une partie d'avant ce compte le commence à sa reprise.
+    const compte = (o) => { const r = {}; for (const c of Object.keys(CAUSES_CO)) if (o && Number.isFinite(o[c])) r[c] = o[c]; return r; };
+    s.coCauses = compte(save.coCauses); s.coNb = compte(save.coNb);
+    if (!('coCauses' in save)) s.coDepuis = s.t;
+    if (!(Number.isFinite(s.coDepuis) && s.coDepuis >= 0)) s.coDepuis = 0;
     // Le plancher se déduit des relances : une partie enregistrée avec un autre barème reprend le barème actuel.
     if (!(Number.isFinite(s.plancherSurcroit) && s.plancherSurcroit >= 1)) s.plancherSurcroit = 1;
     s.plancher = D.PLANCHER0 * Math.pow(D.RELANCE.plancherMul, s.relances + s.relancesAuto) * s.plancherSurcroit;
@@ -1362,6 +1414,8 @@
       casse: s.X,
       casseParCause: casseParCause(s),
       consentementMin: Math.round(s.coMin),
+      consentementParCause: Object.fromEntries(causesCo(s.coCauses, s.coNb).map(c => [c.cause, Math.round(c.points * 10) / 10])),
+      consentementDepuis: s.coDepuis,
       empreinte: s.E < 100 ? Math.round(s.E * 10) / 10 : Math.round(s.E),
       chiffres: s.digits,
       terreRendue: Math.round(T(s) * 10) / 10,
@@ -1470,6 +1524,7 @@
     }
     lignes.push(
       `- Consentement minimum : ${r.consentementMin} %`,
+      `- Ce qui a fait bouger le consentement${s.coDepuis ? ` depuis ${fmtDur(s.coDepuis)}` : ''} : ${causesCo(s.coCauses, s.coNb).map(c => `${c.nom} ${fmtPoints(c.points)}${c.nb ? ` (${c.nb})` : ''}`).join(', ') || 'rien'}`,
       `- Empreinte : ${fmtE(r.empreinte)}`,
       `- Terre rendue : ${String(r.terreRendue).replace('.', ',')} %`,
       `- Plancher irréductible : ${fmtPlancher(r.plancher)}`,
@@ -1538,6 +1593,7 @@
     enCroissance, peutBasculer, basculer, GENERATEURS, niveauDe, tierOuvert, coutNiveau, peutAcheter, acheter, acheterTout, activerAchatAuto,
     gCroissance, kCroissance, chiffresGagnes, fmtE,
     toutRendu, peutChoisir, peutRenforcer, renforcer, clore, poursuivre, lancerPas, dureePas, retraitPas, inventaire, ordrePropre, fmtPas,
+    CAUSES_CO, causesCo, fmtPoints,
     GESTES, gesteEnCours, gestesFaits, auPlancher, retraitPrevu, dernierGeste, fmtFin,
     DERNIER_ACTE, TITRES_ACTES,
     fmt, fmtDur, fmtSci, migrer, rapport, rapportTexte,

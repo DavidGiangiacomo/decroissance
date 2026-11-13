@@ -433,3 +433,16 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .raccourcis-choix select { min-width: 0; background: #141619; color: var(--texte); border: 1px solid var(--bord); border-radius: 4px; padding: 4px 6px; font: inherit; }
 .raccourcis-choix select:disabled { opacity: .45; }
 .raccourcis .carton-boutons { margin-top: 10px; }
+
+/* ---- ce qui fait bouger le Consentement ---- */
+.co-lien { margin-top: 4px; font-size: 11.5px; text-align: left; }
+.co-detail { grid-column: 1 / -1; border: 1px solid var(--bord); border-radius: 6px; padding: 8px 10px; background: var(--panneau-2); }
+.co-detail table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.co-detail th { font-weight: 400; font-size: 11px; color: var(--muted); text-align: right; padding: 0 0 3px 10px; white-space: nowrap; }
+.co-detail td { padding: 2px 0; border-top: 1px dotted #33383f; }
+.co-detail td + td { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; padding-left: 10px; white-space: nowrap; }
+.co-detail td.hausse { color: var(--vert); }
+.co-detail td.baisse { color: #f0a49c; }
+.co-detail td.nul { color: var(--muted); }
+.co-explication { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.co-explication:empty { display: none; }
