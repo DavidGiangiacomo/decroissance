@@ -37,6 +37,7 @@ Détail, contenu et réglages dans [docs/acte-2.md](docs/acte-2.md).
 - **Démolir vite** : l'aciérie et la chimie peuvent se démolir en deux fois moins de temps, de Capacité et de Mains, au prix d'une pollution (de la Casse et un sol qui ne se régénère pas).
 - **Deuxième chiffre perdu** : la région la plus démantelée s'éteint sur la carte, le bourdonnement du réseau s'arrête, la rivière arrive. Chaque chiffre suivant éteint une autre région.
 - À côté du Consentement s'affiche ce qu'il a gagné ou perdu pendant la dernière minute de jeu, tout compris.
+- **Ce qui le fait bouger** : un lien sous la jauge ouvre le détail, cause par cause, pour la dernière minute et pour toute la partie. On y voit ce qui ne se voit nulle part ailleurs : sans rien faire, il revient de lui-même vers 70 %, de 0,6 point par minute. Les fermetures, les coupures, les relances et les formations achevées le disent aussi dans le journal. Le rapport de session reprend les totaux par cause.
 - Le rapport de session reprend les données de l'acte : deuxième chiffre, coupures et délestages, démolitions qui ont pollué, régions éteintes.
 
 ## L'acte III : les gens

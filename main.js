@@ -628,13 +628,56 @@
   }
 
   // Évolution du Consentement : ce qu'il a réellement gagné ou perdu pendant la dernière minute de jeu,
-  // tout compris (formations, fermetures, attente, chantiers simultanés, relances). Un relevé par seconde de jeu.
+  // tout compris (formations, fermetures, attente, chantiers simultanés, relances). Un relevé par seconde de jeu :
+  // le Consentement, et ce que le moteur a compté par cause, pour dire ensuite d'où vient la différence.
   let histoCo = [];
   function evolutionCo() {
     const der = histoCo[histoCo.length - 1];
-    if (!der || s.t - der[0] >= 1 || s.t < der[0]) histoCo.push([s.t, s.Co]);
+    if (!der || s.t - der[0] >= 1 || s.t < der[0]) histoCo.push([s.t, s.Co, { ...s.coCauses }, { ...s.coNb }]);
     while (histoCo.length > 1 && histoCo[1][0] <= s.t - 60) histoCo.shift();
     return s.t - histoCo[0][0] >= 59 ? s.Co - histoCo[0][1] : null;
+  }
+
+  // « Ce qui le fait bouger » : par cause, ce que le Consentement a gagné ou perdu pendant la dernière minute de jeu,
+  // et depuis le début de la partie. Les deux colonnes viennent du compte que tient le moteur.
+  let coDetailOuvert = false, dernierCoDetail = '';
+  try { coDetailOuvert = localStorage.getItem('decroissance.coDetail') === '1'; } catch (e) { /* stockage indisponible */ }
+  function basculerCoDetail() {
+    coDetailOuvert = !coDetailOuvert; dernierCoDetail = '';
+    try { localStorage.setItem('decroissance.coDetail', coDetailOuvert ? '1' : '0'); } catch (e) { /* stockage indisponible */ }
+    rendreCoDetail();
+  }
+  function rendreCoDetail() {
+    const box = $('co-detail'), b = $('btn-co-detail');
+    box.hidden = !coDetailOuvert;
+    b.setAttribute('aria-expanded', String(coDetailOuvert));
+    b.textContent = coDetailOuvert ? 'Masquer ce qui le fait bouger' : 'Ce qui le fait bouger';
+    if (!coDetailOuvert || !histoCo.length) return;
+    const [t0, , causes0, nb0] = histoCo[0], duree = s.t - t0;
+    const fenetre = {}, nbFenetre = {};
+    for (const c of Object.keys(E.CAUSES_CO)) {
+      fenetre[c] = (s.coCauses[c] || 0) - (causes0[c] || 0);
+      nbFenetre[c] = (s.coNb[c] || 0) - (nb0[c] || 0);
+    }
+    const recents = E.causesCo(fenetre, nbFenetre), total = E.causesCo(s.coCauses, s.coNb);
+    // Les causes de la dernière minute d'abord, de la plus forte à la plus faible ; puis celles d'avant.
+    const ordre = [...recents.map(c => c.cause), ...total.map(c => c.cause).filter(c => !recents.some(r => r.cause === c))];
+    const colonne = duree >= 59 ? '1 min' : `${Math.max(1, Math.round(duree))} s`;
+    const depuis = s.coDepuis ? `depuis ${E.fmtDur(s.coDepuis)}` : 'partie';
+    const cellule = (p) => (Math.abs(p) < 0.05 ? '<td class="nul">·</td>' : `<td class="${p > 0 ? 'hausse' : 'baisse'}">${E.fmtPoints(p)}</td>`);
+    const lignes = ordre.map(c => {
+      const r = recents.find(x => x.cause === c), n = r && r.nb > 1 ? ` ×${r.nb}` : '';
+      return `<tr title="${E.CAUSES_CO[c].aide}"><td>${E.CAUSES_CO[c].nom}${n}</td>${cellule(fenetre[c])}${cellule(s.coCauses[c] || 0)}</tr>`;
+    });
+    const tete = `<tr><th></th><th>${colonne}</th><th>${depuis}</th></tr>`;
+    // Ce qui pèse le plus en ce moment, avec sa règle ; à défaut, la règle qui surprend : le retour vers 70 %.
+    const fort = recents[0];
+    const explication = fort ? `Ce qui pèse le plus en ce moment : ${fort.nom} (${fort.aide}).` : `Rien n'a bougé ${duree >= 59 ? 'cette dernière minute' : 'depuis la reprise'}. Sans rien faire, il revient de lui-même vers 70 %, de 0,6 point par minute.`;
+    const cle = lignes.join('') + colonne + depuis + explication;
+    if (cle === dernierCoDetail) return;
+    dernierCoDetail = cle;
+    $('co-table').innerHTML = lignes.length ? tete + lignes.join('') : '';
+    $('co-explication').textContent = explication;
   }
 
   function rendreRessources() {
@@ -652,6 +695,7 @@
       ct.className = 'co-tendance' + (dv <= -0.5 ? ' baisse' : dv >= 0.5 ? ' hausse' : '');
       ct.textContent = Math.abs(dv) < 0.5 ? ' stable en 1 min' : ` ${dv < 0 ? '▼' : '▲'} ${Math.abs(dv).toFixed(1).replace('.', ',')} en 1 min`;
     }
+    rendreCoDetail();
     $('deplaces').textContent = E.fmt(s.deplaces);
     const places = E.placesFormation(s), libres = places - E.placesOccupees(s), f0 = s.formations[0], garde = E.gardeEnAttente(s);
     const br = $('btn-reconv'); br.disabled = garde || libres <= 0 || s.deplaces <= 0;   // un clic remplit toutes les places libres
@@ -1095,7 +1139,7 @@
 
   function demarrer(etat) {
     s = etat; s.started = true;
-    histoCo = [];
+    histoCo = []; dernierCoDetail = '';
     if (!s.versions.includes(VERSION)) s.versions.push(VERSION);
     document.documentElement.style.setProperty('--resserre', (8 * (10 - s.digitsMin)) + 'px');
     construireCarte(); construireChantiers(); construireGardes(); construireGestes(); construireGenerateurs();
@@ -1189,6 +1233,7 @@
     $('btn-commencer').addEventListener('click', () => demarrer(E.create()));
     $('btn-relancer').addEventListener('click', relancer);
     $('btn-reconv').addEventListener('click', reconvertir);
+    $('btn-co-detail').addEventListener('click', basculerCoDetail);
     $('btn-clore').addEventListener('click', clore);
     $('btn-poursuivre').addEventListener('click', poursuivre);
     $('btn-pas').addEventListener('click', pas);

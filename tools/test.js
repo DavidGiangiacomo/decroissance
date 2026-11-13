@@ -1322,6 +1322,82 @@ test('un raccourci mène au choix final, gardes pleines comprises, et au bascule
   assert.strictEqual(partieA('acte3', { profil: 'inconnu' }).raccourci, "à l'ouverture de l'acte III, prudent à 10 s");
 });
 
+// ---- Ce qui fait bouger le Consentement ----
+const somme = (o) => Object.values(o).reduce((t, v) => t + v, 0);
+
+test('chaque mouvement du Consentement est compté sous sa cause, et les causes expliquent tout le mouvement', () => {
+  for (const [profil, reaction, dosage] of [['pressé', 10, 'pleine'], ['prudent', 30], ['croissance', 5]]) {
+    const { s } = simuler({ profil, reaction, dosage });
+    assert.ok(Math.abs(100 + somme(s.coCauses) - s.Co) < 1e-6, `${profil} : ${100 + somme(s.coCauses)} pour ${s.Co}`);
+  }
+  const { s } = simuler({ profil: 'pressé', reaction: 10, dosage: 'pleine' });
+  for (const c of ['equilibre', 'simultanes', 'fermetures', 'reconversions', 'formations', 'attente', 'penurie', 'coupures', 'conseil', 'habitants']) assert.ok(Math.abs(s.coCauses[c]) > 0, c);
+  assert.ok(s.coNb.fermetures === 17 && s.coNb.conseil === s.relancesAuto && s.coNb.coupures === 3 && s.coNb.habitants === 20);
+  assert.ok(s.coCauses.equilibre > 50, `le retour vers 70 % rapporte beaucoup sur une partie : ${s.coCauses.equilibre}`);
+  assert.ok(!('simultanes' in s.coNb) && !('equilibre' in s.coNb), 'les effets continus ne se comptent pas en nombre');
+});
+
+test('le Consentement, cause par cause : les prix annoncés sont ceux que le moteur compte', () => {
+  const s = Object.assign(E.create(), { started: true, K: 900, M: 5000, Co: 60 });
+  E.engage(s, 'aero');
+  jusquA(s, () => s.sites.aero.state === 'eteint', 2000);
+  assert.ok(s.coCauses.fermetures === -4 && s.coNb.fermetures === 1);
+  assert.ok(s.log.some(l => l.msg.startsWith("Fermé : Aérodrome d'affaires de Valdrance.") && l.msg.endsWith('Consentement −4.')));
+  assert.ok(s.coCauses.equilibre > 0, 'sous 70, il remonte de lui-même');
+  E.reconvertir(s);
+  assert.ok(s.coCauses.reconversions === -1 && s.coNb.reconversions === 1);
+  const avant = s.Co;
+  E.relancer(s);
+  assert.ok(s.coCauses.relances === 3 && s.Co === avant + 3 && s.log.some(l => l.msg === 'Consentement +3.'));
+  const haut = Object.assign(E.create(), { started: true });   // à 100 %, une relance n'ajoute rien, et le compte le dit
+  E.relancer(haut);
+  assert.ok(haut.coCauses.relances === 0 && haut.coNb.relances === 1 && !haut.log.some(l => l.msg.startsWith('Consentement')));
+  const bas = Object.assign(E.create(), { started: true, Co: 18 });
+  E.tick(bas, 0.1);
+  assert.ok(bas.relancesAuto === 1 && Math.abs(bas.coCauses.conseil - 15) < 1e-9 && bas.coNb.conseil === 1);
+  const coupe = Object.assign(E.create(), { started: true, K: 900, M: 5000, Co: 20 });
+  coupe.sites.gaz.state = 'eteint';   // sans la centrale au gaz, l'hôpital n'a plus de secours
+  E.engage(coupe, 'charbon');   // l'hôpital et l'usine de SUV sont coupés : 30 + 15 points, sous zéro
+  assert.ok(coupe.coCauses.coupures === -45 && coupe.coNb.coupures === 2 && coupe.Co === -25);
+  E.tick(coupe, 0.1);
+  assert.ok(coupe.Co >= 0 && coupe.coCauses.bornes > 24, 'ce qui sortait de la jauge est compté à part');
+  assert.ok(Math.abs(100 + somme(coupe.coCauses) - coupe.Co - 80) < 1e-9, 'parti de 20 : les causes expliquent tout');
+  const absent = Object.assign(E.create(), { started: true, Co: 40 });
+  E.applyOffline(absent, 600);
+  assert.ok(Math.abs(absent.coCauses.horsLigne - 6) < 1e-9 && absent.Co === 46, 'dix minutes d\'absence : +6');
+});
+
+test('le compte du Consentement survit à une sauvegarde ; une partie plus ancienne le commence à sa reprise', () => {
+  const { s } = simuler({ profil: 'prudent', reaction: 10, suivi: { arret: (x) => x.acte >= 3 } });
+  const r = E.migrer(allerRetour(s));
+  assert.deepStrictEqual(r.coCauses, s.coCauses);
+  assert.deepStrictEqual(r.coNb, s.coNb);
+  assert.strictEqual(r.coDepuis, 0);
+  const ancienne = allerRetour(s);
+  for (const k of ['coCauses', 'coNb', 'coDepuis']) delete ancienne[k];
+  const a = E.migrer(ancienne);
+  assert.ok(a.coDepuis === a.t && a.t > 0 && somme(a.coCauses) === 0);
+  for (let i = 0; i < 600; i++) E.tick(a, 0.1);
+  assert.ok(a.coCauses.equilibre !== undefined, 'il compte dès la reprise');
+  assert.ok(E.rapportTexte(a, 'test').includes(`Ce qui a fait bouger le consentement depuis ${E.fmtDur(a.coDepuis)}`));
+  const abimee = Object.assign(allerRetour(s), { coCauses: { equilibre: 'beaucoup', fermetures: -8, inconnue: 3 }, coNb: [1, 2] });
+  const b = E.migrer(abimee);
+  assert.deepStrictEqual(b.coCauses, { fermetures: -8 });
+  assert.deepStrictEqual(b.coNb, {});
+});
+
+test('le rapport de session dit ce qui a fait bouger le consentement', () => {
+  const { s } = simuler({ profil: 'pressé', reaction: 10 });
+  const texte = E.rapportTexte(s, 'test');
+  const ligne = texte.split('\n').find(l => l.startsWith('- Ce qui a fait bouger le consentement : '));
+  assert.ok(ligne && ligne.includes('formations achevées +') && ligne.includes('relances du Conseil +60,0 (4)') && ligne.includes('retour vers 70 % +'), ligne);
+  const json = JSON.parse(texte.split('```json\n')[1].split('\n```')[0]);
+  assert.ok(json.consentementParCause.conseil === 60 && json.consentementDepuis === 0);
+  assert.ok(Math.abs(100 + somme(json.consentementParCause) - s.Co) < 1, 'arrondies, les causes expliquent encore le total');
+  assert.strictEqual(E.fmtPoints(-0.04), '−0,0');
+  assert.strictEqual(E.fmtPoints(12.34), '+12,3');
+});
+
 // ---- Ce que les cartes annoncent, le moteur le fait (issue #35) ----
 test('aucun site n\'annonce d\'ajouter de l\'Empreinte : le moteur ne le ferait pas', () => {
   for (const d of E.D.sites) assert.ok(d.part > 0 || d.E >= 0, `${d.id} : E = ${d.E}`);
