@@ -14,8 +14,10 @@ const quand = (t) => E.fmtDur(t).padStart(11);
 
 // Joue une partie. `reaction` : secondes d'attente avant chaque action (simule un humain).
 // `suivi`, facultatif, observe la partie : engage(s, id, cout, ev) après chaque lancement, pas(s, ev) après chaque tick ;
-// arret(s), s'il renvoie vrai, arrête la partie là.
-function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi = {} } = {}) {
+// arret(s), s'il renvoie vrai, arrête la partie là. `ordre1`, facultatif : l'ordre dans lequel le bot essaie les sites
+// de l'acte I (celui d'un playtest, par exemple) ; `strict1` : il les prend dans cet ordre, et attend que le suivant
+// soit payable au lieu de passer au site d'après.
+function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi = {}, ordre1 = ordreActe1, strict1 = false } = {}) {
   const s = E.create();
   s.started = true;
   const dt = 0.1;
@@ -26,12 +28,14 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
   // Acte I : le joueur du MVP, inchangé. « Vite » y joue comme le prudent.
   function choixActe1() {
     const prudent = profil === 'prudent' || profil === 'vite';
-    for (const id of ordreActe1) {
+    for (const id of ordre1) {
       const c = E.canEngage(s, id);
+      // En ordre strict, le bot attend que le site suivant soit payable ; il ne passe outre que s'il ne peut pas l'ouvrir.
+      if (strict1 && s.sites[id].state === 'actif' && !c.ok && c.raisons.some(r => /Capacité|Mains/.test(r))) return null;
       if (!c.ok) continue;
       if (prudent && c.coupures.length) continue;
       if (prudent && id === 'gaz' && s.hopital !== 'autonome') continue;
-      if (prudent && id === 'autonomie' && s.sites.charbon.state === 'actif') continue;
+      if (prudent && !strict1 && id === 'autonomie' && s.sites.charbon.state === 'actif') continue;
       return { id };
     }
     return null;
