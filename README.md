@@ -33,7 +33,7 @@ Détail, contenu et réglages dans [docs/acte-2.md](docs/acte-2.md).
 - **Le réseau électrique devient une jauge** : production, demande et marge, sous les ressources. Sept nouveaux sites, deux mesures, et des nœuds qui ne se démantèlent pas (le barrage, les deux villes, l'eau, le pompage, l'hôpital d'Orvenne), tous reliés au poste de la Sère sur la même carte.
 - **Marge positive : rebond.** L'électricité en trop relance la croissance, jusqu'à 1 %/min quand toute la production est en trop. Le compteur remonte dès l'ouverture de l'acte.
 - **Marge négative : délestage**, dans un ordre fixe et affiché : industrie, commerces, villes, puis eau et santé. Un site délesté perd la moitié de son Empreinte, ses employés passent dans la Casse, et ses restes se démantèlent ensuite au coût normal.
-- **Approvisionnements** : la raffinerie fournit le fioul de la centrale thermique, la chimie le chlore de l'eau potable d'Orvenne, sauf si la filtration UV est faite. Chaque carte dit, avant le lancement, ce qu'il ferait au réseau, et ce que cela coûterait en Casse et en Consentement.
+- **Approvisionnements** : la raffinerie fournit le fioul de la centrale thermique, la chimie le chlore de l'eau potable d'Orvenne, sauf si la filtration UV est faite. Chaque carte dit, avant le lancement, ce qu'il ferait au réseau, et ce que cela coûterait en Casse et en Consentement. Sous la jauge, une ligne réunit ce qui peut se lancer tout de suite sans délester personne.
 - **Démolir vite** : l'aciérie et la chimie peuvent se démolir en deux fois moins de temps, de Capacité et de Mains, au prix d'une pollution (de la Casse et un sol qui ne se régénère pas).
 - **Deuxième chiffre perdu** : la région la plus démantelée s'éteint sur la carte, le bourdonnement du réseau s'arrête, la rivière arrive. Chaque chiffre suivant éteint une autre région.
 - À côté du Consentement s'affiche ce qu'il a gagné ou perdu pendant la dernière minute de jeu, tout compris.
@@ -133,13 +133,13 @@ node tools/check.js                   # invariants I1 à I6 du §9, sur quatorze
 
 Les deux dernières commandes tournent sur chaque pull request. Ce que `tools/check.js` mesure, ses seuils et les écarts connus du réglage actuel sont décrits au §9 du [design doc](docs/design-doc.md), « Vérification automatique ».
 
-Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 01, trois chiffres et la fin de l'acte IV vers 1 h 26, puis le dernier chiffre, le plancher et la fin de l'acte V vers 1 h 48. Un humain sera plus lent d'un facteur 1,5 environ : 15 à 20 min pour l'acte I, 40 à 45 min pour les deux premiers actes, 1 h 30 environ pour les trois premiers, un peu plus de 2 h pour les quatre, 2 h 40 environ pour les cinq.
+Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 13, trois chiffres et la fin de l'acte IV vers 1 h 38, le dernier chiffre vers 1 h 48, puis le plancher et la fin de l'acte V vers 2 h 00. Au quatrième playtest, un humain a joué les cinq actes en 2 h 02, avant le réglage qui a allongé l'acte III des bots.
 
 Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`, `Jeu.inventaire()`, `Jeu.basculer()`, `Jeu.toutAcheter()`.
 
 ## Raccourcis de test
 
-Atteindre l'acte IV demande une heure de jeu, et la fin 1 h 48. Pour tester un acte ou une fin sans rejouer ce qui précède, ouvrir le jeu en mode test : `index.html?test`, ou https://davidgiangiacomo.github.io/decroissance/?test en ligne.
+Atteindre l'acte IV demande plus d'une heure de jeu, et la fin 2 h. Pour tester un acte ou une fin sans rejouer ce qui précède, ouvrir le jeu en mode test : `index.html?test`, ou https://davidgiangiacomo.github.io/decroissance/?test en ligne.
 
 - **L'accueil propose alors de reprendre la partie d'un bot** : à l'ouverture de l'acte II, III, IV ou V, au choix final quand tout est rendu, ou au basculement dans la croissance.
 - **Le bot se choisit** : le prudent, le pressé, le rapide ou celui qui relance une fois, à 10, 30 ou 45 s de réaction, avec des gardes réduites ou pleines. Le pressé arrive avec de la Casse et des relances du Conseil ; le prudent, sans.
@@ -164,7 +164,7 @@ Sans `?test`, rien de tout cela n'apparaît : le lien normal reste celui à envo
 
 ## Écarts avec le design doc, et pourquoi
 
-- **Les valeurs d'Empreinte des sites de l'acte I sont bien plus petites** que la table du §5 (3 à 6 millions au lieu de 30 à 80). Avec les valeurs du doc, la première fermeture fait passer sous 10⁹ à la 40ᵉ seconde, avant toute stabilisation : le premier chiffre serait perdu par accident et reviendrait. Avec les valeurs retenues, les fermetures de l'acte I sont réellement englouties par la croissance, et le premier chiffre tombe avec le premier chantier lourd (la cimenterie, −120 millions), une fois le nombre arrêté. C'est le retune que le doc annonçait.
+- **Les valeurs d'Empreinte des sites de l'acte I sont bien plus petites** que la table du §5 (3 à 6 millions au lieu de 30 à 80). Avec les valeurs du doc, la première fermeture fait passer sous 10⁹ à la 40ᵉ seconde, avant toute stabilisation : le premier chiffre serait perdu par accident et reviendrait. Avec les valeurs retenues, les fermetures de l'acte I sont réellement englouties par la croissance, et le premier chiffre tombe avec les chantiers lourds, la cimenterie (−30 millions) ou la centrale à charbon (−290 millions), une fois le nombre arrêté. C'est le retune que le doc annonçait.
 - **Le site s'arrête à l'ouverture du chantier**, pas à sa clôture : sa contribution à la croissance cesse et les coupures sont évaluées immédiatement (la centrale est éteinte pour être démontée). L'Empreinte, la récupération de Capacité et les déplacés restent appliqués à la clôture.
 - **Une mesure** (autonomie de l'hôpital) a été ajoutée pour qu'il existe une bonne séquence, plus lente que la séquence intuitive, permettant de fermer les deux centrales sans coupure.
 - Le plancher irréductible est affiché dans le panneau de fin d'acte, pas dans l'interface courante (il n'est révélé qu'à l'acte IV).

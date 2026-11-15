@@ -11,7 +11,7 @@ Suite de l'acte II ([#14](https://github.com/DavidGiangiacomo/decroissance/issue
 ## Les règles
 
 - **Les gens attendent, par origine.** Chaque fermeture ajoute un groupe à la liste d'attente : « Port de Méraud, 3 200, attend depuis 12 semaines ». Le groupe le plus ancien part en formation en premier. À l'acte III, attendre use le Consentement : 0,4 point par minute et par millier de personnes en attente.
-- **Les formations.** Un lot réunit 300 personnes et dure 9 semaines fictives, soit 45 s. Il coûte 1 point de Consentement au départ et, à l'acte III, en rend 2 à l'arrivée. Le Consentement monte donc et descend selon la façon dont on traite les gens. La mesure « Centres de formation » ouvre une deuxième place. Un clic sur « Reconvertir » remplit toutes les places libres, et l'option « Former en continu » relance un lot dès qu'une place se libère, au même coût. Au-delà de 40 000 Mains disponibles, engagées et en formation, plus personne n'est formé (§4). Ce plafond n'est pas atteint à l'acte III.
+- **Les formations.** Un lot réunit 300 personnes et dure 9 semaines fictives, soit 45 s. Il coûte 0,5 point de Consentement au départ et, à l'acte III, en rend 1 à l'arrivée. Le Consentement monte donc et descend selon la façon dont on traite les gens. La mesure « Centres de formation » ouvre une deuxième place. Un clic sur « Reconvertir » remplit toutes les places libres, et l'option « Former en continu » relance un lot dès qu'une place se libère, au même coût. Au-delà de 40 000 Mains disponibles, engagées et en formation, plus personne n'est formé (§4). Ce plafond n'est pas atteint à l'acte III.
 - **Des noms.** Chaque lot en formation montre trois personnes : un prénom, un nom et le métier qu'elles avaient sur leur site d'origine, par exemple « Rachida Barbier, fondeuse ». Les tirages sont stables, et les listes sont dans `data.js`.
 - **La desserte.** Le port de Méraud dessert les céréales, les élevages et la pêche. L'autoroute de la Sère dessert les entrepôts, les centrales d'achat et les serres. Un site qui n'est plus desservi est isolé : son chantier se fait à bras et coûte deux fois plus de Mains. La carte de chaque port et de chaque autoroute dit avant le lancement ce qu'on isolerait. Sélectionner un site fait clignoter sur la carte ce qu'il isolerait.
 - **Les vivres.** 100 points couvrent les besoins du pays. Au départ, la production en donne 110 : 30 viennent des petites fermes, qui ne se démantèlent pas, et 80 de l'agro-industrie.
@@ -66,7 +66,7 @@ L'acte ajoute 31 points de Terre rendue possible. Le total possible passe de 22,
 
 ## Pourquoi des parts plutôt que des valeurs fixes
 
-À l'entrée de l'acte III, l'Empreinte varie d'un facteur quarante selon la façon de jouer : 2,1·10⁶ pour le bot prudent à 30 s, 9,4·10⁷ pour le bot pressé à 45 s, que le Conseil a relancé trois fois à l'acte II. Au troisième playtest, une relance du joueur l'avait laissée à 1,0·10⁸. Avec des valeurs fixes calées sur le joueur prudent, deux problèmes se posent :
+À l'entrée de l'acte III, l'Empreinte varie d'un facteur près de quarante selon la façon de jouer : 2,0·10⁶ pour le bot prudent à 30 s, 7,4·10⁷ pour le bot pressé à 45 s, que le Conseil a relancé à l'acte II. Au troisième playtest, une relance du joueur l'avait laissée à 1,0·10⁸. Avec des valeurs fixes calées sur le joueur prudent, deux problèmes se posent :
 
 - le joueur qui a relancé ne perdrait aucun chiffre pendant tout l'acte (I1) ;
 - le joueur rapide passerait sous zéro.
@@ -81,19 +81,19 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les écarts s
 
 | Joueur | Réaction | Durée de l'acte III | Écarts entre chiffres | Pénuries | Réembauchés | Chantiers à bras | Relances du Conseil dans l'acte | Empreinte à la fin |
 |---|---|---|---|---|---|---|---|---|
-| Prudent : mesures d'abord, aucun isolement, aucune pénurie, Consentement au-dessus de 25 | 10 s | 32 min 54 | 1 min 17, 19 min 53, 7 min 27 | 0 | 4 100 | 0 | 1 | 29 824 |
-| Prudent | 30 s | 35 min 01 | 3 min 41, 14 min 15, 9 min 45 | 0 | 0 | 0 | 0 | 12 615 |
-| Prudent | 45 s | 37 min 02 | 23 min 47, 11 min 45 | 0 | 5 700 | 0 | 1 | 207 678 |
-| Pressé : la plus grosse part d'abord, sans rien regarder | 10 s | 41 min 05 | 2 min 03, 10 min 55, 24 min 45 | 1 802 personnes | 2 000 | 6 | 1 | 21 664 |
-| Pressé | 30 s | 40 min 23 | 8 min 45, 12 min 37 | 1 517 personnes | 3 030 | 5 | 1 | 103 598 |
-| Pressé | 45 s | 1 h 01 | 34 min 55, 27 min | 1 292 personnes | 0 | 5 | 1 | 729 096 |
-| Vite (comme le prudent à l'acte III) | 10 s | 35 min 30 | 1 min, 17 min 50, 17 min 05 | 0 | 0 | 0 | 0 | 26 440 |
+| Prudent : mesures d'abord, aucun isolement, aucune pénurie, Consentement au-dessus de 25 | 10 s | 45 min 16 | 1 min 16, 24 min 57, 15 min 19 | 0 | 2 800 | 0 | 1 | 29 332 |
+| Prudent | 30 s | 40 min 47 | 3 min 40, 16 min 16, 10 min 30 | 0 | 1 200 | 0 | 1 | 12 771 |
+| Prudent | 45 s | 36 min 17 | 23 min 47, 11 min 45 | 0 | 2 500 | 0 | 1 | 200 653 |
+| Pressé : la plus grosse part d'abord, sans rien regarder | 10 s | 37 min 30 | 2 min 02, 8 min 42, 15 min 48 | 1 517 personnes | 5 900 | 5 | 1 | 20 539 |
+| Pressé | 30 s | 40 min 23 | 8 min 45, 12 min 37 | 1 517 personnes | 6 630 | 5 | 1 | 86 705 |
+| Pressé | 45 s | 51 min 19 | 17 min 03, 33 min 31 | 1 207 personnes | 3 700 | 5 | 2 | 585 439 |
+| Vite (comme le prudent à l'acte III) | 10 s | 33 min 07 | 59 s, 14 min 04, 17 min 22 | 0 | 6 200 | 0 | 1 | 27 409 |
 
-Mesures faites après la hausse de 10 % de l'Empreinte de l'acte II ([acte-2.md](acte-2.md)). Les bots rapides perdent depuis leur troisième chiffre une à quatre minutes après le deuxième, à la dernière fermeture de l'acte II, d'où les premiers écarts très courts : leur dernière fermeture bute sur le plafond de 95 %.
+Mesures faites après le réglage du quatrième playtest (voir plus bas), et après la hausse de 10 % de l'Empreinte de l'acte II ([acte-2.md](acte-2.md)). Les bots rapides perdent depuis leur troisième chiffre une à quatre minutes après le deuxième, à la dernière fermeture de l'acte II, d'où les premiers écarts très courts : leur dernière fermeture bute sur le plafond de 95 %.
 
 Les bots remplissent toutes les places de formation d'un coup, comme le bouton.
 
-Le §9 prévoit pour l'acte III 55 minutes, trois chiffres perdus, une Empreinte qui finit à 6·10⁴ et 55 % de Terre rendue. Au simulateur, l'acte dure de 33 à 41 minutes, une heure pour le pressé à 45 s. Le premier playtest l'a joué en 26 minutes, le deuxième en 36 : un humain qui garde ses places de formation pleines va plus vite que les bots, qui ménagent davantage le Consentement. Le joueur prudent y perd deux chiffres, après celui qu'il a perdu à la dernière fermeture de l'acte II, et finit à 3,0·10⁴. Celui qui arrive avec plus d'Empreinte en perd deux aussi. La Terre rendue atteint 31 à 49 % à la fin de l'acte selon les profils, puis continue de monter.
+Le §9 prévoit pour l'acte III 55 minutes, trois chiffres perdus, une Empreinte qui finit à 6·10⁴ et 55 % de Terre rendue. Au simulateur, l'acte dure de 33 à 45 minutes, 51 pour le pressé à 45 s. Le premier playtest l'a joué en 26 minutes, le deuxième en 36 : un humain qui garde ses places de formation pleines va plus vite que les bots, qui ménagent davantage le Consentement. Le joueur prudent y perd deux chiffres, après celui qu'il a perdu à la dernière fermeture de l'acte II, et finit à 2,9·10⁴. Celui qui arrive avec plus d'Empreinte en perd deux aussi. La Terre rendue atteint 36 à 50 % à la fin de l'acte selon les profils, puis continue de monter.
 
 ## Premier playtest
 
@@ -116,13 +116,24 @@ Joué en 36 minutes par un testeur naïf, sans pénurie ni site isolé, avec « 
   - Les cartes donnent le prix d'une coupure, d'un délestage ou d'une pénurie avant le lancement.
   - Le journal définit la Casse à sa première apparition.
 
+## Quatrième playtest
+
+Joué en 2 h 02, des cinq actes jusqu'à Clore ([#8](https://github.com/DavidGiangiacomo/decroissance/issues/8)). Le panneau « Ce qui le fait bouger » a aidé à lire le Consentement. Mais il n'est jamais descendu sous 44 %. À l'acte III, chaque lot de formation en rendait un point net : le joueur ne s'est jamais approché du seuil du Conseil, et la tension que vise le §10, où la relance devient raisonnable, n'est pas apparue.
+
+- **Un lot rend moins.** Son départ coûte 0,5 point au lieu de 1, et sa fin en rend 1 au lieu de 2 : +0,5 net par lot, au lieu de +1. Rejouée à décisions égales, jusqu'à Clore, la même partie descend à 31 %, sans relance du Conseil.
+- **Le Conseil reste évitable, au prix de l'attente.** Les bots prudents relancent dès qu'il leur reste 25 points : tous ont maintenant une relance du Conseil à l'acte III, et leur acte III s'allonge, plus près des 55 min du §9. Un bot qui garde 35 points n'en a aucune. Il finit 14 min plus tard, et passe près de 29 min sans chiffre perdu à l'acte III ; à prudence égale, l'attente était la même avant ce réglage. Le jeu laisse le choix : attendre que le Consentement remonte, ou laisser le Conseil relancer et payer le plancher doublé.
+- **Les variantes écartées.**
+  - Plus douce, à −0,75 et +1,5 : la partie rejouée ne descendait qu'à 44 %.
+  - Plus forte, à −0,5 et +0,75 : elle descendait à 24 %, avec une relance du Conseil, et douze bots sur quatorze cassaient I1.
+  - Un Consentement qui remonte plus vite, à 1 point par minute au lieu de 0,6 : les bots évitaient le Conseil, mais la partie rejouée remontait à 43 %, et la tension disparaissait.
+
 ## Points à trancher
 
 1. **L'Empreinte en parts**, plutôt qu'en valeurs fixes comme aux actes I et II. C'est le choix le plus structurant de l'acte. **Tranché** avec l'acte IV ([#16](https://github.com/DavidGiangiacomo/decroissance/issues/16)) : les parts valent aussi pour lui. Reste à savoir s'il faut y passer l'acte II ([acte-2.md](acte-2.md)).
-2. **La relance réembauche tout le monde.** C'est fort : une relance du Conseil a coûté 4 100 Mains futures au bot prudent. Une variante : elle n'en réembaucherait qu'une partie.
-3. **Le Consentement arrive bas.** Les bots ouvrent l'acte III vers 23 %, et le Conseil relance au moins une fois pour la plupart des profils. Le prudent à 30 s l'évite. Au premier playtest, le Consentement est resté entre 26 et 38 % pendant tout l'acte III : la tension que vise le §10, où la relance devient raisonnable, n'est pas apparue. Au deuxième, il est tombé de 58 à 16 % à l'acte II, et l'acte III s'est ouvert à 21 %.
+2. **La relance réembauche tout le monde.** C'est fort : une relance du Conseil a coûté 2 800 Mains futures au bot prudent. Une variante : elle n'en réembaucherait qu'une partie.
+3. **Le Consentement, d'un playtest à l'autre.** Les bots ouvrent l'acte III entre 26 et 37 %, et le Conseil relance au moins une fois pour tous. Au premier playtest, le Consentement est resté entre 26 et 38 % pendant tout l'acte III, sans relance. Au deuxième, il est tombé de 58 à 16 % à l'acte II, et l'acte III s'est ouvert à 21 %. Au quatrième, il n'est jamais descendu sous 44 %, d'où le réglage des formations (voir plus haut). Le prochain playtest dira si l'acte III se joue maintenant près du seuil.
 4. **La pénurie est rude**, à 15 personnes par point et par minute : fermer les céréales et les élevages ensemble, sans les ceintures, coûte environ 1 700 personnes.
-5. **Les joueurs très lents** : le prudent à 45 s tient le plafond d'I1 à l'acte III, avec 23 min 47 au plus entre deux chiffres, mais l'acte II le dépasse encore pour lui (27 min 33). Le pressé à 45 s le dépasse aux deux actes : 31 min 10, puis 34 min 55 et 27 min.
+5. **Les joueurs très lents** : le prudent à 45 s tient maintenant le plafond d'I1 aux deux actes, avec 24 min 53 à l'acte II et 23 min 47 à l'acte III. Le pressé à 45 s le dépasse aux deux : 28 min 33, puis 33 min 31.
 6. **Le son** est synthétisé en trois couches nouvelles, entendues au premier playtest. Il reste à les affiner ([#22](https://github.com/DavidGiangiacomo/decroissance/issues/22)).
 7. **Hors de cet acte :**
    - les recettes fiscales du §6 ne sont pas modélisées, seuls les emplois apparaissent, sous la forme des gens par site d'origine ;

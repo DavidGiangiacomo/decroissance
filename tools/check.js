@@ -25,11 +25,10 @@ const nomPartie = (p) => (p.reaction ? `${p.profil} ${p.reaction} s` : p.profil)
 // vérification tant que la mesure reste sous `plafond`. Elle échoue si l'un d'eux s'aggrave, et aussi s'il se
 // résorbe : il faut alors retirer sa ligne, pour que le seuil normal s'applique de nouveau.
 const ECARTS_CONNUS = [
-  { inv: 'I1', partie: 'prudent 45 s', plafond: 28 * 60, ref: 'joueurs très lents, docs/acte-2.md' },
   { inv: 'I1', partie: 'pressé 45 s', plafond: 35 * 60, ref: 'joueurs très lents, docs/acte-3.md' },
   { inv: 'I1', partie: 'vite 45 s', plafond: 33 * 60, ref: 'joueurs très lents, docs/acte-2.md' },
   { inv: 'I1', partie: 'relance-1 45 s', plafond: 37 * 60, ref: 'joueurs très lents, docs/acte-2.md' },
-  { inv: 'I1', partie: 'vite 30 s', plafond: 26 * 60, ref: "transition vers l'acte IV, docs/acte-4.md" },
+  { inv: 'I1', partie: 'prudent 30 s', plafond: 26 * 60, ref: "transition vers l'acte IV, docs/acte-4.md" },
 ];
 
 // ---- mesures ----

@@ -190,11 +190,11 @@ Neuf chiffres perdus au total, un toutes les 22 min environ : vers 12, 34, 56, 7
 
 I5 est l'invariant maître, comme dans *La langue morte* : la vraie barre de progression n'est pas un nombre, c'est la carte qui verdit et le son qui change (§12). Si elle avance irrégulièrement, le jeu paraît calé même quand l'Empreinte tombe.
 
-**I3 se compte par acte, pas site par site** (issue #11). La première version demandait un coût croissant « de façon monotone du début à la fin ». Le prototype la casse dès l'acte I, et c'est voulu : la régie publicitaire coûte 30 de Capacité et de Mains par million de points, l'aérodrome 125, la cimenterie et les centrales 8. Les petits sites valent pour la croissance qu'ils portent, pas pour l'Empreinte qu'ils retirent.
+**I3 se compte par acte, pas site par site** (issue #11). La première version demandait un coût croissant « de façon monotone du début à la fin ». Le prototype la casse dès l'acte I, et c'est voulu : la régie publicitaire coûte 30 de Capacité et de Mains par million de points, l'aérodrome 125, la cimenterie 32, les centrales 6 et 8. Les petits sites valent pour la croissance qu'ils portent, pas pour l'Empreinte qu'ils retirent.
 
 - Compter la croissance arrêtée ne tranche rien : il faudrait fixer sur combien de minutes on la compte, et ce nombre déciderait du résultat.
 - N'appliquer I3 qu'à partir de l'acte II ne suffit pas : site par site, l'acte II et l'acte IV ne sont pas monotones non plus.
-- La moyenne par acte, elle, monte toujours : 12 par million de points à l'acte I, 15 à 21 à l'acte II, de 400 à 23 000 à l'acte III, de 14 000 à un million à l'acte IV, de 16 millions à 3 milliards à l'acte V. À partir de l'acte III, chaque site retire une part de ce qui reste : le coût par point monte de lui-même. Au plancher, plus rien ne se retire : le coût d'un point n'a plus de borne.
+- La moyenne par acte, elle, monte toujours : 12 par million de points à l'acte I, 15 à 21 à l'acte II, de 400 à 23 000 à l'acte III, de 17 000 à un million à l'acte IV, de 18 millions à 6 milliards à l'acte V. À partir de l'acte III, chaque site retire une part de ce qui reste : le coût par point monte de lui-même. Au plancher, plus rien ne se retire : le coût d'un point n'a plus de borne.
 
 ### Vérification automatique
 
@@ -222,8 +222,8 @@ Le seuil d'I5 est une garde contre les régressions, pas une cible. La courbe du
 
 **Écarts connus.** Le réglage actuel casse déjà I1 pour quelques joueurs. Le script les tient dans une liste, chacun avec un plafond : il échoue si l'un d'eux s'aggrave, et aussi s'il se résorbe, pour que sa ligne soit retirée.
 
-- Les joueurs à 45 s de réaction passent 27 à 37 min sans chiffre perdu, à l'acte II ou à l'acte III ([acte-2.md](acte-2.md), [acte-3.md](acte-3.md)).
-- Le rapide à 30 s passe 25 min 46 sans chiffre perdu, à l'ouverture de l'acte IV ([acte-4.md](acte-4.md)).
+- Trois joueurs à 45 s de réaction passent 30 à 37 min sans chiffre perdu, à l'acte II ou à l'acte III ([acte-2.md](acte-2.md), [acte-3.md](acte-3.md)). Le prudent à 45 s tient depuis le réglage du quatrième playtest.
+- Le prudent à 30 s passe 25 min 46 sans chiffre perdu, à l'ouverture de l'acte IV ([acte-4.md](acte-4.md)). Avant ce réglage, c'était le rapide à 30 s.
 
 ### Hors-ligne
 

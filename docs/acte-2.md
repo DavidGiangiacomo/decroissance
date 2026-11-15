@@ -24,6 +24,7 @@ Les quatre points validés :
   - La carte en donne aussi le prix, dans les unités des compteurs du haut, par exemple « Casse +2 400 personnes sans reclassement, consentement −15 ».
   - Elle prévient quand son lancement, ou la fermeture qui suivra, ferait passer le Consentement sous le seuil du Conseil, 20 %. Le calcul part du Consentement du moment ; pendant le chantier, la carte le refait.
   - Ces deux ajouts viennent du troisième playtest ([#8](https://github.com/DavidGiangiacomo/decroissance/issues/8)). Le délestage de l'aciérie y avait été choisi sans que son prix soit affiché, et les deux relances du Conseil étaient parties d'une fermeture, avec un Consentement juste au-dessus d'un seuil que rien ne montrait.
+  - Sous la jauge du réseau, une ligne réunit ce qui se lance tout de suite sans délester ni priver personne, et sans appeler le Conseil : « Sans délester personne, vous pouvez aussi lancer : Pistes de ski couvertes de Valdrance, Sobriété des deux villes. » Elle tient compte de la Capacité et des Mains du moment, et ne dit rien que les cartes ne disent déjà, une par une. Elle vient du quatrième playtest (voir plus bas).
 - **Mesures.** La filtration UV rend l'eau d'Orvenne indépendante de la chimie. La sobriété réduit de 30 % la demande des deux villes. Sans elle, le barrage seul ne suffit pas aux villes et aux services vitaux (710 MW pour 600) ; avec elle, il leur suffit (575 MW).
 
 ## Entrée, chiffres perdus, fin
@@ -81,21 +82,39 @@ Avec `node tools/simulate.js <profil> <réaction>`, où la réaction est l'atten
 
 | Joueur | Réaction | Écart entre les deux premiers chiffres | Durée de l'acte II | Coupures et délestages | Pollutions | Casse | Relances du Conseil |
 |---|---|---|---|---|---|---|---|
-| Prudent : mesures d'abord, aucune coupure | 10 s | 20 min 14 | 16 min 15 | 0 | 0 | 0 | 0 |
+| Prudent : mesures d'abord, aucune coupure | 10 s | 20 min 15 | 16 min 16 | 0 | 0 | 0 | 0 |
 | Pressé : la plus grosse Empreinte d'abord | 10 s | 13 min 32 | 10 min 40 | 3 | 0 | 3 400 | 2 |
-| Vite : prudent, mais démolit vite | 10 s | 17 min 24 | 13 min 09 | 0 | 2 | 800 | 0 |
-| Prudent | 30 s | 20 min 58 | 19 min | 0 | 0 | 0 | 0 |
-| Prudent | 45 s | 27 min 33 | 21 min 08 | 0 | 0 | 0 | 0 |
-| Pressé | 45 s | 31 min 10, à la dernière fermeture | 24 min 44 | 3 | 0 | 3 400 | 3 |
-| Vite | 45 s | 32 min 42, à la dernière fermeture | 26 min 17 | 0 | 2 | 800 | 0 |
+| Vite : prudent, mais démolit vite | 10 s | 17 min 25 | 13 min 09 | 0 | 2 | 800 | 0 |
+| Prudent | 30 s | 18 min 05 | 19 min | 0 | 0 | 0 | 0 |
+| Prudent | 45 s | 24 min 53, à la dernière fermeture | 21 min 08 | 0 | 0 | 0 | 0 |
+| Pressé | 45 s | 28 min 33, à la dernière fermeture | 24 min 48 | 3 | 0 | 3 400 | 1 |
+| Vite | 45 s | 30 min 02, à la dernière fermeture | 26 min 17 | 0 | 2 | 800 | 0 |
 
-À l'ouverture de l'acte III, il reste 4,7·10⁶ au prudent à 10 s, 3,0·10⁶ au pressé à 10 s et 4,5·10⁶ au rapide à 10 s : tous trois ont perdu leur troisième chiffre à la fin de l'acte II. Avant la hausse de 10 %, il leur restait 1,4·10⁷, 4,8·10⁷ et 7,9·10⁶.
+Mesures faites après le réglage du quatrième playtest (voir plus bas).
+
+À l'ouverture de l'acte III, il reste 4,6·10⁶ au prudent à 10 s, 2,9·10⁶ au pressé à 10 s et 4,4·10⁶ au rapide à 10 s : tous trois ont perdu leur troisième chiffre à la fin de l'acte II. Avant la hausse de 10 %, il leur restait 1,4·10⁷, 4,8·10⁷ et 7,9·10⁶.
 
 Démolir vite ne fait pas toujours gagner de temps : fermer les gros consommateurs tôt creuse la marge, et le rebond reprend ce que la vitesse avait fait gagner.
 
+## Quatrième playtest
+
+Joué en 2 h 02, des cinq actes jusqu'à Clore ([#8](https://github.com/DavidGiangiacomo/decroissance/issues/8)). Le deuxième chiffre y est tombé 31 min 51 après le premier, au-delà d'I1. Deux causes, et deux changements :
+
+- **Le premier chiffre était tombé avant l'arrêt de la croissance**, comme au troisième playtest. La cimenterie, lancée tôt, retirait 120 millions : assez pour passer sous 10⁹ pendant que l'Empreinte montait encore. L'écart avec le deuxième chiffre partait de là.
+  - La cimenterie retire maintenant 30 millions, et la centrale à charbon 290 au lieu de 200. Le total de l'acte I ne change pas.
+  - Un bot qui reprend l'ordre de ce playtest, à 20 s de réaction, perdait son premier chiffre à 6 min 20, avant l'arrêt à 7 min. Il le perd maintenant à 9 min 25, et l'écart avec le deuxième passe de 22 min 34 à 19 min 29.
+  - Les autres bots perdent leur premier chiffre au même moment ou plus tard, plus près des 12 min du §9 : 11 min 15 au lieu de 8 min 20 pour le prudent à 30 s. Le prudent à 45 s tient désormais I1 à l'acte II : 24 min 53 au lieu de 27 min 33.
+  - Fermer la centrale au gaz (−200 millions) avant l'arrêt inverserait encore l'ordre. C'est moins probable : son chantier dure 4 min.
+- **L'acte II a été joué un chantier à la fois.** Il a duré 10 min de plus que chez le bot qui suit le même ordre, dont 8 min avec un seul chantier, alors qu'un second pouvait tourner sans délester personne. La ligne sous la jauge du réseau le dit maintenant (voir les règles).
+  - Raccourcir les chantiers n'aidait pas les joueurs lents : à −20 %, le prudent à 45 s ne gagnait que 1 min 41 ; à −30 %, un bot faisait pire.
+  - La ligne ne se mesure pas au simulateur : un prochain playtest dira si elle change la façon de jouer.
+- **Écarté** : n'ouvrir les sites lourds de l'acte I qu'une fois le nombre arrêté. C'est efficace, mais il faudrait l'expliquer à l'écran, contre le « sans une ligne d'explication » du §4.
+
+Le Consentement de l'acte III a été réglé au même moment ([acte-3.md](acte-3.md)).
+
 ## Points ouverts
 
-- **Les joueurs très lents dépassent le plafond d'I1.** À 45 s de réaction, la lenteur nourrit le rebond : le prudent perd son deuxième chiffre après 27 min 33, le pressé et le rapide à la dernière fermeture de l'acte, après 31 min 10 et 32 min 42. Celui qui relance une fois, à 2 min, le perd après 36 min 58. Pour eux, c'est la durée de l'acte qui pèse, pas son Empreinte : 10 % de plus n'y change presque rien.
-- **L'Empreinte de fin d'acte est très sensible.** C'est la différence entre ce qu'un joueur a à l'ouverture et ce que l'acte retire, deux nombres proches. Elle va de 2,1·10⁶ (prudent à 30 s) à 9,4·10⁷ (pressé à 45 s), et quelques pour cent suffisent à la faire passer d'un côté ou de l'autre d'une puissance de dix : au troisième playtest, il a manqué 0,4 %. Le §9 vise 1,1·10⁷. Passer l'acte II en parts, comme l'acte III, supprimerait cette sensibilité ([#31](https://github.com/DavidGiangiacomo/decroissance/issues/31), point 1).
+- **Les joueurs très lents dépassent le plafond d'I1.** À 45 s de réaction, la lenteur nourrit le rebond : le pressé et le rapide perdent leur deuxième chiffre à la dernière fermeture de l'acte, après 28 min 33 et 30 min 02. Celui qui relance une fois, à 2 min, le perd après 36 min 58. Le prudent tient, depuis le quatrième playtest, avec 24 min 53. Pour eux, c'est la durée de l'acte qui pèse, pas son Empreinte : 10 % de plus n'y change presque rien.
+- **L'Empreinte de fin d'acte est très sensible.** C'est la différence entre ce qu'un joueur a à l'ouverture et ce que l'acte retire, deux nombres proches. Elle va de 2,0·10⁶ (prudent à 30 s) à 7,4·10⁷ (pressé à 45 s), et quelques pour cent suffisent à la faire passer d'un côté ou de l'autre d'une puissance de dix : au troisième playtest, il a manqué 0,4 %. Le §9 vise 1,1·10⁷. Passer l'acte II en parts, comme l'acte III, supprimerait cette sensibilité ([#31](https://github.com/DavidGiangiacomo/decroissance/issues/31), point 1).
 - **Un rebond minime subsiste à la fin** : avec la sobriété, il reste 25 MW de marge, soit +0,04 %/min. L'acte III pourra s'en servir ou le fermer.
 - **Hors de cet acte** : la décision Énergie, Rationnement ou Marché, qui change les règles du délestage, viendra avec les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)) ; les gens comme goulot, c'est l'acte III ([#15](https://github.com/DavidGiangiacomo/decroissance/issues/15)).

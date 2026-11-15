@@ -258,6 +258,7 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .jauge i { display: block; height: 100%; background: #9aa3ad; transition: width .5s ease; }
 .jauge.deficit i { background: var(--rouge); }
 .reseau-ordre { margin: 0; font-size: 11.5px; color: var(--muted); }
+.reseau-aussi { margin: 0; font-size: 11.5px; color: var(--texte); }
 
 /* cartes de chantier de l'acte II */
 .chantier .mw { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
