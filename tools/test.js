@@ -157,6 +157,20 @@ test('fermer la raffinerie arrête la centrale thermique et déleste dans l\'ord
   assert.strictEqual(s.noeuds.hopital_orvenne, 'alimente', 'la santé est délestée en dernier');
 });
 
+test('sous la jauge du réseau : ce qui se lance sans délester, priver ni appeler le Conseil', () => {
+  const s = etatActe2();
+  // Les productions délesteraient, la chimie priverait Orvenne d'eau tant qu'elle n'est pas filtrée.
+  assert.deepStrictEqual(E.lancablesSansDelestage(s), ['acierie', 'commerce', 'ski', 'ecrans', 'uv', 'sobriete']);
+  for (const id of E.lancablesSansDelestage(s)) assert.strictEqual(E.prixLancement(s, id).ids.length, 0, `${id} : sa carte ne dit aucun prix`);
+  E.engage(s, 'commerce');
+  assert.deepStrictEqual(E.lancablesSansDelestage(s), ['ski', 'ecrans', 'uv', 'sobriete'], 'la Capacité qui reste décide aussi');
+  const sansK = Object.assign(etatActe2(), { K: 0 });
+  assert.deepStrictEqual(E.lancablesSansDelestage(sansK), []);
+  const bas = Object.assign(etatActe2(), { Co: 21 });
+  assert.deepStrictEqual(E.lancablesSansDelestage(bas), ['uv'], 'près du seuil, seule une mesure sans prix reste offerte');
+  assert.deepStrictEqual(E.lancablesSansDelestage(E.create()), [], 'à l\'acte I, rien');
+});
+
 test('la chimie sans filtration UV prive Orvenne d\'eau, et pas après la filtration', () => {
   const s = etatActe2();
   assert.deepStrictEqual(E.canEngage(s, 'chimie').apercu.prives, ['eau']);
@@ -1079,7 +1093,7 @@ test('l\'inventaire reprend tout ce qui a été fait, acte par acte, avec la Cas
   assert.ok(a2.casse === 3400 && a2.coupures === 3 && !a2.identique && a2.inevitables === 0);
   assert.strictEqual(a2.propre.filter(x => !x.ajoute).length, 7, 'les sept sites de l\'acte, restes compris');
   assert.ok(a2.lignes.some(l => l.type === 'engage' && l.notes.some(n => n.quoi === 'delestage' && n.casse > 0)), 'un délestage est rangé sous le lancement qui l\'a causé');
-  assert.ok(a3.casse === s.penurieX && a3.lignes.filter(l => l.type === 'penurie').length === 3 && a3.aBras === 6);
+  assert.ok(a3.casse === s.penurieX && a3.lignes.filter(l => l.type === 'penurie').length === 2 && a3.aBras === 5);
   assert.ok(inv.actes[1].lignes.concat(a3.lignes).some(l => l.type === 'relance' && l.auto), 'les relances du Conseil y sont');
   assert.ok(inv.actes[3].propre === undefined && inv.actes[4].propre === undefined && inv.actes[4].lignes.length === 28);
   assert.ok(inv.actes[4].lignes.some(l => l.habitants));
@@ -1345,7 +1359,7 @@ test('le Consentement, cause par cause : les prix annoncés sont ceux que le mot
   assert.ok(s.log.some(l => l.msg.startsWith("Fermé : Aérodrome d'affaires de Valdrance.") && l.msg.endsWith('Consentement −4.')));
   assert.ok(s.coCauses.equilibre > 0, 'sous 70, il remonte de lui-même');
   E.reconvertir(s);
-  assert.ok(s.coCauses.reconversions === -1 && s.coNb.reconversions === 1);
+  assert.ok(s.coCauses.reconversions === -E.D.RECONV.co && s.coNb.reconversions === 1);
   const avant = s.Co;
   E.relancer(s);
   assert.ok(s.coCauses.relances === 3 && s.Co === avant + 3 && s.log.some(l => l.msg === 'Consentement +3.'));

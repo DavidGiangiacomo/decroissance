@@ -431,6 +431,15 @@
     if (s.Co - lancement - fermeture < seuil) return { quand: 'fermeture', co: fermeture, seuil };
     return null;
   }
+  // Acte II : ce qui se lance tout de suite sans délester ni priver personne, et sans appeler le Conseil.
+  // Rien de plus que ce que chaque carte dit déjà, réuni sous la jauge du réseau (R4).
+  function lancablesSansDelestage(s) {
+    if (s.acte !== 2) return [];
+    return D.sites.filter(d => acteDe(d) === 2 && existe(s, d) && s.sites[d.id].state === 'actif').map(d => d.id).filter(id => {
+      const c = canEngage(s, id);
+      return c.ok && prixLancement(s, id, c).ids.length === 0 && !risqueConseil(s, id, c);
+    });
+  }
 
   // Chronologie complète pour le rapport de session et l'épilogue : pas de limite, contrairement au journal.
   function trace(s, type, data) {
@@ -1610,7 +1619,7 @@
     bilan, apercu, planDelestage, approvisionne, acteDe, cout, dureeChantier, mesureFaite,
     retrait, isole, dessertes, vivres, apercuVivres, placesFormation, enFormation, personnes,
     reconvertirTout, formerEnContinu, casseParCause, texteCasse,
-    prixCoupure, prixLancement, risqueConseil, DEFINITION_CASSE,
+    prixCoupure, prixLancement, risqueConseil, lancablesSansDelestage, DEFINITION_CASSE,
     existe, capaciteFinie, aGarder, placesOccupees, gardeEnAttente, gardesEnFormation, fmtPlancher,
     enCroissance, peutBasculer, basculer, GENERATEURS, niveauDe, tierOuvert, coutNiveau, peutAcheter, acheter, acheterTout, activerAchatAuto,
     gCroissance, kCroissance, chiffresGagnes, fmtE,

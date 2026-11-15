@@ -504,6 +504,13 @@
     const etat = $('reseau-etat');
     etat.className = 'reseau-etat ' + (g > 0.005 ? 'rebond' : 'tendu');
     etat.textContent = g > 0.005 ? `rebond : +${g.toFixed(2).replace('.', ',')} %/min` : 'à l\'équilibre, pas de rebond';
+    // Ce qu'on peut lancer sans délester personne, réuni ici : chaque carte le dit déjà, une par une.
+    const libres = E.lancablesSansDelestage(s), aussi = $('reseau-aussi');
+    aussi.hidden = !libres.length;
+    if (libres.length) {
+      const enCours = D.sites.some(d => E.acteDe(d) === 2 && s.sites[d.id].state === 'chantier');
+      aussi.textContent = `Sans délester personne, vous pouvez ${enCours ? 'aussi ' : ''}lancer : ${libres.map(nomDe).join(', ')}.`;
+    }
   }
 
   function rendreVivres() {

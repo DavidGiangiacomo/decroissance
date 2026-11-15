@@ -18,7 +18,7 @@
     RELANCE: { dur: 90, g: 4.0, kMul: 4, speedMul: 2, co: 3, coAuto: 15, plancherMul: 2, autoSeuil: 20, autoCooldown: 240 },
 
     // Reconversion des déplacés en Mains
-    RECONV: { batch: 300, dur: 45, co: 1 },
+    RECONV: { batch: 300, dur: 45, co: 0.5 },
 
     // Consentement
     CO_EQ: 70,           // valeur d'équilibre vers laquelle Co dérive
@@ -41,7 +41,7 @@
     SEMAINE: 5,              // secondes réelles par semaine fictive (formations, attente)
     MAINS_MAX: 40000,        // plafond humain : Mains disponibles, engagées et en formation
     CO_ATTENTE: 0.4 / 60,    // points / s perdus par millier de personnes qui attendent une formation
-    CO_FORMES: 2,            // points rendus quand un lot finit sa formation
+    CO_FORMES: 1,            // points rendus quand un lot finit sa formation : +0,5 net par lot
     // Vivres, en points : 100 couvre les besoins du pays. Une exploitation qu'on démantèle cesse de produire à
     // l'ouverture du chantier, et sa terre, convertie, en rend `releve` en `releveDur` s. Sous 100 : pénurie.
     VIVRES: { besoin: 100, base: 30, ceintures: 30, releve: 0.9, releveDur: 300, casse: 15 / 60, co: 0.1 / 60 },
@@ -124,11 +124,11 @@
         court: 'Data center', x: 318, y: 394,
         desc: 'Quarante mégawatts pour des actifs que personne ne réclame.' },
       { id: 'ciment', nom: 'Cimenterie de la Sère', region: 'Vallée de la Sère',
-        E: 1.2e8, K: 350, M: 600, dur: 170, g: 0, deplaces: 800, co: 0, T: 1.0, regen: 480, kBack: 200,
+        E: 3.0e7, K: 350, M: 600, dur: 170, g: 0, deplaces: 800, co: 0, T: 1.0, regen: 480, kBack: 200,
         court: 'Cimenterie', x: 336, y: 300,
         desc: 'Clinker, fours à 1 450 °C. Fournit le béton de tout le pays.' },
       { id: 'charbon', nom: 'Centrale à charbon de Cherbaix', region: 'Cherbaix',
-        E: 2.0e8, K: 400, M: 1200, dur: 240, g: 0, deplaces: 600, co: 0, T: 1.2, regen: 480, kBack: 100,
+        E: 2.9e8, K: 400, M: 1200, dur: 240, g: 0, deplaces: 600, co: 0, T: 1.2, regen: 480, kBack: 100,
         court: 'Centrale charbon', x: 490, y: 288,
         desc: "1 200 MW. Alimente l'usine de SUV et l'hôpital régional de Cherbaix." },
       { id: 'gaz', nom: 'Centrale au gaz de Méraud', region: 'Méraud',

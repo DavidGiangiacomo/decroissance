@@ -69,31 +69,33 @@ Mesures faites avec `node tools/simulate.js <profil> <réaction>`. À l'acte V, 
 
 | Joueur | Réaction | Ouverture | Empreinte | Plancher | Mains | Durée | Chiffres perdus | Écarts | Plancher atteint | Gestes par les habitants | Mains à la fin |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Prudent | 10 s | 1 h 26 | 36,7 | 4,8 | 16 830 | 22 min 01 | 1 | 9 min 45 | 1 h 41 | 0 | 1 430 |
-| Prudent | 30 s | 1 h 34 | 15,3 | 2,4 | 22 430 | 31 min 01 | 1 | 11 min 30 | 1 h 54 | 0 | 7 030 |
-| Prudent | 45 s | 1 h 43 | 262 | 4,8 | 16 730 | 37 min 46 | 2 | 19 min 05, 24 min 25 | 2 h 21, au dernier geste | 0 | 1 330 |
-| Pressé | 10 s | 1 h 28 | 38,4 | 38,4 | 13 930 | 24 min 30 | 0 | — | dès l'acte IV | 5 | 30 |
-| Pressé | 30 s | 1 h 31 | 114 | 19,2 | 14 300 | 32 min 31 | 1 | 5 min 14 | 1 h 48 | 0 | 1 000 |
-| Pressé | 45 s | 2 h 19 | 1 007 | 19,2 | 19 430 | 37 min 46 | 2 | 5 min 29, 22 min 55 | 2 h 57, au dernier geste | 0 | 4 030 |
-| Vite | 10 s | 1 h 26 | 16,9 | 4,8 | 18 330 | 22 min 01 | 1 | 9 min 40 | 1 h 35 | 0 | 2 930 |
-| Vite | 30 s | 1 h 30 | 7,1 | 2,4 | 22 430 | 31 min 01 | 0 | — | 1 h 42 | 0 | 7 030 |
+| Prudent | 10 s | 1 h 38 | 36,8 | 4,8 | 19 630 | 22 min 01 | 1 | 9 min 45 | 1 h 53 | 0 | 4 230 |
+| Prudent | 30 s | 1 h 40 | 16,3 | 4,8 | 21 230 | 31 min 01 | 1 | 11 min 30 | 1 h 54 | 0 | 5 830 |
+| Prudent | 45 s | 1 h 48 | 270 | 4,8 | 19 930 | 37 min 46 | 2 | 19 min 05, 24 min 25 | 2 h 25, au dernier geste | 0 | 4 530 |
+| Pressé | 10 s | 1 h 25 | 38,4 | 38,4 | 13 530 | 25 min 30 | 0 | — | dès l'acte IV | 7 | 230 |
+| Pressé | 30 s | 1 h 31 | 121 | 38,4 | 12 800 | 35 min 10 | 1 | 6 min 29 | 1 h 41 | 8 | 0 |
+| Pressé | 45 s | 2 h 08 | 825 | 19,2 | 15 730 | 37 min 46 | 1 | 21 min | 2 h 46, au dernier geste | 0 | 330 |
+| Vite | 10 s | 1 h 23 | 17,9 | 9,6 | 16 230 | 22 min 01 | 1 | 10 min 25 | 1 h 28 | 0 | 830 |
+| Vite | 30 s | 1 h 30 | 7,5 | 4,8 | 19 530 | 31 min 01 | 0 | — | 1 h 35 | 0 | 4 130 |
 | Vite | 45 s | 1 h 47 | 196 | 4,8 | 17 330 | 37 min 46 | 2 | 15 min 05, 25 min 25 | 2 h 25, au dernier geste | 0 | 1 930 |
-| Relance à 2 min | 10 s | 1 h 28 | 181 | 4,8 | 22 430 | 22 min 01 | 2 | 8 min 25, 14 min 55 | 1 h 50, au dernier geste | 0 | 7 030 |
-| Relance à 2 min | 30 s | 1 h 34 | 322 | 4,8 | 22 430 | 31 min 01 | 2 | 13 min, 18 min | 2 h 05, au dernier geste | 0 | 7 030 |
-| Relance à 2 min | 45 s | 1 h 43 | 825 | 9,6 | 16 730 | 37 min 46 | 2 | 27 min 16, 10 min 30 | 2 h 21, au dernier geste | 0 | 1 330 |
-| Prudent, gardes pleines | 10 s | 1 h 26 | 36,7 | 4,8 | 10 030 | 26 min 32 | 1 | 9 min 45 | 1 h 41 | 6 | 30 |
-| Pressé, gardes pleines | 10 s | 1 h 28 | 38,4 | 38,4 | 7 130 | 31 min 16 | 0 | — | dès l'acte IV | 20 | 230 |
+| Relance à 2 min | 10 s | 1 h 34 | 192 | 9,6 | 19 630 | 22 min 01 | 2 | 10 min 25, 14 min 55 | 1 h 54 | 0 | 4 230 |
+| Relance à 2 min | 30 s | 1 h 42 | 340 | 9,6 | 19 630 | 31 min 01 | 2 | 14 min 05, 16 min 55 | 2 h 13, au dernier geste | 0 | 4 230 |
+| Relance à 2 min | 45 s | 1 h 47 | 849 | 9,6 | 19 930 | 37 min 46 | 2 | 27 min 16, 10 min 30 | 2 h 25, au dernier geste | 0 | 4 530 |
+| Prudent, gardes pleines | 10 s | 1 h 38 | 36,8 | 4,8 | 14 330 | 23 min 31 | 1 | 9 min 45 | 1 h 53 | 2 | 730 |
+| Pressé, gardes pleines | 10 s | 1 h 25 | 38,4 | 38,4 | 6 730 | 31 min 31 | 0 | — | dès l'acte IV | 20 | 30 |
 
-- L'acte dure 22 min à 10 s de réaction, 31 min à 30 s, 38 min à 45 s. Le §9 en prévoit 35.
-- À 10 et 30 s, aucun écart ne dépasse 18 min. À 45 s, deux joueurs passent plus de 25 min sans chiffre perdu (25 min 25 et 27 min 16) : ils dépassaient déjà I1 aux actes II et III.
+Mesures faites après le réglage du quatrième playtest ([acte-3.md](acte-3.md)).
+
+- L'acte dure 22 à 26 min à 10 s de réaction, 31 à 35 min à 30 s, 38 min à 45 s. Le §9 en prévoit 35.
+- À 10 et 30 s, aucun écart ne dépasse 17 min. À 45 s, deux joueurs passent plus de 25 min sans chiffre perdu (25 min 25 et 27 min 16) : ils dépassaient déjà I1 à l'acte II.
 - Tous finissent sur leur plancher, sauf le pressé aux gardes pleines : ses vingt gestes faits par les habitants lui valent deux relances du Conseil dans l'acte. Son plancher passe de 38,4 à 153,6, et son Empreinte y remonte.
-- Les actes I à V se jouent en 1 h 48 pour le bot prudent à 10 s ; le §9 en prévoit 3 h 25. La Terre rendue est à 98 % à la fin de l'acte, à 100 % quatre minutes plus tard.
+- Les actes I à V se jouent en 2 h 00 pour le bot prudent à 10 s ; le §9 en prévoit 3 h 25. La Terre rendue est à 98 % à la fin de l'acte, à 100 % quatre minutes plus tard.
 - `node tools/check.js` passe : le coût d'un point d'Empreinte monte encore (I3), et la Terre rendue reste à moins de 20 % d'une droite pour les treize parties qui démantèlent (I5).
 
 ## Points ouverts
 
-1. **Le dernier tiers de l'acte se joue compteur figé.** La plupart des joueurs atteignent le plancher avant la fin : il leur reste de 7 à 19 min de gestes qui ne rendent que de la terre. C'est voulu, mais un playtest dira si ces gestes sont encore faits, et pourquoi.
-2. **Les Mains ne manquent presque jamais.** Avec des gardes réduites, tous les bots ont de quoi faire les vingt-huit gestes, sauf le pressé à 10 s. Il en reste de 1 000 à 7 000 à la fin. Le repli sur les habitants ne mord qu'avec des gardes pleines.
+1. **Le dernier tiers de l'acte se joue compteur figé.** La plupart des joueurs atteignent le plancher avant la fin : il leur reste de 2 à 32 min de gestes qui ne rendent que de la terre. C'est voulu, mais un playtest dira si ces gestes sont encore faits, et pourquoi.
+2. **Les Mains ne manquent presque jamais.** Avec des gardes réduites, tous les bots ont de quoi faire les vingt-huit gestes, sauf les pressés à 10 et 30 s, qui en laissent 7 et 8 aux habitants. Aux autres, il en reste de 330 à 5 830 à la fin. Le repli sur les habitants ne mord qu'avec des gardes pleines.
 3. **Une relance après le dernier geste ne laisse plus l'Empreinte au-dessus du plancher.** Réglé avec les fins : quand tout est rendu, ce qu'une relance ajoute reste, et le plancher monte jusqu'à l'Empreinte ([fins.md](fins.md)).
 4. **Les gestes sont les mêmes partout.** Rien ne distingue Méraud de Morvel. Des lieux nommés viendront avec la carte complète ([#21](https://github.com/DavidGiangiacomo/decroissance/issues/21)) et les textes ([#23](https://github.com/DavidGiangiacomo/decroissance/issues/23)).
 5. **Le son** n'a qu'un bruit nouveau, à affiner avec le reste ([#22](https://github.com/DavidGiangiacomo/decroissance/issues/22)).
