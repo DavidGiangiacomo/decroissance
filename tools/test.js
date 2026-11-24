@@ -926,7 +926,9 @@ function etatFin(extra) {
   Object.assign(s, { paused: 0 }, extra || {});
   return s;
 }
-const { simuler } = require('./simulate.js');
+// Les parties de bot de ces tests ne décident rien : elles éprouvent le reste du jeu. Les décisions ont leurs tests.
+const { simuler: simulerBot } = require('./simulate.js');
+const simuler = (o) => simulerBot(Object.assign({ decisions: 'aucune' }, o));
 
 test('quand tout est rendu, le choix s\'ouvre, l\'Empreinte bloquée au plancher : pas pendant une relance', () => {
   const s = etatFin();
@@ -1534,6 +1536,157 @@ test('les écarts connus désignent des parties qui existent, au-dessus du seuil
     assert.ok(noms.includes(c.partie), c.partie);
     assert.ok(c.plafond > C.SEUILS[c.inv], `${c.inv} ${c.partie}`);
   }
+});
+
+// ---- Les décisions (§7) ----
+const ouvertes = (s) => E.branchesOuvertes(s).map(b => b.id);
+
+test('les décisions : chaque branche s\'ouvre avec son acte, se ferme avec lui, et ne se prend qu\'une fois', () => {
+  assert.deepStrictEqual(ouvertes(Object.assign(E.create(), { started: true })), [], 'rien à l\'acte I');
+  const s = etatActe2();
+  assert.deepStrictEqual(ouvertes(s), ['energie', 'dette']);
+  assert.strictEqual(E.decider(s, 'requisition'), null, 'le travail attend l\'acte III');
+  assert.ok(E.decider(s, 'marche'));
+  assert.strictEqual(E.decider(s, 'rationnement'), null, 'les deux décisions d\'une branche sont exclusives');
+  assert.strictEqual(E.decider(s, 'marche'), null, 'une décision ne se prend qu\'une fois');
+  assert.deepStrictEqual(ouvertes(s), ['dette']);
+  assert.ok(s.chrono.some(e => e.type === 'decision' && e.branche === 'energie' && e.choix === 'marche'));
+  const s3 = etatActe3();   // l'acte II s'y est fermé sans décision
+  assert.deepStrictEqual(s3.chrono.filter(e => e.type === 'sans-decision').map(e => e.branche), ['energie', 'dette']);
+  assert.ok(s3.chrono.findIndex(e => e.type === 'sans-decision') < s3.chrono.findIndex(e => e.type === 'acte' && e.n === 3), 'dans l\'acte où elles étaient offertes');
+  assert.deepStrictEqual(ouvertes(s3), ['travail', 'information']);
+  assert.deepStrictEqual(ouvertes(etatActe4()), ['terre']);
+  assert.deepStrictEqual(ouvertes(Object.assign(etatActe2(), { croissanceDepuis: 100 })), [], 'en mode Croissance, rien ne s\'offre');
+  assert.deepStrictEqual(ouvertes(Object.assign(etatActe2(), { issue: 'clore' })), []);
+});
+
+test('Rationnement et Amnistie montent la Capacité, ×1,69 au plus ; Honorer la contraint 40 min, puis avance 500 à l\'acte IV', () => {
+  const s = etatActe2(), k0 = E.kRate(s), co = s.Co;
+  E.decider(s, 'rationnement');
+  assert.ok(Math.abs(E.kRate(s) / k0 - 1.35) < 1e-9 && Math.abs(s.Co - (co - 10)) < 1e-9 && s.coCauses.decisions === -10 && s.coNb.decisions === 1);
+  E.decider(s, 'amnistie');
+  assert.ok(Math.abs(E.kRate(s) / k0 - 1.35 * 1.25) < 1e-9 && E.kRate(s) / k0 <= 2, 'I2 : la Capacité ne passe pas ×2');
+  const h = etatActe2();
+  E.decider(h, 'honorer');
+  assert.strictEqual(E.kMulDecisions(h), 0.75);
+  h.t += 2400;
+  assert.strictEqual(E.kMulDecisions(h), 1, 'après 40 min, la Capacité est libre');
+  // L'avance des créanciers, à l'ouverture de l'acte IV, au-delà du plafond, et rien ne l'y ramène.
+  const a = Object.assign(E.create(), { started: true });
+  for (const d of E.D.sites) if (E.acteDe(d) <= 3) a.sites[d.id].state = d.mesure ? 'fait' : 'eteint';
+  a.hopital = 'autonome';
+  Object.assign(a, { acte: 3, E: 3e4, digits: 5, digitsMin: 5, K: 900 });
+  Object.assign(a.ms, { stabilise: 1, chiffre: 2, fin: 3, acte2: 3, fin2: 4, acte3: 4 });
+  a.decisions.dette = { choix: 'honorer', t: 0, avance: false };
+  E.tick(a, 0.1);
+  assert.ok(a.acte === 4 && a.K === 1400 && a.decisions.dette.avance === true && a.chrono.some(e => e.type === 'avance' && e.K === 500));
+  for (let i = 0; i < 100; i++) E.tick(a, 0.1);
+  assert.strictEqual(a.K, 1400, 'au-delà du plafond, la Capacité n\'est pas ramenée à 900');
+  const sansAvance = etatActe4();
+  assert.ok(!sansAvance.chrono.some(e => e.type === 'avance'));
+});
+
+test('Marché : un délestage ou une privation ne coûte plus de consentement, et fait 1,5 fois plus de Casse ; la carte le dit', () => {
+  const s = etatActe2(), sans = etatActe2();
+  E.decider(s, 'marche');
+  const p = E.prixLancement(s, 'raffinerie'), p0 = E.prixLancement(sans, 'raffinerie');
+  assert.ok(p0.co > 0 && p.co === 0 && p.casse > p0.casse && p.casse <= Math.ceil(p0.casse * 1.5));
+  const X0 = s.X;
+  E.engage(s, 'raffinerie');
+  E.tick(s, 0.1);   // la privation d'eau, en cascade du délestage de la chimie, vient au tick suivant
+  assert.strictEqual(s.X - X0, p.casse, 'le prix annoncé est le prix payé');
+  assert.ok(!s.coCauses.coupures, 'aucun point de consentement');
+  assert.ok(s.log.some(l => l.msg.startsWith('DÉLESTAGE') && !l.msg.includes('Consentement')));
+});
+
+test('Réquisition et Volontariat : des Mains tout de suite, prises parmi ceux qui attendent ; le retour de bâton, 10 min plus tard', () => {
+  const attente = (s, n) => { s.attente = [{ de: 'port', n, t0: s.t }]; s.deplaces = n; return s; };
+  const r = attente(etatActe3({ M: 5000, Co: 60 }), 6000);
+  assert.ok(E.effetsDecision(r, 'requisition').some(t => t.includes(`+${E.fmt(4000)}`)));
+  E.decider(r, 'requisition');
+  assert.ok(r.M === 9000 && r.deplaces === 2000 && r.decisions.travail.mains === 4000, `${r.M} ${r.deplaces}`);
+  assert.strictEqual(E.risqueDecision(attente(etatActe3({ Co: 35 }), 1000), 'requisition').quand, 'plus tard', 'la carte prévient du Conseil');
+  const t0 = r.t;
+  jusquA(r, () => r.chrono.some(e => e.type === 'retour-baton'), 7000);
+  const e = r.chrono.find(x => x.type === 'retour-baton');
+  assert.ok(e && Math.abs(e.t - (t0 + 600)) < 0.2 && r.coCauses.decisions === -20);
+  const v = attente(etatActe3({ M: 5000, Co: 60 }), 1000);
+  E.decider(v, 'volontariat');
+  assert.ok(v.M === 6000 && v.deplaces === 0 && v.coCauses.decisions === 10, 'au plus ceux qui attendent');
+  const vide = etatActe3({ M: 5000 });
+  E.decider(vide, 'requisition');
+  assert.strictEqual(vide.M, 5000, 'personne n\'attend : rien à prendre');
+});
+
+test('Tout publier et Gérer : un retour plus rapide vers 70 %, ou l\'usure divisée par deux jusqu\'au scandale', () => {
+  const p = etatActe3({ Co: 50 });
+  E.decider(p, 'publier');
+  assert.ok(Math.abs(p.Co - 30) < 1e-9 && E.deriveCo(p) === 1 / 60);
+  const absent = etatActe3({ Co: 50 });
+  E.decider(absent, 'publier');
+  E.applyOffline(absent, 600);
+  assert.ok(Math.abs(absent.coCauses.horsLigne - 10) < 1e-9, 'dix minutes d\'absence : +10 au lieu de +6');
+  const g = etatActe3({ Co: 60 });
+  E.decider(g, 'gerer');
+  assert.ok(E.usureCo(g) === 0.5 && E.scandaleEnAttente(g));
+  g.X += 100;   // la première Casse, d'où qu'elle vienne
+  E.tick(g, 0.1);
+  assert.ok(g.decisions.information.scandale !== null && g.coCauses.decisions === -30 && E.usureCo(g) === 1 && !E.scandaleEnAttente(g));
+  g.X += 100;
+  E.tick(g, 0.1);
+  assert.strictEqual(g.coCauses.decisions, -30, 'un seul scandale');
+  // La carte d'un chantier qui ferait de la Casse compte le scandale dans son prix.
+  const c = etatActe2();
+  c.decisions.information = { choix: 'gerer', t: 0, scandale: null, X0: 0 };
+  const sans = E.prixLancement(etatActe2(), 'raffinerie'), avec = E.prixLancement(c, 'raffinerie');
+  assert.ok(avec.scandale === 30 && avec.co === sans.co + 30);
+});
+
+test('Retour à la terre et Rewilding : la terre repousse plus vite ; le retour à la terre coûte des Mains et rapporte du consentement', () => {
+  const a = etatActe4(), b = etatActe4();
+  E.decider(a, 'retourTerre');
+  E.decider(b, 'rewilding');
+  assert.ok(a.M === 14000 && a.installes === 6000 && b.M === 20000, 'trente pour cent des Mains restent sur la terre');
+  const Ta = E.T(a), Tb = E.T(b);
+  for (let i = 0; i < 600; i++) { E.tick(a, 0.1); E.tick(b, 0.1); }
+  const ga = E.T(a) - Ta, gb = E.T(b) - Tb;
+  assert.ok(ga > 0 && Math.abs(ga / gb - 1.4 / 1.1) < 0.01, `${ga} / ${gb}`);
+  assert.ok(Math.abs(a.coCauses.terre - 0.5 * ga) < 1e-6 && !b.coCauses.terre);
+});
+
+test('les décisions survivent à une sauvegarde ; une décision inconnue ou hors de sa branche est ignorée', () => {
+  const s = etatActe3({ Co: 60 });
+  E.decider(s, 'gerer');
+  assert.deepStrictEqual(E.migrer(allerRetour(s)).decisions, s.decisions);
+  const save = allerRetour(s);
+  save.decisions = { energie: { choix: 'gerer', t: 3 }, dette: { choix: 'inconnu', t: 1 }, travail: 'x', information: { choix: 'publier', t: 'x' } };
+  assert.deepStrictEqual(E.migrer(save).decisions, {});
+  const ancienne = allerRetour(etatActe3());
+  delete ancienne.decisions;
+  const r = E.migrer(ancienne);
+  assert.deepStrictEqual(r.decisions, {});
+  assert.deepStrictEqual(ouvertes(r), ['travail', 'information'], 'une partie plus ancienne se voit offrir les branches de son acte');
+});
+
+test('les bots décident selon leur profil ; les décisions entrent dans le rapport, la chronologie et l\'inventaire', () => {
+  const { s } = simulerBot({ profil: 'prudent', reaction: 10 });
+  jusquA(s, () => E.peutChoisir(s), 3000);
+  const r = E.rapport(s, 'test');
+  assert.deepStrictEqual(r.decisions.map(d => d.choix), ['rationnement', 'honorer', 'volontariat', 'gerer', 'retourTerre']);
+  assert.ok(Math.abs(100 + somme(s.coCauses) - s.Co) < 1e-6, 'les causes expliquent tout le mouvement, décisions comprises');
+  const texte = E.rapportTexte(s, 'test');
+  assert.ok(texte.includes('- Décisions : Énergie, Rationnement à ') && texte.includes('Décision — Dette : Honorer') && texte.includes('Les créanciers avancent 500 de Capacité'));
+  const inv = E.inventaire(s);
+  assert.ok(inv.actes[1].lignes.some(l => l.type === 'decision' && l.choix === 'rationnement'));
+  assert.ok(inv.actes[2].lignes.some(l => l.type === 'decision' && l.choix === 'gerer'));
+  assert.ok(inv.actes[3].lignes.some(l => l.type === 'avance') && inv.actes[3].lignes.some(l => l.type === 'decision' && l.choix === 'retourTerre'));
+  const presse = simulerBot({ profil: 'pressé', reaction: 10 }).s;
+  assert.deepStrictEqual(E.rapport(presse, 't').decisions.map(d => d.choix), ['marche', 'amnistie', 'requisition', 'publier', 'rewilding']);
+  assert.ok(presse.chrono.some(e => e.type === 'retour-baton'));
+  const un = simulerBot({ profil: 'prudent', reaction: 10, decisions: { travail: 'volontariat' }, suivi: { arret: (x) => x.acte >= 4 } }).s;
+  assert.ok(un.chrono.some(e => e.type === 'sans-decision' && e.branche === 'information'));
+  assert.ok(E.rapportTexte(un, 't').includes('Énergie, aucune') && E.rapportTexte(un, 't').includes('Terre, pas encore'));
+  assert.deepStrictEqual(E.rapport(simulerBot({ profil: 'prudent', reaction: 10, decisions: 'aucune' }).s, 't').decisions.map(d => d.choix), [null, null, null, null, null]);
 });
 
 console.log(`\n${passes} tests passés`);

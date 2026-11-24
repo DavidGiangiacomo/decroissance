@@ -81,18 +81,18 @@ Trois gardes réduites coûtent 2 100 personnes. Les rendre pleines coûte 5 300
 
 | Joueur | Casse à la clôture | Ordre à redire | Ce que l'ordre réparé aurait épargné | Avec les gardes réduites | Mains qui restent | En renforçant au mieux |
 |---|---|---|---|---|---|---|
-| Prudent, 10 s | 0 | aucun | — | 2 100 | 4 230 | 600 : les combustibles et les digues |
-| Prudent, 30 s | 0 | aucun | — | 2 100 | 5 830 | 0 : les trois gardes |
-| Relance à 2 min, 10 s | 0 | aucun | — | 2 100 | 4 230 | 600 : les combustibles et les digues |
-| Vite, 10 s | 800 | acte II : l'aciérie et la chimie, sans démolir vite | 800 personnes | 2 900 | 830 | 2 600 : les digues |
-| Pressé, 10 s | 4 917 | acte II : la filtration UV et la sobriété à faire, la centrale thermique et la raffinerie plus tard ; acte III : les ceintures maraîchères à faire, l'autoroute, la pêche, les élevages et le port plus tard | 3 400 personnes, puis 1 517 personnes et 5 chantiers à bras | 7 017 | 230 | 7 017 : aucune |
-| Pressé, 30 s | 4 917 | les mêmes actes | 3 400 personnes, puis 1 517 personnes et 5 chantiers à bras | 7 017 | 0 | 7 017 : aucune |
+| Prudent, 10 s | 0 | aucun | — | 2 100 | 121 | 2 100 : aucune |
+| Prudent, 30 s | 0 | aucun | — | 2 100 | 121 | 2 100 : aucune |
+| Relance à 2 min, 10 s | 0 | aucun | — | 2 100 | 211 | 2 100 : aucune |
+| Vite, 10 s | 800 | acte II : l'aciérie et la chimie, sans démolir vite | 800 personnes | 2 900 | 121 | 2 900 : aucune |
+| Pressé, 10 s | 6 211 | acte II : la filtration UV et la sobriété à faire, la centrale thermique et la raffinerie plus tard ; acte III : les ceintures maraîchères à faire, l'autoroute, les céréales, la pêche, les élevages et le port plus tard | 5 100 personnes, puis 1 111 personnes et 4 chantiers à bras | 8 311 | 130 | 8 311 : aucune |
+| Pressé, 30 s | 6 601 | les mêmes actes | 5 100 personnes, puis 1 501 personnes et 4 chantiers à bras | 8 701 | 130 | 8 701 : aucune |
 
-Mesures faites après le réglage du quatrième playtest ([acte-3.md](acte-3.md)).
+Mesures faites avec les décisions des bots ([decisions.md](decisions.md)), après le réglage du quatrième playtest ([acte-3.md](acte-3.md)). Le Marché rend les délestages du pressé 1,5 fois plus lourds : 5 100 personnes au lieu de 3 400 à l'acte II.
 
 - Pour tous les bots, l'ordre réparé ne fait aucune Casse : toute la Casse d'ordre était évitable (R4).
-- L'inventaire compte 77 lignes pour le prudent et 88 pour le pressé : cinq et six minutes de défilement.
-- Le renfort récompense les Mains gardées : le prudent à 30 s peut finir sans Casse ; le prudent à 10 s peut renforcer les combustibles et les digues, et garde 600 personnes de Casse, pour les galeries.
+- L'inventaire compte 82 lignes pour le prudent et 96 pour le pressé, décisions comprises : cinq minutes et demie et six minutes et demie de défilement.
+- Le renfort récompense les Mains gardées, et les décisions les prennent. Le Retour à la terre, à l'acte IV, emporte 30 % des Mains des prudents : ils finissent avec 121 Mains, et ne peuvent plus renforcer aucune garde. Sans décision, le prudent à 10 s pouvait encore renforcer les galeries et les digues, et ne payait que 1 200 personnes.
 
 ## Vérification
 
@@ -101,11 +101,11 @@ Mesures faites après le réglage du quatrième playtest ([acte-3.md](acte-3.md)
 
 ## Points ouverts
 
-1. **Le prix du dosage reste rude pour qui n'a plus de Mains.** Le renfort l'efface pour le prudent à 30 s, pas pour le prudent à 10 s, à qui il en reste 600. Les trois nombres sont une première passe ; les baisser reste possible après un playtest.
+1. **Le prix du dosage reste rude pour qui n'a plus de Mains.** Avec leurs décisions, aucun bot ne peut plus renforcer : tous paient les 2 100 personnes des gardes réduites. Le Retour à la terre en est la cause pour les prudents ([decisions.md](decisions.md)). Les trois nombres sont une première passe ; les baisser reste possible après un playtest.
 2. **Renforcer reste un pari.** La carte dit ce que fait une garde pleine, pas ce qu'elle évite. Un joueur qui rejoue le saura : à voir si la deuxième partie y gagne ou y perd.
 3. **Poursuivre n'a pas d'autre contenu que l'attente.** Un pas par clic, de plus en plus long. Le §11 le veut ainsi ; un playtest dira si quelqu'un va au-delà du cinquième pas.
 4. **L'ordre réparé dépend de l'ordre du joueur.** Deux joueurs qui font la même Casse ne lisent pas le même ordre. Il ne dit pas non plus si un autre ordre aurait été plus rapide.
 5. **Les textes** des trois incidents et de l'inventaire sont provisoires ([#23](https://github.com/DavidGiangiacomo/decroissance/issues/23)).
 6. **Hors de ces deux fins :**
    - la fin Croissance et le mode qui y mène, décrits dans [croissance.md](croissance.md) ;
-   - les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)), qui entreront dans l'inventaire.
+   - les décisions, décrites dans [decisions.md](decisions.md) : elles entrent dans l'inventaire, à leur place dans chaque acte.

@@ -66,7 +66,7 @@ L'acte ajoute 31 points de Terre rendue possible. Le total possible passe de 22,
 
 ## Pourquoi des parts plutôt que des valeurs fixes
 
-À l'entrée de l'acte III, l'Empreinte varie d'un facteur près de quarante selon la façon de jouer : 2,0·10⁶ pour le bot prudent à 30 s, 7,4·10⁷ pour le bot pressé à 45 s, que le Conseil a relancé à l'acte II. Au troisième playtest, une relance du joueur l'avait laissée à 1,0·10⁸. Avec des valeurs fixes calées sur le joueur prudent, deux problèmes se posent :
+À l'entrée de l'acte III, l'Empreinte varie d'un facteur vingt-cinq selon la façon de jouer : 1,1·10⁶ pour le bot pressé à 10 s, 2,8·10⁷ pour le bot qui relance une fois, à 45 s. Au troisième playtest, une relance du joueur l'avait laissée à 1,0·10⁸. Avec des valeurs fixes calées sur le joueur prudent, deux problèmes se posent :
 
 - le joueur qui a relancé ne perdrait aucun chiffre pendant tout l'acte (I1) ;
 - le joueur rapide passerait sous zéro.
@@ -77,23 +77,23 @@ Un garde-fou s'ajoute, pour tous les actes : une fermeture ne retire jamais plus
 
 ## Rythme mesuré
 
-Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les écarts sont comptés entre deux chiffres perdus successifs, à partir du deuxième.
+Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les écarts sont comptés entre deux chiffres perdus successifs, à partir du deuxième. Les bots prennent les décisions de leur profil : Volontariat et Gérer pour le prudent et le rapide, Réquisition et Tout publier pour le pressé ([decisions.md](decisions.md)).
 
 | Joueur | Réaction | Durée de l'acte III | Écarts entre chiffres | Pénuries | Réembauchés | Chantiers à bras | Relances du Conseil dans l'acte | Empreinte à la fin |
 |---|---|---|---|---|---|---|---|---|
-| Prudent : mesures d'abord, aucun isolement, aucune pénurie, Consentement au-dessus de 25 | 10 s | 45 min 16 | 1 min 16, 24 min 57, 15 min 19 | 0 | 2 800 | 0 | 1 | 29 332 |
-| Prudent | 30 s | 40 min 47 | 3 min 40, 16 min 16, 10 min 30 | 0 | 1 200 | 0 | 1 | 12 771 |
-| Prudent | 45 s | 36 min 17 | 23 min 47, 11 min 45 | 0 | 2 500 | 0 | 1 | 200 653 |
-| Pressé : la plus grosse part d'abord, sans rien regarder | 10 s | 37 min 30 | 2 min 02, 8 min 42, 15 min 48 | 1 517 personnes | 5 900 | 5 | 1 | 20 539 |
-| Pressé | 30 s | 40 min 23 | 8 min 45, 12 min 37 | 1 517 personnes | 6 630 | 5 | 1 | 86 705 |
-| Pressé | 45 s | 51 min 19 | 17 min 03, 33 min 31 | 1 207 personnes | 3 700 | 5 | 2 | 585 439 |
-| Vite (comme le prudent à l'acte III) | 10 s | 33 min 07 | 59 s, 14 min 04, 17 min 22 | 0 | 6 200 | 0 | 1 | 27 409 |
+| Prudent : mesures d'abord, aucun isolement, aucune pénurie, Consentement au-dessus de 25 | 10 s | 39 min 31 | 1 min 09, 11 min 15, 15 min 04 | 0 | 0 | 0 | 0 | 26 791 |
+| Prudent | 30 s | 39 min 06 | 1 min 21, 12 min 44, 13 min 59 | 0 | 0 | 0 | 0 | 28 736 |
+| Prudent | 45 s | 27 min 31 | 1 min 29, 14 min 45 | 0 | 0 | 0 | 0 | 28 061 |
+| Pressé : la plus grosse part d'abord, sans rien regarder | 10 s | 32 min 30 | 2 min 58, 6 min 35, 8 min 55 | 1 111 personnes | 7 600 | 4 | 3 | 8 574 |
+| Pressé | 30 s | 33 min 45 | 2 min 54, 8 min 45, 8 min 45 | 1 501 personnes | 6 400 | 4 | 3 | 11 611 |
+| Pressé | 45 s | 35 min 40 | 2 min 59, 9 min 16, 10 min 15 | 1 537 personnes | 5 500 | 5 | 3 | 11 323 |
+| Vite (comme le prudent à l'acte III) | 10 s | 38 min 17 | 1 min 01, 11 min 10, 15 min 04 | 0 | 0 | 0 | 0 | 25 124 |
 
-Mesures faites après le réglage du quatrième playtest (voir plus bas), et après la hausse de 10 % de l'Empreinte de l'acte II ([acte-2.md](acte-2.md)). Les bots rapides perdent depuis leur troisième chiffre une à quatre minutes après le deuxième, à la dernière fermeture de l'acte II, d'où les premiers écarts très courts : leur dernière fermeture bute sur le plafond de 95 %.
+Mesures faites avec les décisions des bots et le bot corrigé ([decisions.md](decisions.md)), après le réglage du quatrième playtest (voir plus bas) et la hausse de 10 % de l'Empreinte de l'acte II ([acte-2.md](acte-2.md)). Les bots rapides perdent depuis leur troisième chiffre une à quatre minutes après le deuxième, à la dernière fermeture de l'acte II, d'où les premiers écarts très courts : leur dernière fermeture bute sur le plafond de 95 %.
 
 Les bots remplissent toutes les places de formation d'un coup, comme le bouton.
 
-Le §9 prévoit pour l'acte III 55 minutes, trois chiffres perdus, une Empreinte qui finit à 6·10⁴ et 55 % de Terre rendue. Au simulateur, l'acte dure de 33 à 45 minutes, 51 pour le pressé à 45 s. Le premier playtest l'a joué en 26 minutes, le deuxième en 36 : un humain qui garde ses places de formation pleines va plus vite que les bots, qui ménagent davantage le Consentement. Le joueur prudent y perd deux chiffres, après celui qu'il a perdu à la dernière fermeture de l'acte II, et finit à 2,9·10⁴. Celui qui arrive avec plus d'Empreinte en perd deux aussi. La Terre rendue atteint 36 à 50 % à la fin de l'acte selon les profils, puis continue de monter.
+Le §9 prévoit pour l'acte III 55 minutes, trois chiffres perdus, une Empreinte qui finit à 6·10⁴ et 55 % de Terre rendue. Au simulateur, l'acte dure de 28 à 40 minutes. Le premier playtest l'a joué en 26 minutes, le deuxième en 36 : un humain qui garde ses places de formation pleines va plus vite que les bots, qui ménagent davantage le Consentement. Le joueur prudent y perd deux chiffres, après celui qu'il a perdu à la dernière fermeture de l'acte II, et finit à 2,7·10⁴. Celui qui arrive avec plus d'Empreinte en perd deux aussi. La Terre rendue atteint 40 à 51 % à la fin de l'acte selon les profils, puis continue de monter.
 
 ## Premier playtest
 
@@ -121,6 +121,7 @@ Joué en 36 minutes par un testeur naïf, sans pénurie ni site isolé, avec « 
 Joué en 2 h 02, des cinq actes jusqu'à Clore ([#8](https://github.com/DavidGiangiacomo/decroissance/issues/8)). Le panneau « Ce qui le fait bouger » a aidé à lire le Consentement. Mais il n'est jamais descendu sous 44 %. À l'acte III, chaque lot de formation en rendait un point net : le joueur ne s'est jamais approché du seuil du Conseil, et la tension que vise le §10, où la relance devient raisonnable, n'est pas apparue.
 
 - **Un lot rend moins.** Son départ coûte 0,5 point au lieu de 1, et sa fin en rend 1 au lieu de 2 : +0,5 net par lot, au lieu de +1. Rejouée à décisions égales, jusqu'à Clore, la même partie descend à 31 %, sans relance du Conseil.
+- **Avec leurs décisions, les bots prudents n'ont plus de relance du Conseil** ([decisions.md](decisions.md)). Volontariat et Gérer ménagent le Consentement, et le Rationnement ne coûte que 10 points à l'acte II. Leur Consentement descend encore à 21 % à l'acte III. Les mesures du point suivant ont été faites sans décision.
 - **Le Conseil reste évitable, au prix de l'attente.** Les bots prudents relancent dès qu'il leur reste 25 points : tous ont maintenant une relance du Conseil à l'acte III, et leur acte III s'allonge, plus près des 55 min du §9. Un bot qui garde 35 points n'en a aucune. Il finit 14 min plus tard, et passe près de 29 min sans chiffre perdu à l'acte III ; à prudence égale, l'attente était la même avant ce réglage. Le jeu laisse le choix : attendre que le Consentement remonte, ou laisser le Conseil relancer et payer le plancher doublé.
 - **Les variantes écartées.**
   - Plus douce, à −0,75 et +1,5 : la partie rejouée ne descendait qu'à 44 %.
@@ -130,13 +131,13 @@ Joué en 2 h 02, des cinq actes jusqu'à Clore ([#8](https://github.com/DavidGia
 ## Points à trancher
 
 1. **L'Empreinte en parts**, plutôt qu'en valeurs fixes comme aux actes I et II. C'est le choix le plus structurant de l'acte. **Tranché** avec l'acte IV ([#16](https://github.com/DavidGiangiacomo/decroissance/issues/16)) : les parts valent aussi pour lui. Reste à savoir s'il faut y passer l'acte II ([acte-2.md](acte-2.md)).
-2. **La relance réembauche tout le monde.** C'est fort : une relance du Conseil a coûté 2 800 Mains futures au bot prudent. Une variante : elle n'en réembaucherait qu'une partie.
-3. **Le Consentement, d'un playtest à l'autre.** Les bots ouvrent l'acte III entre 26 et 37 %, et le Conseil relance au moins une fois pour tous. Au premier playtest, le Consentement est resté entre 26 et 38 % pendant tout l'acte III, sans relance. Au deuxième, il est tombé de 58 à 16 % à l'acte II, et l'acte III s'est ouvert à 21 %. Au quatrième, il n'est jamais descendu sous 44 %, d'où le réglage des formations (voir plus haut). Le prochain playtest dira si l'acte III se joue maintenant près du seuil.
+2. **La relance réembauche tout le monde.** C'est fort : sans décision, une relance du Conseil coûte 2 800 Mains futures au bot prudent à 10 s. Avec leurs décisions, les prudents n'en ont plus, mais le pressé en a trois à l'acte III, et 7 600 réembauchés. Une variante : elle n'en réembaucherait qu'une partie.
+3. **Le Consentement, d'un playtest à l'autre.** Avec leurs décisions, les bots prudents ouvrent l'acte III vers 23 % et descendent à 21 %, sans relance du Conseil. Les pressés l'ouvrent vers 41 %, puis Tout publier et le retour de bâton de la Réquisition font relancer le Conseil trois fois. Au premier playtest, le Consentement est resté entre 26 et 38 % pendant tout l'acte III, sans relance. Au deuxième, il est tombé de 58 à 16 % à l'acte II, et l'acte III s'est ouvert à 21 %. Au quatrième, il n'est jamais descendu sous 44 %, d'où le réglage des formations (voir plus haut). Le prochain playtest dira si l'acte III se joue maintenant près du seuil.
 4. **La pénurie est rude**, à 15 personnes par point et par minute : fermer les céréales et les élevages ensemble, sans les ceintures, coûte environ 1 700 personnes.
-5. **Les joueurs très lents** : le prudent à 45 s tient maintenant le plafond d'I1 aux deux actes, avec 24 min 53 à l'acte II et 23 min 47 à l'acte III. Le pressé à 45 s le dépasse aux deux : 28 min 33, puis 33 min 31.
+5. **Les joueurs très lents** tiennent le plafond d'I1 à l'acte III depuis la correction du bot ([decisions.md](decisions.md)) : 14 min 45 au plus pour le prudent à 45 s, 10 min 15 pour le pressé. Le pressé à 45 s passe encore 26 min 39 sans chiffre perdu, mais à l'entrée de l'acte IV ([acte-4.md](acte-4.md)).
 6. **Le son** est synthétisé en trois couches nouvelles, entendues au premier playtest. Il reste à les affiner ([#22](https://github.com/DavidGiangiacomo/decroissance/issues/22)).
 7. **Hors de cet acte :**
    - les recettes fiscales du §6 ne sont pas modélisées, seuls les emplois apparaissent, sous la forme des gens par site d'origine ;
-   - la décision Travail, Réquisition ou Volontariat, viendra avec les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)) ;
+   - les décisions Travail et Information, qui s'ouvrent avec lui, sont décrites dans [decisions.md](decisions.md) ;
    - la Garde, qui absorbe des Mains pour toujours, c'est l'acte IV ([acte-4.md](acte-4.md)) ;
    - le Consentement se répare hors ligne : au deuxième playtest, une absence de 13 h l'a fait passer de 49,7 à 70 d'un coup. Quitter le jeu suffit donc à échapper au Conseil. **Tranché** avec l'acte IV : c'est gardé tel quel.

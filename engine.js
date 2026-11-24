@@ -88,6 +88,7 @@
       coCauses: {},         // ce qui a fait bouger le Consentement depuis coDepuis : points gagnés ou perdus, par cause
       coNb: {},             // combien de fois, pour les causes ponctuelles (une fermeture, une relance…)
       coDepuis: 0,          // depuis quand on compte : 0, ou l'instant où une partie plus ancienne a été reprise
+      decisions: {},        // §7 : branche -> { choix, t, et ce que la décision laisse à venir : retourA, scandale, avance, Tvu… }
     };
     for (const d of D.sites) s.sites[d.id] = { state: 'actif', progress: 0, regen: 0, vite: false, pollue: false };   // et, selon le site : habitants, dosage…
     for (const n of NOEUDS_RESEAU) s.noeuds[n.id] = 'alimente';
@@ -98,22 +99,28 @@
   const digitsOf = (E) => (E < 1e15 ? String(Math.floor(Math.max(1, E))).length : Math.floor(Math.log10(E)) + 1);
   const relanceActive = (s) => s.t < s.relanceUntil || enCroissance(s);   // en mode Croissance, elle ne s'arrête plus
 
+  // Un nombre à la française, au centième : 0,6 ; 1,35 ; 2.
+  const nombre = (x) => String(Math.round(x * 100) / 100).replace('.', ',');
+  const points = (x) => `${nombre(x)} point${x >= 2 ? 's' : ''}`;
+
   // --- ce qui fait bouger le Consentement ---
   // Chaque mouvement passe par bougerCo, qui le compte sous sa cause : le joueur peut voir pourquoi il monte ou descend.
   // `ponctuel` : un événement (une fermeture, une relance) plutôt qu'un effet continu ; on en compte le nombre.
   const CAUSES_CO = {
-    equilibre: { nom: 'retour vers 70 %', aide: 'sans rien faire, il revient de lui-même vers 70 %, de 0,6 point par minute' },
+    equilibre: { nom: 'retour vers 70 %', aide: `sans rien faire, il revient de lui-même vers 70 %, de ${nombre(D.CO_DRIFT * 60)} point par minute (1 point avec Tout publier)` },
     horsLigne: { nom: 'absence, retour vers 70 %', aide: "pendant une absence, il revient vers 70 % au même rythme" },
-    simultanes: { nom: 'chantiers menés de front', aide: '0,8 point par minute pour chaque chantier en cours au-delà du premier' },
+    simultanes: { nom: 'chantiers menés de front', aide: `${nombre(D.CO_HATE * 60)} point par minute pour chaque chantier en cours au-delà du premier, moitié moins avec Gérer` },
     fermetures: { nom: 'fermetures', ponctuel: true, aide: "certaines fermetures coûtent quelques points : la carte du site le dit" },
-    reconversions: { nom: 'départs en formation', ponctuel: true, aide: '1 point par lot qui part en formation' },
-    formations: { nom: 'formations achevées', ponctuel: true, aide: "à partir de l'acte III, 2 points par lot qui finit sa formation" },
-    attente: { nom: 'gens qui attendent une formation', aide: "à partir de l'acte III, 0,4 point par minute pour chaque millier de personnes qui attendent" },
+    reconversions: { nom: 'départs en formation', ponctuel: true, aide: `${points(D.RECONV.co)} par lot qui part en formation` },
+    formations: { nom: 'formations achevées', ponctuel: true, aide: `à partir de l'acte III, ${points(D.CO_FORMES)} par lot qui finit sa formation` },
+    attente: { nom: 'gens qui attendent une formation', aide: `à partir de l'acte III, ${nombre(D.CO_ATTENTE * 60)} point par minute pour chaque millier de personnes qui attendent, moitié moins avec Gérer` },
     penurie: { nom: 'pénurie', aide: 'tant que les vivres manquent' },
-    coupures: { nom: 'coupures et délestages', ponctuel: true, aide: 'une coupure, un délestage ou une privation coûte de 12 à 30 points' },
+    coupures: { nom: 'coupures et délestages', ponctuel: true, aide: 'une coupure, un délestage ou une privation coûte de 12 à 30 points ; avec le Marché, un délestage ou une privation ne coûte rien' },
     relances: { nom: 'vos relances', ponctuel: true, aide: '3 points par relance' },
     conseil: { nom: 'relances du Conseil', ponctuel: true, aide: '15 points quand le Conseil relance sans vous' },
     habitants: { nom: 'gestes des habitants', ponctuel: true, aide: '3 points par geste que les habitants font faute de Mains' },
+    decisions: { nom: 'décisions', ponctuel: true, aide: 'Rationnement −10, Volontariat +10, Tout publier −20, le retour de bâton de la Réquisition −20, le scandale de Gérer −30' },
+    terre: { nom: 'terre rendue', aide: 'après le Retour à la terre, 0,5 point par point de Terre rendue' },
     croissance: { nom: 'la croissance', aide: '20 points par minute, en mode Croissance' },
     bornes: { nom: 'déjà à 0 ou à 100 %', aide: "ce qui l'aurait fait sortir de la jauge ne compte pas" },
   };
@@ -172,7 +179,9 @@
     return g;
   }
   const gEff = (s) => (s.croissanceDepuis >= 0 ? (enCroissance(s) ? gCroissance(s) : 0) : gSites(s) + gRebond(s) + (relanceActive(s) ? D.RELANCE.g : 0));
-  const kRate = (s) => (s.croissanceDepuis >= 0 ? (enCroissance(s) ? kCroissance(s) : 0) : capaciteFinie(s) ? 0 : D.K0 * Math.pow(s.E / D.E0, D.KEXP) * (relanceActive(s) ? D.RELANCE.kMul : 1));
+  const kRate = (s) => (s.croissanceDepuis >= 0 ? (enCroissance(s) ? kCroissance(s) : 0) : capaciteFinie(s) ? 0 : D.K0 * Math.pow(s.E / D.E0, D.KEXP) * (relanceActive(s) ? D.RELANCE.kMul : 1) * kMulDecisions(s));
+  // Une avance de Capacité peut dépasser le plafond : rien ne s'y ajoute alors, mais rien ne la ramène au plafond.
+  function gagnerK(s, k) { if (s.K < D.KCAP) s.K = Math.min(D.KCAP, s.K + k); }
 
   function T(s) {
     let t = 0;
@@ -408,14 +417,22 @@
     const n = noeuds[id];
     return { casse: (n && n.casse) || 0, co: (n && n.co) || 0 };
   }
+  // Un délestage ou une privation, au prix du moment : le Marché le rend plus lourd en Casse, et muet en Consentement.
+  function prixReseau(s, p) {
+    const m = effetCoupures(s);
+    return { casse: Math.round(p.casse * m.casse), co: p.co * m.co };
+  }
   // Le prix d'un lancement : ce qu'il couperait tout de suite (acte I), délesterait ou priverait (acte II).
+  // Avec Gérer, la première Casse coûte aussi le scandale.
   function prixLancement(s, id, c) {
     c = c || canEngage(s, id);
-    const a = c.apercu;
-    const ids = [...(c.coupures || []), ...(a ? [...(a.delestes || []), ...(a.prives || [])] : [])];
+    const a = c.apercu, reseau = a ? [...(a.delestes || []), ...(a.prives || [])] : [];
+    const ids = [...(c.coupures || []), ...reseau];
     let casse = 0, co = 0;
-    for (const x of ids) { const p = prixCoupure(x); casse += p.casse; co += p.co; }
-    return { ids, casse, co, sansReclassement: ids.length > 0 && ids.every(x => !!defs[x]) };
+    for (const x of c.coupures || []) { const p = prixCoupure(x); casse += p.casse; co += p.co; }
+    for (const x of reseau) { const p = prixReseau(s, prixCoupure(x)); casse += p.casse; co += p.co; }
+    const scandale = casse > 0 && scandaleEnAttente(s) ? Math.abs(CHOIX.gerer.scandale) : 0;
+    return { ids, casse, co: co + scandale, scandale, sansReclassement: ids.length > 0 && ids.every(x => !!defs[x]) };
   }
   // Le Conseil relance sous un seuil de Consentement. Ce lancement, ou la fermeture qui suivra, le ferait-il franchir ?
   // Compté avec le Consentement d'aujourd'hui : le jeu ne devine pas ce qu'il deviendra d'ici la fermeture.
@@ -441,6 +458,148 @@
     });
   }
 
+  // --- les décisions (§7) ---
+  // Cinq branches de deux décisions exclusives, prises une fois, sans retour. Une branche s'ouvre avec son acte et se
+  // ferme avec lui. Leurs effets ne valent pas en mode Croissance, qui a ses propres règles.
+  const BRANCHES = D.DECISIONS;
+  const CHOIX = {};
+  for (const b of BRANCHES) for (const c of b.choix) CHOIX[c.id] = Object.assign({ branche: b.id }, c);
+  const brancheDe = (id) => BRANCHES.find(b => b.id === id) || null;
+  const decision = (s, b) => (s.decisions[b] ? CHOIX[s.decisions[b].choix] : null);   // la décision prise dans une branche
+  const decide = (s, id) => !!CHOIX[id] && !!s.decisions[CHOIX[id].branche] && s.decisions[CHOIX[id].branche].choix === id;
+  const brancheOuverte = (s, b) => s.acte === b.acte && !s.decisions[b.id] && s.issue !== 'clore' && s.croissanceDepuis < 0;
+  const branchesOuvertes = (s) => BRANCHES.filter(b => brancheOuverte(s, b));
+  function kMulDecisions(s) {
+    let m = 1;
+    for (const b of BRANCHES) {
+      const c = decision(s, b.id);
+      if (c && c.kMul && (!c.kDur || s.t < s.decisions[b.id].t + c.kDur)) m *= c.kMul;
+    }
+    return m;
+  }
+  const effetCoupures = (s) => { const c = decision(s, 'energie'); return c && c.coupures ? c.coupures : { casse: 1, co: 1 }; };
+  const deriveCo = (s) => { const c = decision(s, 'information'); return c && c.derive ? c.derive : D.CO_DRIFT; };
+  const scandaleEnAttente = (s) => decide(s, 'gerer') && s.decisions.information.scandale === null;
+  const usureCo = (s) => (scandaleEnAttente(s) ? CHOIX.gerer.usure : 1);
+  const vitesseTerre = (s) => { const c = decision(s, 'terre'); return c && c.terre ? c.terre : 1; };
+  // Travail : des Mains tout de suite, prises parmi ceux qui attendent une formation, dans la limite du plafond humain.
+  function mainsDecision(s, c) {
+    if (!c.mains) return 0;
+    const place = Math.max(0, D.MAINS_MAX - (s.M + s.Meng + enFormation(s)));
+    return Math.max(0, Math.min(Math.round((s.M + s.Meng) * c.mains), s.deplaces, place));
+  }
+  const perteMains = (s, c) => (c.perteMains ? Math.floor(s.M * c.perteMains) : 0);
+  const pourcent = (m) => `${m >= 1 ? '+' : '−'}${Math.round(Math.abs(m - 1) * 100)} %`;
+  // Ce que fait une décision, en phrases, avec les nombres du moment (R4 : tout se voit avant de décider).
+  function effetsDecision(s, id) {
+    const c = CHOIX[id], e = [];
+    if (c.kMul) e.push(`Capacité ${pourcent(c.kMul)}${c.kDur ? ` pendant ${fmtDur(c.kDur)}` : " jusqu'à la fin de la partie"}.`);
+    if (c.avance) e.push(`À l'acte IV, les créanciers avancent ${fmt(c.avance)} de Capacité, au-delà du plafond.`);
+    if (id === 'amnistie') e.push('Plus aucun financement extérieur.');
+    if (c.coupures) e.push(`Les délestages et les privations ne coûtent plus de consentement. Leur Casse est ${nombre(c.coupures.casse)} fois plus lourde.`);
+    if (c.mains) e.push(`Mains ×${nombre(1 + c.mains)} tout de suite : +${fmt(mainsDecision(s, c))}, prises parmi les ${fmt(s.deplaces)} personnes qui attendent une formation.`);
+    if (c.perteMains) e.push(`Mains −${Math.round(c.perteMains * 100)} % tout de suite : ${fmt(perteMains(s, c))} personnes restent sur la terre.`);
+    if (c.co) e.push(`Consentement ${c.co > 0 ? '+' : '−'}${Math.abs(c.co)}, tout de suite.`);
+    if (c.retour) e.push(`Dans ${fmtDur(c.retour.dans)}, le retour de bâton : consentement −${Math.abs(c.retour.co)}.`);
+    if (id === 'volontariat') e.push('Pas de retour de bâton.');
+    if (c.derive) e.push(`Ensuite, il revient vers ${D.CO_EQ} % de ${points(c.derive * 60)} par minute, au lieu de ${nombre(D.CO_DRIFT * 60)}.`);
+    if (c.usure) e.push(`L'usure du consentement, par l'attente et les chantiers menés de front, est divisée par ${nombre(1 / c.usure)}.`);
+    if (c.scandale) e.push(`À la première Casse, scandale : consentement −${Math.abs(c.scandale)}, et l'usure redevient normale.`);
+    if (c.terre) e.push(`La terre repousse ${nombre(c.terre)} fois plus vite.`);
+    if (c.coTerre) e.push(`Chaque point de Terre rendue rapporte ${points(c.coTerre)} de consentement.`);
+    if (id === 'rewilding') e.push('Aucun coût humain, aucun consentement gagné.');
+    return e;
+  }
+  // Le Conseil relance sous un seuil : une décision qui le ferait franchir le dit, tout de suite ou plus tard.
+  function risqueDecision(s, id) {
+    const c = CHOIX[id], seuil = D.RELANCE.autoSeuil;
+    if (!c || s.Co < seuil) return null;
+    if (c.co < 0 && s.Co + c.co < seuil) return { quand: 'maintenant', co: -c.co, seuil };
+    if (c.retour && s.Co + c.retour.co < seuil) return { quand: 'plus tard', co: -c.retour.co, seuil, dans: c.retour.dans };
+    return null;
+  }
+  function decider(s, id) {
+    const c = CHOIX[id], b = c && brancheDe(c.branche);
+    if (!c || !brancheOuverte(s, b)) return null;
+    const effets = effetsDecision(s, id).join(' ');
+    const d = { choix: id, t: s.t }, n = mainsDecision(s, c), perte = perteMains(s, c);
+    if (n > 0) { prendreAttente(s, n); s.M += n; d.mains = n; }
+    if (perte > 0) { s.M -= perte; s.installes += perte; d.perte = perte; }   // ceux qui partent cultiver restent sur la terre
+    if (c.co) { bougerCo(s, 'decisions', c.co); bornerCo(s); }
+    if (c.retour) d.retourA = s.t + c.retour.dans;
+    if (c.scandale) { d.scandale = null; d.X0 = s.X; }
+    if (c.coTerre) d.Tvu = T(s);
+    if (c.avance) d.avance = false;
+    s.decisions[b.id] = d;
+    log(s, `Décision — ${b.nom} : ${c.nom}. ${effets}`, 'decision');
+    trace(s, 'decision', Object.assign({ branche: b.id, choix: id }, n > 0 ? { mains: n } : {}, perte > 0 ? { perte } : {}));
+    return { type: 'decision', branche: b.id, choix: id };
+  }
+  // Ce que les décisions laissent à venir : le retour de bâton, le scandale, le consentement de la terre rendue.
+  function suivreDecisions(s) {
+    const ev = [], tr = s.decisions.travail, inf = s.decisions.information, te = s.decisions.terre;
+    if (tr && Number.isFinite(tr.retourA) && s.t >= tr.retourA) {
+      const co = CHOIX[tr.choix].retour.co;
+      tr.retourA = null;
+      bougerCo(s, 'decisions', co);
+      log(s, `Retour de bâton de la réquisition : des grèves sur les chantiers. Consentement −${Math.abs(co)}.`, 'casse');
+      trace(s, 'retour-baton', { co });
+      ev.push({ type: 'retour-baton', co });
+    }
+    if (inf && inf.scandale === null && s.X > inf.X0) {
+      const co = CHOIX[inf.choix].scandale;
+      inf.scandale = s.t;
+      bougerCo(s, 'decisions', co);
+      log(s, `SCANDALE — la Casse était connue, et tue. Consentement −${Math.abs(co)}. L'usure redevient normale.`, 'casse');
+      trace(s, 'scandale', { co });
+      ev.push({ type: 'scandale', co });
+    }
+    if (te && Number.isFinite(te.Tvu)) {
+      const t = T(s);
+      if (t > te.Tvu + 1e-9) { bougerCo(s, 'terre', (t - te.Tvu) * CHOIX[te.choix].coTerre); te.Tvu = t; }
+    }
+    return ev;
+  }
+  // Une branche qui n'a pas été tranchée se ferme avec son acte : elle reste dans l'acte où elle était offerte.
+  function fermerBranches(s, n) {
+    for (const b of BRANCHES) {
+      if (b.acte !== n - 1 || s.decisions[b.id]) continue;
+      log(s, `Le moment est passé : ${b.nom}, sans décision.`, 'jalon');
+      trace(s, 'sans-decision', { branche: b.id });
+    }
+  }
+  // L'avance des créanciers arrive avec l'acte IV.
+  function decisionsALouverture(s, n) {
+    const dt = s.decisions.dette, c = dt && CHOIX[dt.choix];
+    if (n === 4 && c && c.avance && dt.avance === false) {
+      dt.avance = true;
+      s.K += c.avance;
+      log(s, `Les créanciers avancent ${fmt(c.avance)} de Capacité : l'Ostrane a toujours payé.`, 'ok');
+      trace(s, 'avance', { K: c.avance });
+    }
+  }
+  // Une décision en une ligne, pour la chronologie et l'inventaire.
+  function texteDecision(e) {
+    const b = brancheDe(e.branche), nomB = b ? b.nom : e.branche;
+    switch (e.type) {
+      case 'decision': {
+        const c = CHOIX[e.choix], quoi = {
+          rationnement: 'Capacité +35 %, consentement −10', marche: 'délestages sans consentement, Casse ×1,5',
+          amnistie: 'Capacité +25 %, plus de financement extérieur', honorer: "Capacité −25 % pendant 40 min, une avance à l'acte IV",
+          requisition: `+${fmt(e.mains || 0)} Mains, sans formation`, volontariat: `+${fmt(e.mains || 0)} Mains, consentement +10`,
+          publier: 'consentement −20, puis un retour plus rapide vers 70 %', gerer: "l'usure divisée par deux, jusqu'à la première Casse",
+          retourTerre: `${fmt(e.perte || 0)} personnes restent sur la terre, qui repousse 1,4 fois plus vite`, rewilding: 'la terre repousse 1,1 fois plus vite',
+        }[e.choix];
+        return `Décision — ${nomB} : ${c ? c.nom : e.choix}${quoi ? ` (${quoi})` : ''}`;
+      }
+      case 'sans-decision': return `${nomB} : le moment est passé, sans décision`;
+      case 'retour-baton': return `Retour de bâton de la réquisition : consentement −${Math.abs(e.co)}`;
+      case 'scandale': return `Scandale : la Casse était connue, et tue. Consentement −${Math.abs(e.co)}`;
+      case 'avance': return `Les créanciers avancent ${fmt(e.K)} de Capacité`;
+      default: return e.type;
+    }
+  }
+
   // Chronologie complète pour le rapport de session et l'épilogue : pas de limite, contrairement au journal.
   function trace(s, type, data) {
     s.chrono.push(Object.assign({ t: Math.round(s.t * 10) / 10, type }, data));
@@ -450,34 +609,36 @@
 
   function delester(s, id) {
     const d = defs[id];
+    const p = prixReseau(s, prixCoupure(id)), coTexte = p.co > 0 ? ` Consentement −${fmt(p.co)}.` : '';
     if (d) {   // industrie ou commerce : arrêt brutal, comme une coupure de l'acte I
       s.sites[id].state = 'coupe';
       retirer(s, d.E * D.COUPURE_SITE_E);
-      s.X += d.deplaces;
-      bougerCo(s, 'coupures', -D.COUPURE_SITE_CO);
-      log(s, `DÉLESTAGE — ${d.nom} à l'arrêt brutal. ${fmt(d.deplaces)} personnes sans reclassement. Consentement −${D.COUPURE_SITE_CO}.`, 'casse');
-      trace(s, 'delestage', { id, casse: d.deplaces });
+      s.X += p.casse;
+      if (p.co) bougerCo(s, 'coupures', -p.co);
+      log(s, `DÉLESTAGE — ${d.nom} à l'arrêt brutal. ${fmt(p.casse)} personnes sans reclassement.${coTexte}`, 'casse');
+      trace(s, 'delestage', { id, casse: p.casse });
       marquerCoupure(s);
-      return [{ type: 'delestage', id, casse: d.deplaces }];
+      return [{ type: 'delestage', id, casse: p.casse }];
     }
     const n = noeuds[id];
     s.noeuds[id] = 'deleste';
-    s.X += n.casse;
-    bougerCo(s, 'coupures', -n.co);
-    log(s, `DÉLESTAGE — ${n.nom} sans électricité. ${fmt(n.casse)} personnes. Consentement −${n.co}.`, 'casse');
-    trace(s, 'delestage', { id, casse: n.casse });
+    s.X += p.casse;
+    if (p.co) bougerCo(s, 'coupures', -p.co);
+    log(s, `DÉLESTAGE — ${n.nom} sans électricité. ${fmt(p.casse)} personnes.${coTexte}`, 'casse');
+    trace(s, 'delestage', { id, casse: p.casse });
     marquerCoupure(s);
-    return [{ type: 'delestage', id, casse: n.casse }];
+    return [{ type: 'delestage', id, casse: p.casse }];
   }
 
   function priver(s, n) {
+    const p = prixReseau(s, prixCoupure(n.id));
     s.noeuds[n.id] = 'prive';
-    s.X += n.casse;
-    bougerCo(s, 'coupures', -n.co);
-    log(s, `COUPURE — ${n.nom} : plus de ${n.besoin.quoi}. ${fmt(n.casse)} personnes. Consentement −${n.co}.`, 'casse');
-    trace(s, 'privation', { id: n.id, casse: n.casse });
+    s.X += p.casse;
+    if (p.co) bougerCo(s, 'coupures', -p.co);
+    log(s, `COUPURE — ${n.nom} : plus de ${n.besoin.quoi}. ${fmt(p.casse)} personnes.${p.co > 0 ? ` Consentement −${fmt(p.co)}.` : ''}`, 'casse');
+    trace(s, 'privation', { id: n.id, casse: p.casse });
     marquerCoupure(s);
-    return [{ type: 'privation', id: n.id, casse: n.casse }];
+    return [{ type: 'privation', id: n.id, casse: p.casse }];
   }
 
   function rebrancher(s, n) {
@@ -632,7 +793,7 @@
     if (dernierGeste(s, d)) { E0 = Math.max(0, s.E - s.plancher); if (E0 > 0) s.E = s.plancher; }   // le dernier geste : tout ce qui dépasse encore
     else E0 = retirer(s, st.restes ? d.E * (1 - D.COUPURE_SITE_E) : retrait(s, d));
     st.Eretire = E0;
-    s.K = Math.min(D.KCAP, s.K + d.kBack);
+    gagnerK(s, d.kBack);
     const mEng = Number.isFinite(st.mEng) ? st.mEng : d.M;
     s.Meng -= mEng;
     if (d.garde) s.gardiens += mEng;   // les gardiens ne reviennent jamais dans le jeu
@@ -745,11 +906,13 @@
 
   const TITRES_ACTES = { 1: "L'inventaire", 2: 'Le réseau', 3: 'Les gens', 4: 'Le legs', 5: 'Rendre' };
   function ouvrirActe(s, n) {
+    fermerBranches(s, n);
     s.acte = n;
     s.ms['acte' + n] = s.t;
     s.paused = D.PAUSE_ACTE;
     log(s, `Acte ${CHIFFRES_ROMAINS[n] || n} — ${TITRES_ACTES[n] || ''}.`, 'jalon');
     trace(s, 'acte', { n });
+    decisionsALouverture(s, n);
     if (n === 4) {   // le plancher se révèle (R5) : zéro n'est pas possible, et l'essentiel de ce qui reste se garde
       s.digitsActe4 = s.digitsMin;
       log(s, `Le plancher apparaît : ${fmtPlancher(s.plancher)}. L'Empreinte ne descendra jamais en dessous.`, 'jalon');
@@ -924,6 +1087,8 @@
         case 'remontee': if (relance) relance.remontee = { de: e.de, a: e.a }; break;
         case 'reconversion': a.lots++; break;
         case 'renfort': a.lignes.push({ t: e.t, type: 'renfort', id: e.id, gardiens: e.gardiens, notes: [] }); break;
+        case 'decision': case 'sans-decision': case 'retour-baton': case 'scandale': case 'avance':
+          a.lignes.push(Object.assign({}, e, { notes: [] })); break;
         default: break;
       }
     }
@@ -1062,7 +1227,7 @@
     if (s.issue === 'clore') {   // la partie est close : plus rien ne bouge, sauf la terre qui finit de repousser
       for (const d of D.sites) {
         const st = s.sites[d.id];
-        if (st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) st.regen = Math.min(1, st.regen + dt / d.regen);
+        if (st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) st.regen = Math.min(1, st.regen + dt * vitesseTerre(s) / d.regen);
       }
       return ev;
     }
@@ -1076,7 +1241,7 @@
     if (relAvant && !rel && toutRendu(s) && s.E > s.plancher) monterPlancher(s);
     const g = gEff(s);
     if (g !== 0) s.E *= Math.exp((g / 100 / 60) * dt);
-    s.K = Math.min(D.KCAP, s.K + kRate(s) * dt);
+    gagnerK(s, kRate(s) * dt);
 
     const speed = rel ? D.RELANCE.speedMul : 1;
     for (const d of D.sites) {   // une garde qui attendait prend la première place de formation libre
@@ -1093,7 +1258,7 @@
         st.progress += (dt * (d.sol || d.garde ? 1 : speed)) / dureeChantier(d, st);
         if (st.progress >= 1) ev.push(...close(s, d.id));
       } else if (st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) {
-        st.regen = Math.min(1, st.regen + dt / d.regen);
+        st.regen = Math.min(1, st.regen + dt * vitesseTerre(s) / d.regen);
       }
     }
     if (s.pasEnCours) {   // Poursuivre : le pas va à son rythme, rien ne l'accélère
@@ -1111,12 +1276,13 @@
     if (s.formerEnContinu) reconvertirTout(s);
     // Consentement : dérive vers l'équilibre, usure si l'on empile les chantiers
     const n = chantiersActifs(s);
-    if (n > 1) bougerCo(s, 'simultanes', -D.CO_HATE * (n - 1) * dt);
+    if (n > 1) bougerCo(s, 'simultanes', -D.CO_HATE * (n - 1) * dt * usureCo(s));
     if (s.acte >= 3) {
-      if (s.deplaces > 0) bougerCo(s, 'attente', -D.CO_ATTENTE * (s.deplaces / 1000) * dt);   // attendre une formation use l'adhésion
+      if (s.deplaces > 0) bougerCo(s, 'attente', -D.CO_ATTENTE * (s.deplaces / 1000) * dt * usureCo(s));   // attendre une formation use l'adhésion
       ev.push(...nourrir(s, dt, rel));
     }
-    bougerCo(s, 'equilibre', Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * dt));
+    ev.push(...suivreDecisions(s));
+    bougerCo(s, 'equilibre', Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), deriveCo(s) * dt));
     bornerCo(s);
     if (s.Co < s.coMin) s.coMin = s.Co;
 
@@ -1246,15 +1412,16 @@
       fini.add(d.id); depollues.push(d.id);
       if (d.seulementSi) {   // le site de l'acte II, dépollué pendant l'absence, ne repousse que depuis
         const p = defs[d.seulementSi], sp = s.sites[d.seulementSi];
-        if (p.regen > 0) sp.regen = Math.min(1, sp.regen + apres / p.regen);
+        if (p.regen > 0) sp.regen = Math.min(1, sp.regen + apres * vitesseTerre(s) / p.regen);
         fini.add(d.seulementSi);
       }
     }
     for (const d of D.sites) {
       const st = s.sites[d.id];
-      if (!fini.has(d.id) && st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) st.regen = Math.min(1, st.regen + elapsed / d.regen);
+      if (!fini.has(d.id) && st.state === 'eteint' && st.regen < 1 && !st.pollue && d.regen > 0) st.regen = Math.min(1, st.regen + elapsed * vitesseTerre(s) / d.regen);
     }
-    bougerCo(s, 'horsLigne', Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), D.CO_DRIFT * elapsed));
+    bougerCo(s, 'horsLigne', Math.sign(D.CO_EQ - s.Co) * Math.min(Math.abs(D.CO_EQ - s.Co), deriveCo(s) * elapsed));
+    if (s.croissanceDepuis < 0) suivreDecisions(s);   // la terre regagnée pendant l'absence compte aussi
     const dT = T(s) - T0;
     if (sols) log(s, `Pendant votre absence (${fmtDur(elapsed)}), la dépollution a continué` +
       `${depollues.length ? ` : ${depollues.map(id => defs[id].nom).join(', ')}, terminé${depollues.length > 1 ? 's' : ''}` : ''}.`, 'ok');
@@ -1307,6 +1474,22 @@
       for (const id of Object.keys(s.noeuds)) if (ETATS_NOEUD.includes(save.noeuds[id])) s.noeuds[id] = save.noeuds[id];
     }
     if (!ETATS_HOPITAL.includes(s.hopital)) s.hopital = 'alimente';
+    // Les décisions, validées une à une. Ce qu'une décision laissait à venir et qui manque est tenu pour échu.
+    const decisions = {};
+    for (const b of BRANCHES) {
+      const d = s.decisions && typeof s.decisions === 'object' ? s.decisions[b.id] : null;
+      const c = d && typeof d === 'object' ? CHOIX[d.choix] : null;
+      if (!c || c.branche !== b.id || !Number.isFinite(d.t)) continue;
+      const v = { choix: c.id, t: d.t };
+      if (Number.isFinite(d.mains)) v.mains = d.mains;
+      if (Number.isFinite(d.perte)) v.perte = d.perte;
+      if (c.retour) v.retourA = Number.isFinite(d.retourA) ? d.retourA : null;
+      if (c.scandale) { v.scandale = Number.isFinite(d.scandale) ? d.scandale : d.scandale === null ? null : d.t; v.X0 = Number.isFinite(d.X0) ? d.X0 : s.X; }
+      if (c.coTerre) v.Tvu = Number.isFinite(d.Tvu) ? d.Tvu : T(s);
+      if (c.avance) v.avance = typeof d.avance === 'boolean' ? d.avance : s.acte >= 4;
+      decisions[b.id] = v;
+    }
+    s.decisions = decisions;
     if (!(Number.isInteger(s.acte) && s.acte >= 1 && s.acte <= DERNIER_ACTE)) s.acte = 1;
     s.regionsEteintes = s.regionsEteintes.filter(r => r in D.regions);
     // Formations et gens en attente, validés un à un. Avant l'acte III, une seule formation (reconv) et un seul total.
@@ -1452,6 +1635,8 @@
       terreRendue: Math.round(T(s) * 10) / 10,
       plancher: s.plancher,
       regionsEteintes: s.regionsEteintes,
+      decisions: BRANCHES.filter(b => b.acte <= s.acte).map(b => Object.assign({ branche: b.id, choix: s.decisions[b.id] ? s.decisions[b.id].choix : null },
+        s.decisions[b.id] ? { t: s.decisions[b.id].t } : {}, !s.decisions[b.id] && brancheOuverte(s, b) ? { ouverte: true } : {})),
       chrono: s.chrono,
     };
   }
@@ -1500,6 +1685,7 @@
       case 'chiffre-gagne': return `Chiffre gagné, ${e.digits} chiffres`;
       case 'palier': return `Palier n° ${e.n} : la Capacité reçue double`;
       case 'fige': return `L'écran se fige : Empreinte ${fmtE(e.E)}`;
+      case 'decision': case 'sans-decision': case 'retour-baton': case 'scandale': case 'avance': return texteDecision(e);
       default: return e.type;
     }
   }
@@ -1548,6 +1734,9 @@
       lignes.push(`- Gardiens, pour toujours : ${fmt(r.gardiens)}`);
       lignes.push(`- Réseau national démantelé : ${quand(r.reseauNational)}`);
       lignes.push(`- Empreinte arrêtée sur le plancher : ${quand(r.plancherAtteint)}`);
+    }
+    if (r.decisions.length) {
+      lignes.push(`- Décisions : ${r.decisions.map(d => `${brancheDe(d.branche).nom}, ${d.choix ? `${CHOIX[d.choix].nom} à ${fmtDur(d.t)}` : d.ouverte ? 'pas encore' : 'aucune'}`).join(' ; ')}`);
     }
     if (r.acte >= 5) {
       lignes.push(`- Gestes faits : ${r.gestes} sur ${GESTES.length}, dont ${r.gestesHabitants} par les habitants`);
@@ -1620,6 +1809,8 @@
     retrait, isole, dessertes, vivres, apercuVivres, placesFormation, enFormation, personnes,
     reconvertirTout, formerEnContinu, casseParCause, texteCasse,
     prixCoupure, prixLancement, risqueConseil, lancablesSansDelestage, DEFINITION_CASSE,
+    BRANCHES, CHOIX, decision, decide, brancheOuverte, branchesOuvertes, decider, effetsDecision, risqueDecision, texteDecision,
+    kMulDecisions, deriveCo, usureCo, vitesseTerre, scandaleEnAttente, mainsDecision, perteMains, gagnerK,
     existe, capaciteFinie, aGarder, placesOccupees, gardeEnAttente, gardesEnFormation, fmtPlancher,
     enCroissance, peutBasculer, basculer, GENERATEURS, niveauDe, tierOuvert, coutNiveau, peutAcheter, acheter, acheterTout, activerAchatAuto,
     gCroissance, kCroissance, chiffresGagnes, fmtE,

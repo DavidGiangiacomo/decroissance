@@ -72,6 +72,19 @@ Détail, contenu, arbitrages et réglages dans [docs/acte-5.md](docs/acte-5.md).
 - **La relance** double toujours le plancher. Si l'Empreinte se retrouve dessous, elle y remonte.
 - La carte reverdit région par région. Le son ramène les oiseaux, les insectes et des voix à mesure des gestes.
 
+## Les décisions
+
+Détail, contenu, réglage et points ouverts dans [docs/decisions.md](docs/decisions.md).
+
+- **Cinq branches de deux décisions**, prises une fois, sans retour : prendre l'une ferme l'autre (§7). Énergie et Dette s'ouvrent à l'acte II, Travail et Information à l'acte III, Terre à l'acte IV. Une branche se ferme avec son acte ; sans décision, rien ne change.
+- **Énergie** : Rationnement (Capacité +35 %, consentement −10) ou Marché (les délestages ne coûtent plus de consentement, mais leur Casse est 1,5 fois plus lourde).
+- **Dette** : Amnistie (Capacité +25 %) ou Honorer (Capacité −25 % pendant 40 min, puis 500 de Capacité avancés à l'acte IV, au-delà du plafond).
+- **Travail** : Réquisition (Mains ×1,8 tout de suite, prises parmi ceux qui attendent une formation, et consentement −20 dix minutes plus tard) ou Volontariat (Mains ×1,25, consentement +10).
+- **Information** : Tout publier (consentement −20, puis un retour vers 70 % plus rapide) ou Gérer (l'usure du consentement divisée par deux, jusqu'à la première Casse : scandale, −30).
+- **Terre** : Retour à la terre (Mains −30 %, la terre repousse 1,4 fois plus vite et rapporte du consentement) ou Rewilding (1,1 fois plus vite, sans coût ni gain).
+- **Une section en haut de la colonne** présente les deux cartes, avec leurs effets chiffrés au moment présent et l'avertissement du Conseil, puis une confirmation. Les décisions prises restent listées sous les ressources, avec ce qu'elles laissent à venir : contrainte, avance, retour de bâton, scandale.
+- **Le plafond ×2 (I2) vaut par ressource**, places de formation comprises. Le rapport de session, la chronologie et l'inventaire de l'épilogue reprennent chaque décision.
+
 ## Les fins : Clore, Poursuivre
 
 Détail, contenu et points ouverts dans [docs/fins.md](docs/fins.md). La troisième fin, Croissance, a sa section plus bas.
@@ -107,12 +120,13 @@ Détail, contenu, réglage et points ouverts dans [docs/croissance.md](docs/croi
 | `docs/acte-5.md` | l'acte V tel que validé et réglé : règles, contenu, arbitrages, écarts, rythme mesuré, points ouverts |
 | `docs/fins.md` | Clore, Poursuivre et l'épilogue tels que validés : règles, contenu, écarts, ce que disent les bots, points ouverts |
 | `docs/croissance.md` | le mode Croissance et la troisième fin tels que validés : règles, contenu, écarts, rythme mesuré, points ouverts |
+| `docs/decisions.md` | les cinq branches de décisions telles que validées et réglées : règles, contenu, plafond ×2, écarts, ce que disent les bots, points ouverts |
 | `data.js` | toutes les valeurs de réglage : sites, graphe, réseau, vivres, gardes et sols, gestes, régions, noms et métiers, constantes |
-| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, gestes, plancher, fins et inventaire de l'épilogue, mode Croissance, relance, hors-ligne, formats) |
+| `engine.js` | moteur pur (création, tick, engagement, coupures, réseau, gens et formations, vivres, gardes, sols, gestes, plancher, décisions, fins et inventaire de l'épilogue, mode Croissance, relance, hors-ligne, formats) |
 | `audio.js` | couches sonores synthétisées et sons ponctuels |
 | `main.js` | rendu, carte SVG, sauvegarde, boucle |
 | `index.html`, `style.css` | l'écran unique |
-| `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur ; il dit aussi ce que dirait l'épilogue. La page le charge en mode test, pour reprendre la partie d'un bot |
+| `tools/simulate.js` | joueur automatique pour régler le rythme sans navigateur ; il prend les décisions de son profil, et dit aussi ce que dirait l'épilogue. La page le charge en mode test, pour reprendre la partie d'un bot |
 | `tools/build-site.js` | prépare le site publié sur GitHub Pages, simulateur compris, et y inscrit la version |
 | `tools/test.js` | tests du moteur : actes II à V, fins, mode Croissance, reprise des sauvegardes, rapport de session, jugement des invariants |
 | `tools/check.js` | vérifie les invariants I1 à I6 du §9 sur quatorze parties jouées par les bots, et sort en erreur si l'un d'eux est cassé |
@@ -127,15 +141,16 @@ node tools/simulate.js relance-1 10   # une relance à 2 min
 node tools/simulate.js relance-continue   # relance sans arrêt, sans jamais basculer
 node tools/simulate.js croissance 5   # relance sans arrêt, puis « Ne plus arrêter » : le mode Croissance
 DOSAGE=pleine node tools/simulate.js prudent 10   # gardes pleines à l'acte IV
+DECISIONS=aucune node tools/simulate.js prudent 10   # sans décision (le bot prend sinon celles de son profil)
 node tools/test.js                    # tests du moteur
 node tools/check.js                   # invariants I1 à I6 du §9, sur quatorze parties (45 s environ)
 ```
 
 Les deux dernières commandes tournent sur chaque pull request. Ce que `tools/check.js` mesure, ses seuils et les écarts connus du réglage actuel sont décrits au §9 du [design doc](docs/design-doc.md), « Vérification automatique ».
 
-Avec un bot prudent à 10 s de réaction : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 13, trois chiffres et la fin de l'acte IV vers 1 h 38, le dernier chiffre vers 1 h 48, puis le plancher et la fin de l'acte V vers 2 h 00. Au quatrième playtest, un humain a joué les cinq actes en 2 h 02, avant le réglage qui a allongé l'acte III des bots.
+Avec un bot prudent à 10 s de réaction, qui prend les décisions de son profil : stabilisation vers 3 min, premier chiffre vers 6 min 30, carte vidée vers 12 min, deuxième chiffre vers 27 min, troisième chiffre et réseau démantelé vers 28 min, deux chiffres de plus et la fin de l'acte III vers 1 h 07, trois chiffres et la fin de l'acte IV vers 1 h 32, le dernier chiffre vers 1 h 41, puis le plancher vers 1 h 51 et la fin de l'acte V vers 1 h 54. Sans décision, il finit vers 2 h 00. Au quatrième playtest, un humain a joué les cinq actes en 2 h 02, avant les décisions et le réglage qui a suivi.
 
-Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`, `Jeu.inventaire()`, `Jeu.basculer()`, `Jeu.toutAcheter()`.
+Crochet de test dans la console : `Jeu.avancer(secondes)`, `Jeu.etat`, `Jeu.engager(id)`, `Jeu.relancer()`, `Jeu.inventaire()`, `Jeu.basculer()`, `Jeu.toutAcheter()`, `Jeu.decider(id)`, par exemple `Jeu.decider('marche')`.
 
 ## Raccourcis de test
 
@@ -144,6 +159,7 @@ Atteindre l'acte IV demande plus d'une heure de jeu, et la fin 2 h. Pour tester 
 - **L'accueil propose alors de reprendre la partie d'un bot** : à l'ouverture de l'acte II, III, IV ou V, au choix final quand tout est rendu, ou au basculement dans la croissance.
 - **Le bot se choisit** : le prudent, le pressé, le rapide ou celui qui relance une fois, à 10, 30 ou 45 s de réaction, avec des gardes réduites ou pleines. Le pressé arrive avec de la Casse et des relances du Conseil ; le prudent, sans.
 - **Le bot joue dans le navigateur**, en une à deux secondes, avec le moteur et les réglages du moment : aucun état n'est enregistré d'avance.
+- **Le bot prend les décisions de son profil** jusqu'au point de reprise. À l'ouverture d'un acte, il s'arrête avant celles de l'acte : elles restent au joueur.
 - **La partie de test a sa propre sauvegarde.** Elle ne touche pas à la vraie, et se reprend en rouvrant le jeu en mode test.
 - **Le rapport de session le dit** : « Raccourci de test : partie reprise d'un bot », avec le bot et le point de reprise. Ce qui précède n'a pas été joué par le joueur.
 - **Un lien peut porter les choix**, qui sont alors présélectionnés : `?depuis=acte4&joueur=pressé&reaction=30&gardes=pleine`. Les points sont `acte2` à `acte5`, `fin` et `croissance`.
