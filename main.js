@@ -267,7 +267,8 @@
   // Ce qu'un lancement ferait au réseau, en une phrase (R4 : tout se voit avant de lancer)
   // Le prix d'une coupure, d'un délestage ou d'une privation, dans les unités des compteurs du haut (R4)
   const nbPersonnes = (n) => `${E.fmt(n)} ${n >= 2 ? 'personnes' : 'personne'}`;
-  const textePrix = (p) => `Casse +${nbPersonnes(p.casse)}${p.sansReclassement ? ' sans reclassement' : ''}, consentement −${E.fmt(p.co)}.`;
+  const textePrix = (p) => `Casse +${nbPersonnes(p.casse)}${p.sansReclassement ? ' sans reclassement' : ''}, consentement −${E.fmt(p.co)}` +
+    `${p.scandale ? `, dont ${p.scandale} de scandale (Gérer)` : ''}.`;
   function texteApercu(a, p) {
     const marge = `${a.apres >= 0 ? '+' : '−'}${E.fmt(Math.abs(a.apres))} MW`;
     const morceaux = [`Lancé maintenant : la marge ${a.apres < 0 ? 'tombe' : 'passe'} à ${marge}.`];
@@ -290,7 +291,8 @@
     if (a.isoles.length) morceaux.push(`Isolerait : ${a.isoles.map(nomDe).join(', ')} (Mains ×2).`);
     if (a.vivres) {
       const bas = Math.floor(a.vivres.bas);
-      morceaux.push(a.vivres.duree ? `Vivres au plus bas : ${bas} sur 100, pénurie pendant ${E.fmtDur(a.vivres.duree)} environ : Casse ≈ +${nbPersonnes(a.vivres.casse)}, consentement ≈ −${E.fmt(a.vivres.co)}.` : `Vivres au plus bas : ${bas} sur 100.`);
+      const scandale = a.vivres.duree && E.scandaleEnAttente(s) ? Math.abs(E.CHOIX.gerer.scandale) : 0;   // la première Casse, avec Gérer
+      morceaux.push(a.vivres.duree ? `Vivres au plus bas : ${bas} sur 100, pénurie pendant ${E.fmtDur(a.vivres.duree)} environ : Casse ≈ +${nbPersonnes(a.vivres.casse)}, consentement ≈ −${E.fmt(a.vivres.co + scandale)}${scandale ? `, dont ${scandale} de scandale (Gérer)` : ''}.` : `Vivres au plus bas : ${bas} sur 100.`);
     }
     return { danger: a.isoles.length > 0 || !!(a.vivres && a.vivres.duree > 0), texte: morceaux.join(' ') };
   }
@@ -594,10 +596,10 @@
       ul.appendChild(li);
     }
     if (tri.length > 4) { const li = document.createElement('li'); li.className = 'muted'; li.textContent = `et ${tri.length - 4} autres groupes`; ul.appendChild(li); }
-    const usure = (D.CO_ATTENTE * 60 * s.deplaces / 1000).toFixed(1).replace('.', ',');
+    const usure = (D.CO_ATTENTE * 60 * s.deplaces / 1000 * E.usureCo(s)).toFixed(1).replace('.', ',');
     $('gens-note').textContent = s.deplaces > 0
       ? `Attendre use le consentement : −${usure} par minute. Une relance réembaucherait ces ${E.fmt(s.deplaces)} personnes : elles ne seraient plus à reconvertir.`
-      : `Personne n'attend. Chaque lot qui finit sa formation rend ${D.CO_FORMES} points de consentement.`;
+      : `Personne n'attend. Chaque lot qui finit sa formation rend ${String(D.CO_FORMES).replace('.', ',')} point${D.CO_FORMES >= 2 ? 's' : ''} de consentement.`;
   }
 
   function selectionner(id) { selection = selection === id ? null : id; rendreCarte(); rendreChantiers(); }
@@ -728,7 +730,7 @@
     $('horloge').textContent = E.fmtDur(s.t);
   }
 
-  function rendre() { rendreCroissance(); rendreIssue(); rendreCompteur(); rendreRessources(); rendreGestes(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
+  function rendre() { rendreCroissance(); rendreDecisions(); rendreIssue(); rendreCompteur(); rendreRessources(); rendreGestes(); rendreReseau(); rendreVivres(); rendreGens(); rendreGardes(); rendreChantiers(); rendreCarte(); }
 
   // ---------- son : niveaux selon l'état ----------
   const PROD_FOSSILE = D.sites.reduce((a, d) => a + (d.prod || 0), 0);
@@ -934,6 +936,78 @@
     ];
   }
   const enTable = (lignes) => lignes.map(l => `<tr><td>${l[0]}</td><td>${l[1]}</td></tr>`).join('');
+
+  // ---------- les décisions (§7) ----------
+  // Tant qu'une branche est ouverte, une section en haut de la colonne : ses deux décisions, chacune avec ce qu'elle
+  // fait, chiffré au moment présent (R4), et une confirmation, puisqu'elle ne se reprend pas.
+  const texteRisqueDecision = (r) => (r.quand === 'maintenant'
+    ? `Décidé maintenant, le consentement passerait sous ${r.seuil} % (−${E.fmt(r.co)}) : le Conseil relancerait la croissance sans vous.`
+    : `Dans ${E.fmtDur(r.dans)}, le retour de bâton ferait passer le consentement sous ${r.seuil} % (−${E.fmt(r.co)}) s'il ne remonte pas d'ici là : le Conseil relancerait la croissance sans vous.`);
+  let dernierDecision = '', dernierPrises = '';
+  function rendreDecisions() {
+    const sec = $('decision'), ouvertes = s.started ? E.branchesOuvertes(s) : [];
+    if (ouvertes.length && sec.hidden) document.querySelector('.panneau').scrollTop = 0;   // la décision s'ouvre en haut de la colonne
+    sec.hidden = !ouvertes.length;
+    const cle = JSON.stringify(ouvertes.map(b => b.choix.map(c => [c.id, E.effetsDecision(s, c.id), E.risqueDecision(s, c.id)])));
+    if (cle !== dernierDecision) {
+      dernierDecision = cle;
+      const box = $('liste-decisions'); box.innerHTML = '';
+      for (const b of ouvertes) {
+        const div = document.createElement('div');
+        div.className = 'branche';
+        div.innerHTML = '<div class="reseau-tete"><h2></h2><span class="reseau-etat"></span></div><p class="reseau-ordre"></p><div class="choix-liste"></div>';
+        div.querySelector('h2').textContent = `Décision — ${b.nom}`;
+        div.querySelector('.reseau-etat').textContent = `jusqu'à la fin de l'acte ${ROMAINS[b.acte]}`;
+        div.querySelector('.reseau-ordre').textContent = "Deux décisions, une seule possible, et sans retour. Sans décision, rien ne change.";
+        for (const c of b.choix) {
+          const carte = document.createElement('div');
+          carte.className = 'choix';
+          carte.innerHTML = '<div class="nom"></div><div class="desc"></div><ul class="effets"></ul><div class="conseil-note" hidden></div><button class="btn"></button>';
+          carte.querySelector('.nom').textContent = c.nom;
+          carte.querySelector('.desc').textContent = c.desc;
+          for (const e of E.effetsDecision(s, c.id)) { const li = document.createElement('li'); li.textContent = e; carte.querySelector('.effets').appendChild(li); }
+          const r = E.risqueDecision(s, c.id), cn = carte.querySelector('.conseil-note');
+          cn.hidden = !r;
+          if (r) cn.textContent = texteRisqueDecision(r);
+          const btn = carte.querySelector('button');
+          btn.textContent = `Décider : ${c.nom}`;
+          btn.addEventListener('click', () => decider(c.id));
+          div.querySelector('.choix-liste').appendChild(carte);
+        }
+        box.appendChild(div);
+      }
+    }
+    // Les décisions prises, sous les ressources, avec ce qu'elles laissent à venir.
+    const prises = E.BRANCHES.filter(b => s.decisions[b.id]), sp = $('decisions-prises');
+    sp.hidden = !prises.length || s.croissanceDepuis >= 0;
+    if (sp.hidden) return;
+    const lignes = prises.map(b => [`${b.nom} : ${E.CHOIX[s.decisions[b.id].choix].nom}`, suiteDecision(s.decisions[b.id], E.CHOIX[s.decisions[b.id].choix])]);
+    const cleP = JSON.stringify(lignes);
+    if (cleP === dernierPrises) return;
+    dernierPrises = cleP;
+    const ul = $('liste-prises'); ul.innerHTML = '';
+    for (const [quoi, suite] of lignes) {
+      const li = document.createElement('li');
+      li.innerHTML = '<span></span><span class="muted"></span>';
+      li.children[0].textContent = quoi;
+      li.children[1].textContent = suite;
+      ul.appendChild(li);
+    }
+  }
+  // Ce qu'une décision laisse encore à venir : une contrainte qui court, une avance, un retour de bâton, un scandale.
+  function suiteDecision(d, c) {
+    const morceaux = [];
+    if (c.kDur && s.t < d.t + c.kDur) morceaux.push(`Capacité ${c.kMul < 1 ? '−' : '+'}${Math.round(Math.abs(1 - c.kMul) * 100)} % encore ${E.fmtDur(d.t + c.kDur - s.t)}`);
+    if (c.avance && d.avance === false) morceaux.push(`${E.fmt(c.avance)} de Capacité à l'acte IV`);
+    if (c.retour && Number.isFinite(d.retourA)) morceaux.push(`retour de bâton dans ${E.fmtDur(Math.max(0, d.retourA - s.t))} : consentement −${Math.abs(c.retour.co)}`);
+    if (c.scandale && d.scandale === null) morceaux.push(`à la première Casse, scandale : consentement −${Math.abs(c.scandale)}`);
+    return morceaux.join(' ; ');
+  }
+  function decider(id) {
+    const c = E.CHOIX[id], autre = E.BRANCHES.find(b => b.id === c.branche).choix.find(x => x.id !== id);
+    if (!confirm(`${c.nom} : une décision sans retour. ${autre.nom} ne sera plus possible.`)) return;
+    if (E.decider(s, id)) { rendre(); rendreJournal(); sauver(); }
+  }
   let dernierIssue = '';
   function rendreIssue() {
     const app = document.getElementById('app');
@@ -1025,6 +1099,8 @@
           (l.reembauche ? ` ${personnes(l.reembauche)} réembauchées, qui ne seront pas reconverties.` : '') +
           (l.remontee ? ` L'Empreinte remonte de ${E.fmtFin(l.remontee.de)} à ${E.fmtFin(l.remontee.a)}.` : ''), E.fmtDur(l.t));
         else if (l.type === 'renfort') ligne('fait', `Garde renforcée : ${nomDe(l.id)}. ${E.fmt(l.gardiens)} gardiens de plus.`, E.fmtDur(l.t));
+        else if (l.type === 'retour-baton' || l.type === 'scandale') ligne('relance', `${E.texteDecision(l)}.`, E.fmtDur(l.t));
+        else if (['decision', 'sans-decision', 'avance'].includes(l.type)) ligne('fait', `${E.texteDecision(l)}.`, E.fmtDur(l.t));
         else if (l.type === 'penurie') ligne('casse', `Pénurie : les vivres à ${l.vivres} % des besoins. ${personnes(l.casse)}.`, E.fmtDur(l.t));
         for (const n of l.notes) ligne(n.quoi === 'isolement' ? 'bras' : 'casse', texteNote(n), l.type === 'casse' ? E.fmtDur(l.t) : '');   // un isolement coûte des Mains, pas de la Casse
       }
@@ -1306,6 +1382,7 @@
     engager, reconvertir, relancer, sauver, gel: false, version: VERSION,
     inventaire: () => E.inventaire(s), basculer: () => { if (E.basculer(s)) { cartonCroissance(); majSon(1.2); rendre(); } }, toutAcheter,
     rapport: () => E.rapportTexte(s, VERSION),
+    decider: (id) => { const r = E.decider(s, id); if (r) { rendre(); rendreJournal(); sauver(); } return !!r; },
   };
 
   init();

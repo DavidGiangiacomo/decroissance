@@ -133,6 +133,8 @@ Pas d'améliorations empilables. **Des décisions ponctuelles, irréversibles, m
 
 **Plafond dur : aucun cumul de multiplicateurs ne peut dépasser ×2 sur toute la partie.** Le joueur n'aura jamais de moment de puissance. C'est un invariant (§9, I2), pas un réglage.
 
+*Prototype : les cinq branches, validées et réglées, sont décrites dans [decisions.md](decisions.md). Énergie et Dette s'ouvrent à l'acte II, Travail et Information à l'acte III, Terre à l'acte IV. Le plafond ×2 s'y entend par ressource, places de formation comprises : « toutes ressources confondues » aurait interdit toute décision, les centres de formation doublant déjà les places. Rationnement y coûte 10 points de Consentement, et non 15.*
+
 ### La Garde (acte IV)
 
 Un panneau apparaît. On y affecte **définitivement** de la Capacité et des Mains à la surveillance perpétuelle de ce qui ne se démantèle pas. Ces ressources ne reviennent jamais dans l'économie du jeu.
@@ -194,16 +196,16 @@ I5 est l'invariant maître, comme dans *La langue morte* : la vraie barre de pro
 
 - Compter la croissance arrêtée ne tranche rien : il faudrait fixer sur combien de minutes on la compte, et ce nombre déciderait du résultat.
 - N'appliquer I3 qu'à partir de l'acte II ne suffit pas : site par site, l'acte II et l'acte IV ne sont pas monotones non plus.
-- La moyenne par acte, elle, monte toujours : 12 par million de points à l'acte I, 15 à 21 à l'acte II, de 400 à 23 000 à l'acte III, de 17 000 à un million à l'acte IV, de 18 millions à 6 milliards à l'acte V. À partir de l'acte III, chaque site retire une part de ce qui reste : le coût par point monte de lui-même. Au plancher, plus rien ne se retire : le coût d'un point n'a plus de borne.
+- La moyenne par acte, elle, monte toujours : 12 par million de points à l'acte I, 16 à 21 à l'acte II, de 1 600 à 47 000 à l'acte III, de 58 000 à 1,4 million à l'acte IV, de 76 millions à 7 milliards à l'acte V. À partir de l'acte III, chaque site retire une part de ce qui reste : le coût par point monte de lui-même. Au plancher, plus rien ne se retire : le coût d'un point n'a plus de borne.
 
 ### Vérification automatique
 
-`node tools/check.js` fait jouer quatorze parties aux bots du simulateur : le prudent, le pressé, le rapide et le joueur qui relance une fois, à 10, 30 et 45 s de réaction, la relance continue, et le mode Croissance. Il sort en erreur si un invariant mesurable est cassé. Un workflow le lance sur chaque pull request, avec les tests du moteur.
+`node tools/check.js` fait jouer quatorze parties aux bots du simulateur : le prudent, le pressé, le rapide et le joueur qui relance une fois, à 10, 30 et 45 s de réaction, avec les décisions de leur profil, la relance continue, et le mode Croissance. Il sort en erreur si un invariant mesurable est cassé. Un workflow le lance sur chaque pull request, avec les tests du moteur.
 
 | Invariant | Ce qui est mesuré | Seuil |
 |---|---|---|
 | I1 | Le plus long moment sans chiffre perdu, du début de la partie au dernier instant où un chiffre peut encore tomber. Une fois l'Empreinte au plancher, il n'en reste plus à perdre | 25 min |
-| I2 | Les multiplicateurs permanents en faveur du joueur. Aujourd'hui, un seul : les places de formation, que les centres doublent | ×2 |
+| I2 | Les multiplicateurs permanents en faveur du joueur, par ressource et pour la combinaison de décisions la plus forte : les places de formation, la Capacité par seconde, le retour du Consentement vers 70 %, son usure, la repousse de la terre | ×2 |
 | I3 | La Capacité et les Mains engagées par point d'Empreinte retiré, en moyenne sur chaque acte. Un geste de l'acte V compte pour son équipe, même fait par les habitants | plus qu'à l'acte précédent |
 | I4 | La Casse d'un pas à l'autre, puis après une relance, une sauvegarde rechargée, douze heures hors ligne et la clôture | aucune baisse |
 | I5 | L'écart de la courbe de Terre rendue à la droite la plus proche, en temps réel | 20 % de la Terre rendue à la fin |
@@ -212,18 +214,19 @@ I5 est l'invariant maître, comme dans *La langue morte* : la vraie barre de pro
 Ce que la vérification ne couvre pas :
 
 - **La moyenne d'I1**, 20 à 25 min. Les bots jouent plus vite qu'un humain : ils perdent un chiffre toutes les 12 à 16 min, pour la plupart. Le script affiche cette moyenne sans la juger.
-- **Les décisions du §7**, pour I2 : elles ne sont pas encore dans le jeu.
+- **Les décisions prises une à une.** Les bots prennent les cinq décisions de leur profil ([decisions.md](decisions.md)). Prise seule, une décision peut casser I1 pour le bot prudent, ce que le script ne joue pas.
 - **Le rendu**, pour I4 et I6. Le script vérifie que le compteur de Casse et le bouton Relancer sont dans la page et que le code ne les masque pas. Il n'ouvre pas de navigateur.
 - **Après Clore.** I4 et I6 valent jusqu'à la clôture : une partie close ne montre plus que la carte, sans compteur ni bouton (§11).
 - **La relance continue**, pour I1 et I3 : c'est un autre jeu (§8).
 - **Le mode Croissance**, pour I1, I2, I3 et I5 : c'est le jeu où le joueur devient puissant, et où la terre rendue est reprise ([croissance.md](croissance.md)).
 
-Le seuil d'I5 est une garde contre les régressions, pas une cible. La courbe du tableau de rythme s'écarte elle-même de 4 % d'une droite ; celles des bots, de 9 à 16 %, et de 19,5 % pour le rapide à 45 s.
+Le seuil d'I5 est une garde contre les régressions, pas une cible. La courbe du tableau de rythme s'écarte elle-même de 4 % d'une droite ; celles des bots, de 9 à 17 %.
 
 **Écarts connus.** Le réglage actuel casse déjà I1 pour quelques joueurs. Le script les tient dans une liste, chacun avec un plafond : il échoue si l'un d'eux s'aggrave, et aussi s'il se résorbe, pour que sa ligne soit retirée.
 
-- Trois joueurs à 45 s de réaction passent 30 à 37 min sans chiffre perdu, à l'acte II ou à l'acte III ([acte-2.md](acte-2.md), [acte-3.md](acte-3.md)). Le prudent à 45 s tient depuis le réglage du quatrième playtest.
-- Le prudent à 30 s passe 25 min 46 sans chiffre perdu, à l'ouverture de l'acte IV ([acte-4.md](acte-4.md)). Avant ce réglage, c'était le rapide à 30 s.
+- Les pressés à 30 et 45 s passent 25 min 45 et 26 min 39 sans chiffre perdu, à l'ouverture de l'acte IV ([acte-4.md](acte-4.md)). Avant les décisions, le même écart touchait le prudent, puis le rapide à 30 s.
+- Celui qui relance une fois, à 45 s, passe 25 min 35 sans chiffre perdu, avant son dernier chiffre ([acte-5.md](acte-5.md)).
+- Les écarts des joueurs à 45 s aux actes II et III, de 30 à 37 min, ont disparu avec la correction du bot : chaque lot de formation repoussait son chantier suivant d'un temps de réaction ([decisions.md](decisions.md)).
 
 ### Hors-ligne
 

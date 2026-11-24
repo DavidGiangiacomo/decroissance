@@ -178,6 +178,7 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .journal li.jalon { color: var(--texte); font-weight: 600; }
 .journal li.relance { color: var(--chaud); }
 .journal li.def { color: var(--muted); font-style: italic; }
+.journal li.decision { color: var(--texte); font-weight: 600; }
 .pied { margin-top: auto; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; padding-top: 6px; border-top: 1px solid var(--bord); }
 .pied > * { white-space: nowrap; }
 .pied .version { margin-left: auto; font-variant-numeric: tabular-nums; }
@@ -399,6 +400,20 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: v
 .app.clos #carte { min-height: 0; }
 .garde-carte .dosage-note { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
 .renforts { display: flex; flex-direction: column; gap: 6px; }
+/* ---- décisions (§7) ---- */
+.decision .branche + .branche { margin-top: 10px; padding-top: 10px; border-top: 1px solid #3f3b33; }
+.choix-liste { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.choix { border: 1px solid var(--bord); border-radius: 5px; padding: 8px 10px; background: var(--panneau); display: flex; flex-direction: column; gap: 5px; }
+.choix .nom { font-weight: 600; }
+.choix .desc { font-size: 12px; color: var(--muted); }
+.choix .effets { margin: 0; padding-left: 16px; font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+.choix .conseil-note { font-size: 12px; color: #f0a49c; }
+.choix .conseil-note::before { content: "⚠ "; }
+.choix .btn { margin-top: auto; }
+.decisions-prises ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+.decisions-prises li { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.decisions-prises li .muted { font-size: 12px; }
+@media (max-width: 560px) { .choix-liste { grid-template-columns: 1fr; } }
 .renfort { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px dotted #3f3b33; font-size: 12.5px; }
 .renfort b { display: block; font-weight: 600; }
 .renfort .btn { white-space: nowrap; }

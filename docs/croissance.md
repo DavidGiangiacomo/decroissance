@@ -87,7 +87,7 @@ Mesures faites avec un banc d'essai : deux entrées dans le mode, et quatre faç
 1. **Acheter change peu.** Sans rien acheter, le joueur gagne 22 chiffres ; en achetant tout, 32. La croissance de départ pèse plus que les niveaux. C'est le prix d'un rythme qui ne s'emballe pas ; un playtest dira si acheter se sent assez.
 2. **Après le deuxième palier, il n'y a plus rien à faire.** L'achat automatique s'offre à 2 min 33 ; il reste sept minutes à regarder. Le genre le veut ainsi, mais le §11 demande que ce soit « réellement agréable à jouer ».
 3. **La musique et les sons n'ont pas été écoutés.** Ils sont synthétisés ; leur justesse est à juger à l'oreille ([#22](https://github.com/DavidGiangiacomo/decroissance/issues/22)).
-4. **Relancer sans jamais basculer reste le chemin le plus rapide** pour tout démanteler : 1 h 16 contre 2 h 00 pour le joueur prudent, sans Casse. Le plancher est le seul prix. C'est une question d'équilibrage, à rapprocher de [#9](https://github.com/DavidGiangiacomo/decroissance/issues/9).
+4. **Relancer sans jamais basculer reste le chemin le plus rapide** pour tout démanteler : 1 h 16 contre 1 h 54 pour le joueur prudent, sans Casse. Le plancher est le seul prix. C'est une question d'équilibrage, à rapprocher de [#9](https://github.com/DavidGiangiacomo/decroissance/issues/9).
 5. **Hors de cette proposition :**
    - la mise en scène de la relance du Conseil comme « pic de malaise » (§8), qui figure dans l'issue ;
    - le playtest dédié à ce mode ;

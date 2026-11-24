@@ -25,10 +25,9 @@ const nomPartie = (p) => (p.reaction ? `${p.profil} ${p.reaction} s` : p.profil)
 // vérification tant que la mesure reste sous `plafond`. Elle échoue si l'un d'eux s'aggrave, et aussi s'il se
 // résorbe : il faut alors retirer sa ligne, pour que le seuil normal s'applique de nouveau.
 const ECARTS_CONNUS = [
-  { inv: 'I1', partie: 'pressé 45 s', plafond: 35 * 60, ref: 'joueurs très lents, docs/acte-3.md' },
-  { inv: 'I1', partie: 'vite 45 s', plafond: 33 * 60, ref: 'joueurs très lents, docs/acte-2.md' },
-  { inv: 'I1', partie: 'relance-1 45 s', plafond: 37 * 60, ref: 'joueurs très lents, docs/acte-2.md' },
-  { inv: 'I1', partie: 'prudent 30 s', plafond: 26 * 60, ref: "transition vers l'acte IV, docs/acte-4.md" },
+  { inv: 'I1', partie: 'pressé 30 s', plafond: 27 * 60, ref: "transition vers l'acte IV, docs/acte-4.md" },
+  { inv: 'I1', partie: 'pressé 45 s', plafond: 28 * 60, ref: "transition vers l'acte IV, docs/acte-4.md" },
+  { inv: 'I1', partie: 'relance-1 45 s', plafond: 27 * 60, ref: 'dernier chiffre, docs/acte-5.md' },
 ];
 
 // ---- mesures ----
@@ -126,12 +125,26 @@ function mesurer(partie) {
   };
 }
 
-// I2 : les multiplicateurs permanents en faveur du joueur. Aujourd'hui, un seul : les places de formation, que les
-// centres de formation doublent. Les décisions du §7 (#18) s'ajouteront ici, branche par branche, cumul compris.
+// I2 : les multiplicateurs permanents en faveur du joueur, par ressource, cumul compris : les places de formation, que
+// les centres doublent, et les décisions du §7, mesurées sur le moteur pour la combinaison la plus forte. Réquisition et
+// Volontariat ajoutent des Mains une fois, sur le stock : ce n'est pas un multiplicateur, et les Mains sont déjà à ×2.
 function multiplicateurs() {
   const sans = E.create(), avec = E.create();
   for (const d of D.sites) if (d.mesure) avec.sites[d.id].state = 'fait';
-  return [{ nom: 'places de formation, avec les centres', facteur: E.placesFormation(avec) / E.placesFormation(sans) }];
+  const decide = (...ids) => {
+    const s = E.create();
+    for (const id of ids) s.decisions[E.CHOIX[id].branche] = { choix: id, t: 0, scandale: null, X0: 0 };
+    return s;
+  };
+  const meilleur = (f) => Math.max(...E.BRANCHES.flatMap(b => b.choix.map(c => f(decide(c.id)))));
+  const k = decide(...E.BRANCHES.map(b => b.choix.reduce((m, c) => ((c.kMul || 1) > (E.CHOIX[m].kMul || 1) ? c.id : m), b.choix[0].id)));
+  return [
+    { nom: 'places de formation, avec les centres', facteur: E.placesFormation(avec) / E.placesFormation(sans) },
+    { nom: 'Capacité/s, avec les décisions', facteur: Math.round(E.kMulDecisions(k) * 1000) / 1000 },
+    { nom: 'retour du Consentement vers 70 %', facteur: Math.round(meilleur(E.deriveCo) / D.CO_DRIFT * 1000) / 1000 },
+    { nom: "usure du Consentement, à l'envers", facteur: Math.round(meilleur((s) => 1 / E.usureCo(s)) * 1000) / 1000 },
+    { nom: 'repousse de la terre', facteur: meilleur(E.vitesseTerre) },
+  ];
 }
 
 // I4 et I6, côté écran : le compteur de Casse et le bouton Relancer sont dans la page, et rien ne les masque.
@@ -194,7 +207,7 @@ function juger(mesures, opts) {
   for (const x of opts.multiplicateurs || multiplicateurs()) {
     ligne(x.facteur <= SEUILS.I2 ? 'ok' : 'echec', x.nom, `×${String(x.facteur).replace('.', ',')}`);
   }
-  ligne('info', 'décisions du §7', 'pas encore dans le jeu (#18) : rien à mesurer');
+  ligne('info', 'Mains, Réquisition et Volontariat', 'une fois, sur le stock : pas un multiplicateur permanent');
   ligne('info', 'mode Croissance', "sans objet : c'est le jeu où le joueur devient puissant (§8)");
 
   // I3

@@ -66,6 +66,50 @@
     // Sans assez de Mains pour une équipe, les habitants font le geste : `lent` fois plus long, et `co` points de Consentement.
     HABITANTS: { lent: 2, co: 3 },
 
+    // Les décisions (§7, issue #18) : cinq branches de deux décisions exclusives, prises une fois, sans retour. Une branche
+    // s'ouvre avec son acte et se ferme avec lui ; ne pas décider ne change rien. Effets, selon la décision :
+    //   kMul : Capacité/s multipliée, jusqu'à la fin de la partie, ou pendant kDur s ;
+    //   avance : Capacité avancée à l'ouverture de l'acte IV, au-delà du plafond ;
+    //   co : Consentement, tout de suite ; coupures : sur les délestages et privations, { casse, co } multipliés ;
+    //   mains : part des Mains (engagées comprises) ajoutée tout de suite, prise parmi ceux qui attendent une formation ;
+    //   retour : { dans, co }, le retour de bâton ; derive : points/s du retour du Consentement vers CO_EQ ;
+    //   usure : facteur sur l'usure (attente, chantiers menés de front) ; scandale : Consentement à la première Casse ;
+    //   perteMains : part des Mains disponibles qui quittent le jeu, sur la terre ; terre : vitesse de repousse ;
+    //   coTerre : Consentement gagné par point de Terre rendue.
+    // Le plafond ×2 (I2) vaut par ressource, places de formation comprises : les Mains ne prennent donc rien de permanent.
+    DECISIONS: [
+      { id: 'energie', nom: 'Énergie', acte: 2, choix: [
+        { id: 'rationnement', nom: 'Rationnement', kMul: 1.35, co: -10,
+          desc: "Des quotas d'électricité par foyer et par entreprise, fixés par l'État." },
+        { id: 'marche', nom: 'Marché', coupures: { casse: 1.5, co: 0 },
+          desc: "Le prix de l'électricité suit la rareté. Qui ne peut plus payer se coupe lui-même." },
+      ] },
+      { id: 'dette', nom: 'Dette', acte: 2, choix: [
+        { id: 'amnistie', nom: 'Amnistie', kMul: 1.25,
+          desc: "L'Ostrane cesse de rembourser ses créanciers." },
+        { id: 'honorer', nom: 'Honorer', kMul: 0.75, kDur: 2400, avance: 500,
+          desc: "L'Ostrane rembourse, à chaque échéance." },
+      ] },
+      { id: 'travail', nom: 'Travail', acte: 3, choix: [
+        { id: 'requisition', nom: 'Réquisition', mains: 0.8, retour: { dans: 600, co: -20 },
+          desc: 'Ceux qui attendent une formation sont affectés aux chantiers, sans formation.' },
+        { id: 'volontariat', nom: 'Volontariat', mains: 0.25, co: 10,
+          desc: "Ceux qui le veulent rejoignent les chantiers sans attendre leur formation." },
+      ] },
+      { id: 'information', nom: 'Information', acte: 3, choix: [
+        { id: 'publier', nom: 'Tout publier', co: -20, derive: 1.0 / 60,
+          desc: 'Chaque personne touchée est comptée et publiée.' },
+        { id: 'gerer', nom: 'Gérer', usure: 0.5, scandale: -30,
+          desc: 'La communication accompagne chaque chantier.' },
+      ] },
+      { id: 'terre', nom: 'Terre', acte: 4, choix: [
+        { id: 'retourTerre', nom: 'Retour à la terre', perteMains: 0.3, terre: 1.4, coTerre: 0.5,
+          desc: 'Des familles reprennent les terres rendues, pour les cultiver.' },
+        { id: 'rewilding', nom: 'Rewilding', terre: 1.1,
+          desc: 'Les terres rendues sont laissées à elles-mêmes.' },
+      ] },
+    ],
+
     // Les fins. Poursuivre : chaque pas retire `part` de ce qui reste ; le premier dure `dur` s, chacun le double du précédent.
     POURSUIVRE: { part: 0.10, dur: 60 },
     // L'épilogue : secondes entre deux lignes de l'inventaire.

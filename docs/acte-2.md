@@ -78,21 +78,21 @@ Une couche s'ajoute à l'ouverture : le bourdonnement du réseau, à 50 Hz et se
 
 ## Rythme mesuré
 
-Avec `node tools/simulate.js <profil> <réaction>`, où la réaction est l'attente du bot avant chaque action. Le profil vaut pour les deux actes ; « vite » joue l'acte I comme le prudent.
+Avec `node tools/simulate.js <profil> <réaction>`, où la réaction est l'attente du bot avant chaque action. Le profil vaut pour les deux actes ; « vite » joue l'acte I comme le prudent. Les bots prennent les décisions de leur profil dès l'ouverture de l'acte : Rationnement et Honorer pour le prudent et le rapide, Marché et Amnistie pour le pressé ([decisions.md](decisions.md)).
 
 | Joueur | Réaction | Écart entre les deux premiers chiffres | Durée de l'acte II | Coupures et délestages | Pollutions | Casse | Relances du Conseil |
 |---|---|---|---|---|---|---|---|
-| Prudent : mesures d'abord, aucune coupure | 10 s | 20 min 15 | 16 min 16 | 0 | 0 | 0 | 0 |
-| Pressé : la plus grosse Empreinte d'abord | 10 s | 13 min 32 | 10 min 40 | 3 | 0 | 3 400 | 2 |
-| Vite : prudent, mais démolit vite | 10 s | 17 min 25 | 13 min 09 | 0 | 2 | 800 | 0 |
-| Prudent | 30 s | 18 min 05 | 19 min | 0 | 0 | 0 | 0 |
-| Prudent | 45 s | 24 min 53, à la dernière fermeture | 21 min 08 | 0 | 0 | 0 | 0 |
-| Pressé | 45 s | 28 min 33, à la dernière fermeture | 24 min 48 | 3 | 0 | 3 400 | 1 |
-| Vite | 45 s | 30 min 02, à la dernière fermeture | 26 min 17 | 0 | 2 | 800 | 0 |
+| Prudent : mesures d'abord, aucune coupure | 10 s | 20 min 30 | 16 min 13 | 0 | 0 | 0 | 0 |
+| Pressé : la plus grosse Empreinte d'abord | 10 s | 15 min 46 | 13 min 49 | 3 | 0 | 5 100 | 0 |
+| Vite : prudent, mais démolit vite | 10 s | 17 min 41 | 13 min 17 | 0 | 2 | 800 | 0 |
+| Prudent | 30 s | 21 min 34 | 17 min | 0 | 0 | 0 | 0 |
+| Prudent | 45 s | 21 min 48 | 17 min 38 | 0 | 0 | 0 | 0 |
+| Pressé | 45 s | 16 min 55 | 14 min 59 | 3 | 0 | 5 100 | 0 |
+| Vite | 45 s | 18 min 25 | 14 min 15 | 0 | 2 | 800 | 0 |
 
-Mesures faites après le réglage du quatrième playtest (voir plus bas).
+Mesures faites avec les décisions des bots, après le réglage du quatrième playtest (voir plus bas), et avec le bot corrigé : il lance un chantier dans la même réaction qu'un lot de formation ([decisions.md](decisions.md)). Le Marché fait passer la Casse du pressé de 3 400 à 5 100 personnes, et lui évite les relances du Conseil de l'acte.
 
-À l'ouverture de l'acte III, il reste 4,6·10⁶ au prudent à 10 s, 2,9·10⁶ au pressé à 10 s et 4,4·10⁶ au rapide à 10 s : tous trois ont perdu leur troisième chiffre à la fin de l'acte II. Avant la hausse de 10 %, il leur restait 1,4·10⁷, 4,8·10⁷ et 7,9·10⁶.
+À l'ouverture de l'acte III, il reste 4,5·10⁶ au prudent à 10 s, 1,1·10⁶ au pressé à 10 s et 4,2·10⁶ au rapide à 10 s : tous trois ont perdu leur troisième chiffre à la fin de l'acte II. Avant la hausse de 10 %, il leur restait 1,4·10⁷, 4,8·10⁷ et 7,9·10⁶.
 
 Démolir vite ne fait pas toujours gagner de temps : fermer les gros consommateurs tôt creuse la marge, et le rebond reprend ce que la vitesse avait fait gagner.
 
@@ -114,7 +114,7 @@ Le Consentement de l'acte III a été réglé au même moment ([acte-3.md](acte-
 
 ## Points ouverts
 
-- **Les joueurs très lents dépassent le plafond d'I1.** À 45 s de réaction, la lenteur nourrit le rebond : le pressé et le rapide perdent leur deuxième chiffre à la dernière fermeture de l'acte, après 28 min 33 et 30 min 02. Celui qui relance une fois, à 2 min, le perd après 36 min 58. Le prudent tient, depuis le quatrième playtest, avec 24 min 53. Pour eux, c'est la durée de l'acte qui pèse, pas son Empreinte : 10 % de plus n'y change presque rien.
-- **L'Empreinte de fin d'acte est très sensible.** C'est la différence entre ce qu'un joueur a à l'ouverture et ce que l'acte retire, deux nombres proches. Elle va de 2,0·10⁶ (prudent à 30 s) à 7,4·10⁷ (pressé à 45 s), et quelques pour cent suffisent à la faire passer d'un côté ou de l'autre d'une puissance de dix : au troisième playtest, il a manqué 0,4 %. Le §9 vise 1,1·10⁷. Passer l'acte II en parts, comme l'acte III, supprimerait cette sensibilité ([#31](https://github.com/DavidGiangiacomo/decroissance/issues/31), point 1).
+- **Les joueurs très lents tiennent maintenant le plafond d'I1 à l'acte II.** Leur dépassement venait surtout du bot : chaque lot de formation repoussait son chantier suivant d'un temps de réaction. Corrigé, et avec ses décisions, il perd son deuxième chiffre après 21 min 48 (prudent), 16 min 55 (pressé) et 18 min 25 (rapide) à 45 s de réaction, contre 24 min 53, 28 min 33 et 30 min 02 avant.
+- **L'Empreinte de fin d'acte est très sensible.** C'est la différence entre ce qu'un joueur a à l'ouverture et ce que l'acte retire, deux nombres proches. Elle va de 1,1·10⁶ (pressé à 10 s) à 2,8·10⁷ (celui qui relance une fois, à 45 s), et quelques pour cent suffisent à la faire passer d'un côté ou de l'autre d'une puissance de dix : au troisième playtest, il a manqué 0,4 %. Le §9 vise 1,1·10⁷. Passer l'acte II en parts, comme l'acte III, supprimerait cette sensibilité ([#31](https://github.com/DavidGiangiacomo/decroissance/issues/31), point 1).
 - **Un rebond minime subsiste à la fin** : avec la sobriété, il reste 25 MW de marge, soit +0,04 %/min. L'acte III pourra s'en servir ou le fermer.
-- **Hors de cet acte** : la décision Énergie, Rationnement ou Marché, qui change les règles du délestage, viendra avec les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)) ; les gens comme goulot, c'est l'acte III ([#15](https://github.com/DavidGiangiacomo/decroissance/issues/15)).
+- **Hors de cet acte** : les décisions Énergie et Dette, qui s'ouvrent avec lui, sont décrites dans [decisions.md](decisions.md). Le Marché change le prix du délestage ; les gens comme goulot, c'est l'acte III ([#15](https://github.com/DavidGiangiacomo/decroissance/issues/15)).

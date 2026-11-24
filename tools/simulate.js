@@ -1,5 +1,6 @@
 // Simulation hors navigateur : un joueur automatique joue les actes I à V.
 // node tools/simulate.js [profil] [réaction en s]     DOSAGE=pleine : gardes pleines à l'acte IV (réduites sinon)
+//   DECISIONS=aucune : le bot ne prend aucune décision (il prend sinon celles de son profil, voir DECISIONS_PROFIL)
 //   profils : prudent (par défaut), pressé, vite (prudent, mais démolit vite à l'acte II),
 //             relance-1 (une relance à 2 min), relance-continue (relance sans arrêt, sans jamais basculer),
 //             croissance (relance sans arrêt, puis « Ne plus arrêter » : le mode Croissance, jusqu'à l'écran figé)
@@ -10,6 +11,13 @@ const E = typeof require === 'function' ? require('../engine.js') : window.Engin
 const D = E.D;
 
 const ordreActe1 = ['pub', 'credit', 'aero', 'suv', 'dc', 'ciment', 'charbon', 'autonomie', 'gaz'];
+// Les décisions du §7, par profil, prises dès que la branche s'ouvre. Le prudent ménage le Consentement et les gens ;
+// le pressé prend ce qui rapporte tout de suite. Les deux profils de relance continue ne décident rien.
+const DECISIONS_PRUDENT = { energie: 'rationnement', dette: 'honorer', travail: 'volontariat', information: 'gerer', terre: 'retourTerre' };
+const DECISIONS_PROFIL = {
+  prudent: DECISIONS_PRUDENT, vite: DECISIONS_PRUDENT, 'relance-1': DECISIONS_PRUDENT,
+  pressé: { energie: 'marche', dette: 'amnistie', travail: 'requisition', information: 'publier', terre: 'rewilding' },
+};
 const quand = (t) => E.fmtDur(t).padStart(11);
 
 // Joue une partie. `reaction` : secondes d'attente avant chaque action (simule un humain).
@@ -17,8 +25,10 @@ const quand = (t) => E.fmtDur(t).padStart(11);
 // arret(s), s'il renvoie vrai, arrête la partie là. `ordre1`, facultatif : l'ordre dans lequel le bot essaie les sites
 // de l'acte I (celui d'un playtest, par exemple) ; `strict1` : il les prend dans cet ordre, et attend que le suivant
 // soit payable au lieu de passer au site d'après. `margeCo` : le Consentement que le bot prudent garde après un
-// lancement, aux actes III à V (25 par défaut).
-function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi = {}, ordre1 = ordreActe1, strict1 = false, margeCo = 25 } = {}) {
+// lancement, aux actes III à V (25 par défaut). `decisions` : 'profil' (celles de DECISIONS_PROFIL), 'aucune', ou un objet
+// { branche: choix } ; le bot décide dès que la branche s'ouvre, comme une action, et le prudent garde sa marge.
+function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi = {}, ordre1 = ordreActe1, strict1 = false, margeCo = 25, decisions = 'profil' } = {}) {
+  const voulues = decisions === 'aucune' ? {} : decisions === 'profil' ? (DECISIONS_PROFIL[profil] || {}) : decisions;
   const s = E.create();
   s.started = true;
   const dt = 0.1;
@@ -98,6 +108,19 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
     return null;
   }
 
+  // Les décisions : celle de la branche ouverte, si le bot en veut une. Le prudent attend d'avoir la marge de
+  // Consentement que la décision coûte, tout de suite ou plus tard.
+  function choixDecision() {
+    for (const b of E.branchesOuvertes(s)) {
+      const id = voulues[b.id];
+      if (!id) continue;
+      const c = E.CHOIX[id], cout = Math.max(0, -(c.co || 0), c.retour ? -c.retour.co : 0);
+      if (profil !== 'pressé' && cout && s.Co - cout < margeCo) continue;
+      return id;
+    }
+    return null;
+  }
+
   let coMin3 = Infinity, mainsMax = 0, finDeux = null;   // finDeux : Casse, rebond et régions à la fin de l'acte II
   let coMin4 = Infinity, finTrois = null;               // finTrois : Empreinte et chiffres à la fin de l'acte III
   let coMin5 = Infinity, finQuatre = null;              // finQuatre : Empreinte, plancher et Mains à la fin de l'acte IV
@@ -121,12 +144,19 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
     // Un clic remplit toutes les places libres. À l'acte III, le prudent ne lance pas de lot qui ferait passer
     // le Consentement sous le seuil du Conseil.
     const formerOk = () => s.acte < 3 || profil === 'pressé' || s.Co - D.RECONV.co >= D.RELANCE.autoSeuil + 0.5;
-    if (s.t >= prochainAction) {
-      let lots = 0;
-      while (formerOk() && E.reconvertir(s)) lots++;
-      if (lots) prochainAction = s.t + reaction;
-    }
+    // Reconvertir ne prend pas le geste suivant : comme un joueur, le bot remplit les places et lance un chantier
+    // dans la même réaction (sinon, à 45 s, chaque lot repoussait le chantier suivant de 45 s).
+    const libre = s.t >= prochainAction;
+    let lots = 0;
+    if (libre) while (formerOk() && E.reconvertir(s)) lots++;
     while (s.t >= prochainAction) {
+      const dec = choixDecision();
+      if (dec) {
+        E.decider(s, dec);
+        prochainAction = s.t + reaction;
+        marks.push(`${quand(s.t)}  DÉCISION ${E.CHOIX[dec].branche} : ${dec}  K=${Math.floor(s.K)} M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)}`);
+        continue;
+      }
       const choix = s.acte === 1 ? choixActe1() : s.acte === 2 ? choixActe2() : s.acte === 3 ? choixActe3() : s.acte === 4 ? choixActe4() : choixActe5();
       if (!choix) break;
       const cout = E.canEngage(s, choix.id, choix.opts).cout;
@@ -137,6 +167,7 @@ function simuler({ profil = 'prudent', reaction = 0, dosage = 'reduite', suivi =
       marks.push(`${quand(s.t)}  ${choix.opts && choix.opts.vite ? 'démolition rapide' : choix.opts && choix.opts.dosage ? `garde ${choix.opts.dosage}${s.sites[choix.id].aBras ? ' à bras' : ''}` : E.defs[choix.id].geste ? `geste${s.sites[choix.id].habitants ? ', par les habitants' : ''}` : 'engage'} ${choix.id}  E=${E.fmtFin(s.E)}  K=${Math.floor(s.K)} M=${s.M} attente=${s.deplaces} Co=${s.Co.toFixed(0)}` +
         (casse.length ? `  ${casse.map(e => `${e.type.toUpperCase()} ${e.id || e.dep || e.ids.join('+')}`).join(', ')}` : ''));
     }
+    if (lots && prochainAction <= s.t) prochainAction = s.t + reaction;
     if (profil === 'relance-1' && s.t > 120 && !relanceFaite) { E.relancer(s); relanceFaite++; marks.push(`${quand(s.t)}  RELANCE`); }
     if ((profil === 'croissance' || profil === 'relance-continue') && !E.relanceActive(s)) { E.relancer(s); }
     // Croissance : dès que « Ne plus arrêter » s'offre, le bot bascule. Il achète ensuite tout ce qui est payable,
@@ -237,6 +268,9 @@ function resumer({ profil, reaction, s, marks, maxE, minEavantStab, rebond, coMi
     console.log(`croissance bascule=${E.fmtDur(r.bascule)} à E=${E.fmtE(s.Ebascule)}  écran figé=${r.fige !== null ? E.fmtDur(r.fige) : '—'}  durée du mode=${r.fige !== null ? E.fmtDur(r.fige - r.bascule) : '—'}` +
       `  chiffres gagnés=${r.chiffresGagnes}  paliers=${r.paliers} (${paliers.join(', ')})  niveaux=${E.fmt(niveaux)}, dont ${E.fmt(r.niveauxAchetes)} achetés`);
   }
+  if (r.decisions.length) console.log(`décisions ${r.decisions.map(d => `${d.branche}=${d.choix || (d.ouverte ? 'ouverte' : 'aucune')}${d.choix ? ` (${E.fmtDur(d.t)})` : ''}`).join('  ')}` +
+    `${s.chrono.some(e => e.type === 'retour-baton') ? '  retour de bâton' : ''}${s.chrono.some(e => e.type === 'scandale') ? `  scandale à ${E.fmtDur(s.chrono.find(e => e.type === 'scandale').t)}` : ''}` +
+    `${s.chrono.some(e => e.type === 'avance') ? '  avance des créanciers' : ''}  Co décisions=${E.fmtPoints(s.coCauses.decisions || 0)} terre=${E.fmtPoints(s.coCauses.terre || 0)}`);
   console.log(`fin      E=${E.fmtE(s.E)}  Co=${s.Co.toFixed(0)}  T=${E.T(s).toFixed(1)}/${E.Tmax().toFixed(1)}  relances=${r.relances}  relances du Conseil=${r.relancesConseil}`);
 }
 
@@ -264,9 +298,10 @@ function partieA(point, { profil = 'prudent', reaction = 10, dosage = 'reduite' 
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { simuler, resumer, partieA, POINTS, JOUEURS, NOMS_POINTS };
+  module.exports = { simuler, resumer, partieA, POINTS, JOUEURS, NOMS_POINTS, DECISIONS_PROFIL };
   if (require.main === module) {
-    resumer(simuler({ profil: process.argv[2] || 'prudent', reaction: Number(process.argv[3] || 0), dosage: process.env.DOSAGE }));
+    resumer(simuler({ profil: process.argv[2] || 'prudent', reaction: Number(process.argv[3] || 0), dosage: process.env.DOSAGE,
+      decisions: process.env.DECISIONS === 'aucune' ? 'aucune' : 'profil' }));
   }
 } else {
   window.Simulateur = { simuler, partieA, POINTS, JOUEURS, NOMS_POINTS };

@@ -92,25 +92,25 @@ Les sept parts réunies laissent 0,12 % de l'Empreinte : l'acte fait perdre 2,9 
 
 ## Rythme mesuré
 
-Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les bots prudents lancent les sols d'abord, puis les gardes, la plus grosse fuite d'abord, et le réseau national en dernier, sans jamais descendre sous 25 de Consentement. Le pressé prend la plus grosse part d'abord, sans rien regarder. Tous instituent des gardes réduites ; `DOSAGE=pleine` les rend pleines, sans changer le rythme. Les écarts sont comptés depuis le chiffre précédent, celui de l'acte III compris.
+Mesures faites avec `node tools/simulate.js <profil> <réaction>`. Les bots prudents lancent les sols d'abord, puis les gardes, la plus grosse fuite d'abord, et le réseau national en dernier, sans jamais descendre sous 25 de Consentement. Le pressé prend la plus grosse part d'abord, sans rien regarder. Tous instituent des gardes réduites ; `DOSAGE=pleine` les rend pleines, sans changer le rythme. Les bots décident aussi selon leur profil : le Retour à la terre pour le prudent et le rapide, le Rewilding pour le pressé ([decisions.md](decisions.md)). Les écarts sont comptés depuis le chiffre précédent, celui de l'acte III compris.
 
 | Joueur | Réaction | Ouverture | Empreinte à l'ouverture | Durée | Chiffres perdus | Écarts | Gardes à bras | Gardiens | Relances du Conseil dans l'acte | Plancher | Empreinte à la fin |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Prudent | 10 s | 1 h 13 | 29 332 | 25 min 20 | 3 | 13 min 10, 7 min 20, 9 min 50 | — | 5 300 | 0 | 4,8 | 37 |
-| Prudent | 30 s | 1 h 13 | 12 771 | 26 min 30 | 3 | 25 min 46, 1 min, 7 min 45 | — | 5 300 | 0 | 4,8 | 16 |
-| Prudent | 45 s | 1 h 16 | 200 653 | 31 min 22 | 3 | 17 min 37, 3 min 45, 5 min | — | 5 300 | 0 | 4,8 | 270 |
-| Pressé | 10 s | 1 h 00 | 20 539 | 25 min 20 | 3 | 20 min 50, 8 min 54, 5 min | galeries | 6 800 | 1 | 38,4 | 38, au plancher |
-| Pressé | 30 s | 1 h 05 | 86 705 | 26 min | 3 | 21 min, 16 min 45, 4 min 45 | galeries | 6 800 | 1 | 38,4 | 122 |
-| Pressé | 45 s | 1 h 35 | 585 439 | 33 min 15 | 3 | 18 min 15, 11 min, 4 min 44 | galeries | 6 800 | 0 | 19,2 | 826 |
-| Vite | 10 s | 58 min 07 | 27 409 | 25 min 26 | 3 | 10 min 07, 2 min 28, 9 min 19 | — | 5 300 | 1 | 9,6 | 18 |
-| Vite | 45 s | 1 h 20 | 297 695 | 27 min 15 | 3 | 14 min 37, 15 s, 7 min | — | 5 300 | 0 | 4,8 | 197 |
-| Relance à 2 min | 10 s | 1 h 09 | 152 731 | 25 min 20 | 3 | 12 min 10, 7 min, 6 min 35 | — | 5 300 | 0 | 9,6 | 192 |
+| Prudent | 10 s | 1 h 07 | 26 791 | 25 min 20 | 3 | 21 min 57, 4 min 50, 11 min 44 | — | 5 300 | 0 | 2,4 | 34 |
+| Prudent | 30 s | 1 h 09 | 28 736 | 26 min | 3 | 21 min 52, 6 min 15, 10 min 15 | — | 5 300 | 0 | 2,4 | 37 |
+| Prudent | 45 s | 57 min 40 | 28 061 | 28 min 45 | 4 | 12 min 46, 14 min 30, 3 min 29, 10 min 44 | — | 5 300 | 0 | 2,4 | 36 |
+| Pressé | 10 s | 58 min | 8 574 | 25 min 20 | 3 | 17 min, 15 min 40, 4 min 49 | galeries | 6 800 | 1 | 38,4 | 38, au plancher |
+| Pressé | 30 s | 1 h 00 | 11 611 | 26 min | 3 | 25 min 45, 7 min 14, 4 min 45 | galeries | 6 800 | 0 | 19,2 | 19, au plancher |
+| Pressé | 45 s | 1 h 02 | 11 323 | 26 min 30 | 3 | 26 min 39, 7 min, 4 min 45 | galeries | 6 800 | 0 | 19,2 | 19, au plancher |
+| Vite | 10 s | 1 h 03 | 25 124 | 25 min 20 | 3 | 20 min 58, 1 min 54, 9 min 19 | — | 5 300 | 0 | 2,4 | 16 |
+| Vite | 45 s | 54 min 18 | 7 321 | 26 min 30 | 4 | 9 min 31, 13 min 30, 3 min 44, 9 min 14 | — | 5 300 | 0 | 2,4 | 5 |
+| Relance à 2 min | 10 s | 53 min 15 | 126 092 | 26 min 31 | 3 | 13 min 12, 9 min, 4 min 54 | — | 5 300 | 0 | 4,8 | 160 |
 
-Mesures faites après le réglage du quatrième playtest ([acte-3.md](acte-3.md)) : chaque bot y a une relance du Conseil à l'acte III, et quatre d'entre eux finissent avec un plancher deux fois plus haut.
+Mesures faites avec les décisions des bots et le bot corrigé ([decisions.md](decisions.md)), après le réglage du quatrième playtest ([acte-3.md](acte-3.md)). Les prudents n'ont plus aucune relance du Conseil : leur plancher reste à 2,4. Avec Honorer, ils reçoivent 500 de Capacité à l'ouverture de l'acte et n'ont aucune garde à bras.
 
-- Un écart du tableau dépasse 25 min (I1) : celui du prudent à 30 s, à la transition, de 46 s (voir les points ouverts). Les autres restent à 21 min au plus.
-- Les pressés à 10 et 30 s finissent l'acte avec un plancher à 38,4 : quatre relances du Conseil l'y ont porté. Le pressé à 10 s finit dessus. Ses relances lui coûtent exactement ce que le §8 annonce.
-- Les actes I à IV se jouent en 1 h 38 pour le bot prudent à 10 s, le §9 en prévoit 2 h 50. La Terre rendue atteint 63 à 65 % à la fin de l'acte ; la terre des sols finit de repousser pendant l'acte V.
+- Deux écarts du tableau dépassent 25 min (I1) : ceux des pressés à 30 et 45 s, à la transition, de 45 s et de 1 min 39 (voir les points ouverts). Les autres restent sous 22 min.
+- Les pressés finissent l'acte sur leur plancher, à 38,4 pour le pressé à 10 s, à 19,2 pour les autres : quatre ou trois relances du Conseil l'y ont porté. Leurs relances leur coûtent exactement ce que le §8 annonce.
+- Les actes I à IV se jouent en 1 h 32 pour le bot prudent à 10 s, le §9 en prévoit 2 h 50. La Terre rendue atteint 64 à 68 % à la fin de l'acte ; la terre des sols finit de repousser pendant l'acte V. Le Retour à la terre la fait repousser 1,4 fois plus vite, et rapporte au prudent 24 à 29 points de Consentement jusqu'à la fin.
 
 ## Points ouverts
 
@@ -118,9 +118,9 @@ Mesures faites après le réglage du quatrième playtest ([acte-3.md](acte-3.md)
 2. **La fin de l'acte attend la dernière dépollution.** Après la dernière garde, il peut rester une dizaine de minutes sans autre geste que de reconvertir. C'est voulu (« les sols tôt », et l'absence fait avancer la partie), mais un playtest dira si c'est vécu comme une attente ou comme une invitation à partir. R3, qui borne les murs de temps réel à 4 min, vise l'acte V.
 3. **Les gardiens ne comptent pas dans le plafond humain** de 40 000 Mains. Ce plafond n'est pas atteint.
 4. **Le Consentement qui remonte hors ligne** est gardé tel quel (point 7). Avec les sols, partir devient une stratégie : à observer.
-5. **Le prudent à 30 s dépasse I1 de 46 s.** Il finit l'acte III à 12 771, juste au-dessus de 10⁴ : son chiffre suivant attend l'acte IV, et 25 min 46 séparent son cinquième et son sixième chiffre. `tools/check.js` le tient pour un écart connu (§9 du design doc). Avant le réglage du quatrième playtest, c'était le rapide à 30 s qui dépassait de 46 s ; il tient maintenant, avec 20 min 30.
+5. **Les pressés à 30 et 45 s dépassent I1 à la transition**, de 45 s et de 1 min 39. Ils finissent l'acte III à 11 611 et 11 323, juste au-dessus de 10⁴ : leur chiffre suivant attend l'acte IV. `tools/check.js` les tient pour des écarts connus (§9 du design doc). Le même écart a touché, d'un réglage à l'autre, le rapide puis le prudent à 30 s : c'est la transition qui est fragile, pas un profil.
 6. **Hors de cet acte :**
    - l'acte V, « Rendre », où le compteur descend jusqu'au plancher : il est décrit dans [acte-5.md](acte-5.md) ;
    - l'épilogue et les fins, où se paie le dosage : ils sont décrits dans [fins.md](fins.md) ;
-   - les décisions ([#18](https://github.com/DavidGiangiacomo/decroissance/issues/18)), dont la crédibilité « en acte IV » de la branche Dette ;
+   - la décision Terre, qui s'ouvre avec lui, et l'avance des créanciers d'Honorer, à son ouverture : elles sont décrites dans [decisions.md](decisions.md) ;
    - passer l'acte II en parts ([#31](https://github.com/DavidGiangiacomo/decroissance/issues/31), point 1), qui reste à faire.
